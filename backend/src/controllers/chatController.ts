@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import OpenAI from 'openai';
 import { config } from '../config';
+import { ChatSession } from '../models/ChatSession';
 
 // Initialize OpenAI Client
 const openai = new OpenAI({
@@ -19,10 +20,14 @@ Your persona is similar to "SimSimi" or "Lee Luda".
 `;
 
 export const chatWithAI = async (req: Request, res: Response) => {
-  const { message } = req.body;
+  const { message, token } = req.body;
 
   if (!message) {
     return res.status(400).json({ error: 'Message is required' });
+  }
+
+  if (!token) {
+    return res.status(400).json({ error: 'Session token is required' });
   }
 
   if (!config.openaiApiKey) {
@@ -31,31 +36,67 @@ export const chatWithAI = async (req: Request, res: Response) => {
   }
 
   try {
+    // Find or create chat session
+    let session = await ChatSession.findOne({ token });
+    
+    if (!session) {
+      session = new ChatSession({
+        token,
+        messages: [],
+      });
+    }
+
+    // Add user message to session
+    session.messages.push({
+      role: 'user',
+      content: message,
+      timestamp: new Date(),
+    });
+
+    await session.save();
+
+    // Build conversation history for OpenAI
+    // We'll send the last 10 messages to keep context manageable
+    const recentMessages = session.messages.slice(-10).map((msg) => ({
+      role: (msg.role === 'ai' ? 'assistant' : msg.role) as 'user' | 'assistant' | 'system',
+      content: msg.content,
+    }));
+
     // Enable streaming for a typewriter effect
     const stream = await openai.chat.completions.create({
       model: config.modelName,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: message }
+        ...recentMessages,
       ],
-      stream: true, // KEY CHANGE: Enable streaming
+      stream: true,
     });
 
     // Set headers for Server-Sent Events (SSE)
-    // This allows us to send data to the client incrementally.
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
+
+    let aiResponse = '';
 
     // Stream chunks to the client
     for await (const chunk of stream) {
       const content = chunk.choices[0]?.delta?.content || '';
       
       if (content) {
-        // SSE format: data: <content>\n\n
+        aiResponse += content;
         res.write(`data: ${JSON.stringify({ content })}\n\n`);
       }
     }
+
+    // Save AI response to database
+    session.messages.push({
+      role: 'ai',
+      content: aiResponse,
+      timestamp: new Date(),
+    });
+
+    await session.save();
 
     // Send a completion signal
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
@@ -64,13 +105,33 @@ export const chatWithAI = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error calling OpenAI:', error);
     
-    // If headers are not sent yet, send an error response
     if (!res.headersSent) {
       return res.status(500).json({ error: 'Failed to get response from AI' });
     } else {
-      // If streaming already started, send error via SSE
       res.write(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`);
       res.end();
     }
+  }
+};
+
+// New endpoint: Get chat history for a session
+export const getChatHistory = async (req: Request, res: Response) => {
+  const { token } = req.query;
+
+  if (!token || typeof token !== 'string') {
+    return res.status(400).json({ error: 'Session token is required' });
+  }
+
+  try {
+    const session = await ChatSession.findOne({ token });
+
+    if (!session) {
+      return res.json({ messages: [] });
+    }
+
+    return res.json({ messages: session.messages });
+  } catch (error) {
+    console.error('Error fetching chat history:', error);
+    return res.status(500).json({ error: 'Failed to fetch chat history' });
   }
 };

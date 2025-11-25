@@ -1,9 +1,13 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { connectDB } from './db';
 
 // Load environment variables from .env file
 dotenv.config();
+
+// Connect to MongoDB
+connectDB();
 
 // Initialize the Express application
 // In Spring, this is similar to the ApplicationContext.

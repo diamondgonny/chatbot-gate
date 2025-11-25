@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import axios from "axios";
 
 interface Message {
   id: string;
@@ -13,29 +14,83 @@ interface Message {
 }
 
 export default function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 'welcome',
-      role: 'ai',
-      content: 'Hello! I am the Gatekeeper AI. What brings you here?',
-      timestamp: new Date().toISOString(),
-    },
-  ]);
-  const [input, setInput] = useState('');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [token, setToken] = useState<string | null>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping]);
 
+  // Load session token and chat history on mount
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      const sessionToken = localStorage.getItem("gate_token");
+
+      if (!sessionToken) {
+        // No token, redirect to gate
+        window.location.href = "/";
+        return;
+      }
+
+      setToken(sessionToken);
+
+      try {
+        const response = await axios.get(
+          `http://localhost:4000/api/chat/history?token=${sessionToken}`
+        );
+
+        if (response.data.messages && response.data.messages.length > 0) {
+          const loadedMessages = response.data.messages.map(
+            (msg: any, idx: number) => ({
+              id: `loaded_${idx}`,
+              role: msg.role === "ai" ? "ai" : "user",
+              content: msg.content,
+              timestamp: msg.timestamp,
+            })
+          );
+
+          setMessages(loadedMessages);
+        } else {
+          // No history, add welcome message
+          setMessages([
+            {
+              id: "welcome",
+              role: "ai",
+              content: "Hello! I am the Gatekeeper AI. What brings you here?",
+              timestamp: new Date().toISOString(),
+            },
+          ]);
+        }
+      } catch (error) {
+        console.error("Error loading chat history:", error);
+        // Add welcome message on error
+        setMessages([
+          {
+            id: "welcome",
+            role: "ai",
+            content: "Hello! I am the Gatekeeper AI. What brings you here?",
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadChatHistory();
+  }, []);
+
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || !token) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -48,7 +103,6 @@ export default function ChatInterface() {
     setInput("");
     setIsTyping(true);
 
-    // Prepare a placeholder for the AI message
     const aiMessageId = (Date.now() + 1).toString();
     const aiMessage: Message = {
       id: aiMessageId,
@@ -60,12 +114,10 @@ export default function ChatInterface() {
     setMessages((prev) => [...prev, aiMessage]);
 
     try {
-      // Use fetch with EventSource-like behavior
-      // Note: EventSource doesn't support POST, so we use fetch with ReadableStream instead
       const response = await fetch("http://localhost:4000/api/chat/message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage.content }),
+        body: JSON.stringify({ message: userMessage.content, token }),
       });
 
       if (!response.ok) {
@@ -123,6 +175,14 @@ export default function ChatInterface() {
       setIsTyping(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-slate-400">Loading chat...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen max-w-3xl mx-auto bg-slate-900/50 shadow-2xl border-x border-slate-800">
