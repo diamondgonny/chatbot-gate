@@ -27,6 +27,7 @@ app.use(cors());
 app.use(express.json());
 
 import gateRoutes from './routes/gateRoutes';
+import chatRoutes from './routes/chatRoutes';
 
 // ... (previous middleware)
 
@@ -34,9 +35,10 @@ import gateRoutes from './routes/gateRoutes';
 // ------
 
 // Mount the Gate routes under /api/gate
-// All routes in gateRoutes will be prefixed with /api/gate
-// e.g., POST /api/gate/validate
 app.use('/api/gate', gateRoutes);
+
+// Mount the Chat routes under /api/chat
+app.use('/api/chat', chatRoutes);
 
 // Health Check Endpoint
 app.get('/health', (req: Request, res: Response) => {
