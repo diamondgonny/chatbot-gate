@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
+import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -40,31 +39,86 @@ export default function ChatInterface() {
 
     const userMessage: Message = {
       id: Date.now().toString(),
-      role: 'user',
+      role: "user",
       content: input,
       timestamp: new Date().toISOString(),
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    setInput('');
+    setInput("");
     setIsTyping(true);
 
+    // Prepare a placeholder for the AI message
+    const aiMessageId = (Date.now() + 1).toString();
+    const aiMessage: Message = {
+      id: aiMessageId,
+      role: "ai",
+      content: "",
+      timestamp: new Date().toISOString(),
+    };
+
+    setMessages((prev) => [...prev, aiMessage]);
+
     try {
-      const response = await axios.post('http://localhost:4000/api/chat/message', {
-        message: userMessage.content,
+      // Use fetch with EventSource-like behavior
+      // Note: EventSource doesn't support POST, so we use fetch with ReadableStream instead
+      const response = await fetch("http://localhost:4000/api/chat/message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: userMessage.content }),
       });
 
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'ai',
-        content: response.data.response,
-        timestamp: response.data.timestamp,
-      };
+      if (!response.ok) {
+        throw new Error("Failed to get response");
+      }
 
-      setMessages((prev) => [...prev, aiMessage]);
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error("No reader available");
+      }
+
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = JSON.parse(line.slice(6));
+
+            if (data.done) {
+              setIsTyping(false);
+              break;
+            }
+
+            if (data.content) {
+              setMessages((prev) =>
+                prev.map((msg) =>
+                  msg.id === aiMessageId
+                    ? { ...msg, content: msg.content + data.content }
+                    : msg
+                )
+              );
+            }
+          }
+        }
+      }
     } catch (error) {
-      console.error('Error sending message:', error);
-      // Optional: Add error message to chat
+      console.error("Error sending message:", error);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === aiMessageId
+            ? { ...msg, content: "Sorry, something went wrong." }
+            : msg
+        )
+      );
     } finally {
       setIsTyping(false);
     }

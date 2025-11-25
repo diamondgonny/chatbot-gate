@@ -3,14 +3,11 @@ import OpenAI from 'openai';
 import { config } from '../config';
 
 // Initialize OpenAI Client
-// Note: It will automatically look for OPENAI_API_KEY in process.env if not passed,
-// but passing it explicitly from our config is safer/clearer.
 const openai = new OpenAI({
   apiKey: config.openaiApiKey,
 });
 
 // System Prompt: Defines the persona of the AI.
-// We want a "SimSimi" or "Lee Luda" vibe: casual, friendly, playful, maybe a bit sassy.
 const SYSTEM_PROMPT = `
 You are a playful, witty, and friendly AI chatbot living in a secret digital gate.
 Your persona is similar to "SimSimi" or "Lee Luda".
@@ -34,24 +31,46 @@ export const chatWithAI = async (req: Request, res: Response) => {
   }
 
   try {
-    const completion = await openai.chat.completions.create({
+    // Enable streaming for a typewriter effect
+    const stream = await openai.chat.completions.create({
       model: config.modelName,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: message }
       ],
-      // We are NOT streaming yet, just a simple request/response
+      stream: true, // KEY CHANGE: Enable streaming
     });
 
-    const aiResponse = completion.choices[0].message.content;
+    // Set headers for Server-Sent Events (SSE)
+    // This allows us to send data to the client incrementally.
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
 
-    return res.json({ 
-      response: aiResponse,
-      timestamp: new Date().toISOString()
-    });
+    // Stream chunks to the client
+    for await (const chunk of stream) {
+      const content = chunk.choices[0]?.delta?.content || '';
+      
+      if (content) {
+        // SSE format: data: <content>\n\n
+        res.write(`data: ${JSON.stringify({ content })}\n\n`);
+      }
+    }
+
+    // Send a completion signal
+    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+    res.end();
 
   } catch (error) {
     console.error('Error calling OpenAI:', error);
-    return res.status(500).json({ error: 'Failed to get response from AI' });
+    
+    // If headers are not sent yet, send an error response
+    if (!res.headersSent) {
+      return res.status(500).json({ error: 'Failed to get response from AI' });
+    } else {
+      // If streaming already started, send error via SSE
+      res.write(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`);
+      res.end();
+    }
   }
 };
