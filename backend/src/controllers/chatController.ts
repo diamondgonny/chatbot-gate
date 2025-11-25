@@ -62,32 +62,17 @@ export const chatWithAI = async (req: Request, res: Response) => {
       content: msg.content,
     }));
 
-    // Enable streaming for a typewriter effect
-    const stream = await openai.chat.completions.create({
+    // Get response from OpenAI (NO STREAMING)
+    const completion = await openai.chat.completions.create({
       model: config.modelName,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         ...recentMessages,
       ],
-      stream: true,
+      // stream: false (default)
     });
 
-    // Set headers for Server-Sent Events (SSE)
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-
-    let aiResponse = '';
-
-    // Stream chunks to the client
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content || '';
-      
-      if (content) {
-        aiResponse += content;
-        res.write(`data: ${JSON.stringify({ content })}\n\n`);
-      }
-    }
+    const aiResponse = completion.choices[0].message.content || '';
 
     // Save AI response to database
     session.messages.push({
@@ -98,19 +83,15 @@ export const chatWithAI = async (req: Request, res: Response) => {
 
     await session.save();
 
-    // Send a completion signal
-    res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
-    res.end();
+    // Return complete response
+    return res.json({ 
+      response: aiResponse,
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
     console.error('Error calling OpenAI:', error);
-    
-    if (!res.headersSent) {
-      return res.status(500).json({ error: 'Failed to get response from AI' });
-    } else {
-      res.write(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`);
-      res.end();
-    }
+    return res.status(500).json({ error: 'Failed to get response from AI' });
   }
 };
 

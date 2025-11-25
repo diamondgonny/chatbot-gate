@@ -33,7 +33,7 @@ export default function ChatInterface() {
   useEffect(() => {
     const loadChatHistory = async () => {
       const sessionToken = localStorage.getItem("gate_token");
-
+      
       if (!sessionToken) {
         // No token, redirect to gate
         window.location.href = "/";
@@ -103,74 +103,33 @@ export default function ChatInterface() {
     setInput("");
     setIsTyping(true);
 
-    const aiMessageId = (Date.now() + 1).toString();
-    const aiMessage: Message = {
-      id: aiMessageId,
-      role: "ai",
-      content: "",
-      timestamp: new Date().toISOString(),
-    };
-
-    setMessages((prev) => [...prev, aiMessage]);
-
     try {
-      const response = await fetch("http://localhost:4000/api/chat/message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMessage.content, token }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to get response");
-      }
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (!reader) {
-        throw new Error("No reader available");
-      }
-
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = JSON.parse(line.slice(6));
-
-            if (data.done) {
-              setIsTyping(false);
-              break;
-            }
-
-            if (data.content) {
-              setMessages((prev) =>
-                prev.map((msg) =>
-                  msg.id === aiMessageId
-                    ? { ...msg, content: msg.content + data.content }
-                    : msg
-                )
-              );
-            }
-          }
+      // Standard POST request (NO STREAMING)
+      const response = await axios.post(
+        "http://localhost:4000/api/chat/message",
+        {
+          message: userMessage.content,
+          token,
         }
-      }
+      );
+
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "ai",
+        content: response.data.response,
+        timestamp: response.data.timestamp,
+      };
+
+      setMessages((prev) => [...prev, aiMessage]);
     } catch (error) {
       console.error("Error sending message:", error);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === aiMessageId
-            ? { ...msg, content: "Sorry, something went wrong." }
-            : msg
-        )
-      );
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "ai",
+        content: "Sorry, something went wrong.",
+        timestamp: new Date().toISOString(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
     }
