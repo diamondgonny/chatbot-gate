@@ -67,7 +67,7 @@ export default function Gate() {
         <form onSubmit={handleSubmit} className="w-full relative">
           <motion.div
             animate={error ? { x: [-10, 10, -10, 10, 0] } : {}}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+            transition={{ type: "tween", duration: 0.4 }}
           >
             <input
               type="text"
