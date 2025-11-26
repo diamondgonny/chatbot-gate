@@ -19,35 +19,19 @@ interface Session {
 }
 
 interface SessionSidebarProps {
+  sessions?: any[];
   currentSessionId?: string;
   onSessionSelect?: (sessionId: string) => void;
   onNewChat?: () => void;
 }
 
 export default function SessionSidebar({
+  sessions = [],
   currentSessionId,
   onSessionSelect,
   onNewChat,
 }: SessionSidebarProps) {
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadSessions();
-  }, []);
-
-  const loadSessions = async () => {
-    try {
-      const response = await axios.get("http://localhost:4000/api/sessions", {
-        withCredentials: true,
-      });
-      setSessions(response.data.sessions || []);
-    } catch (error) {
-      console.error("Error loading sessions:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [loading, setLoading] = useState(false);
 
   if (loading) {
     return (

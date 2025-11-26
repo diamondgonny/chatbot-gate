@@ -21,6 +21,7 @@ function ChatInterface() {
   const [isTyping, setIsTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -31,6 +32,18 @@ function ChatInterface() {
     scrollToBottom();
   }, [messages, isTyping]);
 
+  // Load sessions from API
+  const loadSessions = async () => {
+    try {
+      const response = await axios.get("http://localhost:4000/api/sessions", {
+        withCredentials: true,
+      });
+      setSessions(response.data.sessions || []);
+    } catch (error) {
+      console.error("Error loading sessions:", error);
+    }
+  };
+
   // Load chat history on mount - create first session if none exists
   useEffect(() => {
     const loadChatHistory = async () => {
@@ -40,13 +53,12 @@ function ChatInterface() {
           "http://localhost:4000/api/sessions",
           { withCredentials: true }
         );
+        const fetchedSessions = sessionsResponse.data.sessions || [];
+        setSessions(fetchedSessions);
 
-        if (
-          sessionsResponse.data.sessions &&
-          sessionsResponse.data.sessions.length > 0
-        ) {
+        if (fetchedSessions.length > 0) {
           // Use the most recent session
-          const latestSession = sessionsResponse.data.sessions[0];
+          const latestSession = fetchedSessions[0];
           setCurrentSessionId(latestSession.sessionId);
 
           // Load history for this session
@@ -175,6 +187,9 @@ function ChatInterface() {
           timestamp: new Date().toISOString(),
         },
       ]);
+
+      // Reload sessions to update sidebar
+      await loadSessions();
     } catch (error) {
       console.error("Error creating new session:", error);
     }
@@ -220,6 +235,7 @@ function ChatInterface() {
     <div className="flex h-screen">
       {/* Session Sidebar */}
       <SessionSidebar
+        sessions={sessions}
         currentSessionId={currentSessionId || undefined}
         onSessionSelect={handleSessionSelect}
         onNewChat={handleNewChat}
