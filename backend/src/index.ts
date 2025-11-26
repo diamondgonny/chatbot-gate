@@ -4,7 +4,7 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { connectDB } from './db';
 import morgan from 'morgan';
-import { createWriteStream } from 'fs';
+import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import path from 'path';
 
 // Load environment variables from .env file
@@ -80,6 +80,9 @@ app.use((req, res, next) => {
 
 // Request logging (structured to file + console)
 const logDirectory = path.join(process.cwd(), 'logs');
+if (!existsSync(logDirectory)) {
+  mkdirSync(logDirectory, { recursive: true });
+}
 const accessLogStream = createWriteStream(path.join(logDirectory, 'access.log'), { flags: 'a' });
 app.use(
   morgan('combined', {
