@@ -22,6 +22,8 @@ Your persona is similar to "SimSimi" or "Lee Luda".
 export const chatWithAI = async (req: Request, res: Response) => {
   const { message, sessionId } = req.body;
   const userId = req.userId; // Injected by authMiddleware
+  const truncateTitle = (text: string) =>
+    text.length > 50 ? text.substring(0, 50) + '...' : text;
 
   if (!message) {
     return res.status(400).json({ error: 'Message is required' });
@@ -92,6 +94,9 @@ export const chatWithAI = async (req: Request, res: Response) => {
       content: aiResponse,
       timestamp: new Date(),
     });
+
+    // Always keep the title in sync with the latest message (AI is last)
+    session.title = truncateTitle(aiResponse);
 
     await session.save();
 
