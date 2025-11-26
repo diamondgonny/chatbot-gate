@@ -53,7 +53,7 @@ export default function SessionSidebar({
       </div>
 
       {/* Sessions List */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto p-2 divide-y divide-slate-800/60">
         {sessions.length === 0 ? (
           <div className="text-slate-500 text-sm p-4 text-center">
             아직 채팅이 없습니다
@@ -62,7 +62,7 @@ export default function SessionSidebar({
           sessions.map((session) => (
             <motion.div
               key={session.sessionId}
-              className={`relative group w-full text-left p-3 rounded-lg mb-2 transition-colors ${
+              className={`relative group w-full text-left px-3 py-3 rounded-lg transition-colors ${
                 currentSessionId === session.sessionId
                   ? "bg-slate-800 border border-slate-700"
                   : "hover:bg-slate-800/50"
