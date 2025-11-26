@@ -75,6 +75,34 @@ app.use((req, res, next) => {
   next();
 });
 
+// Simple double-submit CSRF protection for cookie-auth flows
+app.use((req, res, next) => {
+  const csrfHeader = req.header('x-csrf-token');
+  const csrfCookie = req.cookies?.csrfToken;
+
+  // Issue a CSRF token if none present
+  if (!csrfCookie) {
+    const token = require('crypto').randomBytes(16).toString('hex');
+    res.cookie('csrfToken', token, {
+      httpOnly: false,
+      sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 24 * 60 * 60 * 1000,
+      path: '/',
+    });
+    return next();
+  }
+
+  // For state-changing requests, require header to match cookie
+  const method = req.method.toUpperCase();
+  const requiresCsrf = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+  if (requiresCsrf && csrfHeader !== csrfCookie) {
+    return res.status(403).json({ error: 'CSRF token mismatch' });
+  }
+
+  next();
+});
+
 import gateRoutes from './routes/gateRoutes';
 import chatRoutes from './routes/chatRoutes';
 import sessionRoutes from './routes/sessionRoutes';
