@@ -9,4 +9,7 @@ export const config = {
   openaiApiKey: process.env.OPENAI_API_KEY,
   modelName: 'gpt-4o-2024-11-20',
   mongoUri: process.env.MONGO_URI || 'mongodb://admin:chatbotgate123@localhost:27017/chatbot_gate?authSource=admin',
+  // JWT Configuration
+  jwtSecret: process.env.JWT_SECRET || 'your-secret-key-change-this-in-production',
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
 };

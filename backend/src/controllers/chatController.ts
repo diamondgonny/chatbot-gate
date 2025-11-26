@@ -20,14 +20,15 @@ Your persona is similar to "SimSimi" or "Lee Luda".
 `;
 
 export const chatWithAI = async (req: Request, res: Response) => {
-  const { message, token } = req.body;
+  const { message } = req.body;
+  const sessionId = req.sessionId; // Injected by authMiddleware
 
   if (!message) {
     return res.status(400).json({ error: 'Message is required' });
   }
 
-  if (!token) {
-    return res.status(400).json({ error: 'Session token is required' });
+  if (!sessionId) {
+    return res.status(401).json({ error: 'Session ID not found. Authentication required.' });
   }
 
   if (!config.openaiApiKey) {
@@ -37,12 +38,13 @@ export const chatWithAI = async (req: Request, res: Response) => {
 
   try {
     // Find or create chat session
-    let session = await ChatSession.findOne({ token });
+    let session = await ChatSession.findOne({ sessionId });
     
     if (!session) {
       session = new ChatSession({
-        token,
+        sessionId,
         messages: [],
+        title: 'New Chat', // Will be updated with first user message
       });
     }
 
@@ -52,6 +54,11 @@ export const chatWithAI = async (req: Request, res: Response) => {
       content: message,
       timestamp: new Date(),
     });
+
+    // Auto-generate title from first user message (truncate to 50 chars)
+    if (session.messages.length === 1) {
+      session.title = message.length > 50 ? message.substring(0, 50) + '...' : message;
+    }
 
     await session.save();
 
@@ -97,14 +104,14 @@ export const chatWithAI = async (req: Request, res: Response) => {
 
 // New endpoint: Get chat history for a session
 export const getChatHistory = async (req: Request, res: Response) => {
-  const { token } = req.query;
+  const sessionId = req.sessionId; // Injected by authMiddleware
 
-  if (!token || typeof token !== 'string') {
-    return res.status(400).json({ error: 'Session token is required' });
+  if (!sessionId) {
+    return res.status(401).json({ error: 'Session ID not found. Authentication required.' });
   }
 
   try {
-    const session = await ChatSession.findOne({ token });
+    const session = await ChatSession.findOne({ sessionId });
 
     if (!session) {
       return res.json({ messages: [] });

@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
+import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config';
+import { signToken } from '../utils/jwtUtils';
 
 // Controller: Handles the business logic for incoming requests.
 // In Spring, this would be a method inside a @RestController class.
@@ -16,13 +18,17 @@ export const validateGateCode = (req: Request, res: Response) => {
   const isValid = config.validCodes.includes(code);
 
   if (isValid) {
-    // In a real app, we might generate a JWT token here.
-    // For now, we'll just return a success flag.
+    // Generate a new session ID (UUID)
+    const sessionId = uuidv4();
+    
+    // Sign JWT token with sessionId in payload
+    const token = signToken(sessionId);
+    
     return res.json({ 
       valid: true, 
       message: 'Access granted',
-      // Simple session token simulation
-      token: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      sessionId,  // Send sessionId for client storage
+      token,      // Send JWT for authentication
     });
   } else {
     return res.status(401).json({ valid: false, message: 'Invalid code' });
