@@ -43,7 +43,7 @@ export default function SessionSidebar({
   return (
     <div className="w-64 bg-slate-900/50 border-r border-slate-800 flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-slate-800">
+      <div className="p-4 border-b border-slate-800 min-h-[88px] flex items-center">
         <button
           onClick={onNewChat}
           className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 px-4 rounded-lg transition-colors text-sm font-medium"

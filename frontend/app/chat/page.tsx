@@ -318,10 +318,8 @@ function ChatInterface() {
       {/* Chat Interface */}
       <div className="flex flex-col flex-1 bg-slate-900/50 shadow-2xl border-x border-slate-800">
         {/* Header */}
-        <header className="p-4 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-10">
-          <h2 className="text-xl font-semibold text-slate-200">
-            AI Chat Session
-          </h2>
+        <header className="p-4 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 min-h-[88px] flex flex-col justify-center">
+          <h2 className="text-xl font-semibold text-slate-200">AI Chat Session</h2>
           <p className="text-xs text-slate-500">Connected to Gatekeeper Node</p>
         </header>
 
