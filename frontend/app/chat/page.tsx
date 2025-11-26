@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import axios from "axios";
+import { getAuth, getAuthHeaders } from "@/lib/authUtils";
+import { withAuth } from "@/components/withAuth";
 
 interface Message {
   id: string;
@@ -13,13 +15,12 @@ interface Message {
   timestamp: string;
 }
 
-export default function ChatInterface() {
+function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [token, setToken] = useState<string | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -29,22 +30,13 @@ export default function ChatInterface() {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  // Load session token and chat history on mount
+  // Load chat history on mount
   useEffect(() => {
     const loadChatHistory = async () => {
-      const sessionToken = localStorage.getItem("gate_token");
-      
-      if (!sessionToken) {
-        // No token, redirect to gate
-        window.location.href = "/";
-        return;
-      }
-
-      setToken(sessionToken);
-
       try {
         const response = await axios.get(
-          `http://localhost:4000/api/chat/history?token=${sessionToken}`
+          "http://localhost:4000/api/chat/history",
+          { headers: getAuthHeaders() }
         );
 
         if (response.data.messages && response.data.messages.length > 0) {
@@ -90,7 +82,7 @@ export default function ChatInterface() {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !token) return;
+    if (!input.trim()) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -104,12 +96,14 @@ export default function ChatInterface() {
     setIsTyping(true);
 
     try {
-      // Standard POST request (NO STREAMING)
+      // Standard POST request with JWT authentication
       const response = await axios.post(
         "http://localhost:4000/api/chat/message",
         {
           message: userMessage.content,
-          token,
+        },
+        {
+          headers: getAuthHeaders(),
         }
       );
 
@@ -147,7 +141,9 @@ export default function ChatInterface() {
     <div className="flex flex-col h-screen max-w-3xl mx-auto bg-slate-900/50 shadow-2xl border-x border-slate-800">
       {/* Header */}
       <header className="p-4 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-10">
-        <h2 className="text-xl font-semibold text-slate-200">AI Chat Session</h2>
+        <h2 className="text-xl font-semibold text-slate-200">
+          AI Chat Session
+        </h2>
         <p className="text-xs text-slate-500">Connected to Gatekeeper Node</p>
       </header>
 
@@ -160,13 +156,13 @@ export default function ChatInterface() {
             animate={{ opacity: 1, y: 0 }}
             className={clsx(
               "flex w-full",
-              msg.role === 'user' ? "justify-end" : "justify-start"
+              msg.role === "user" ? "justify-end" : "justify-start"
             )}
           >
             <div
               className={twMerge(
                 "max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm",
-                msg.role === 'user'
+                msg.role === "user"
                   ? "bg-blue-600 text-white rounded-br-none"
                   : "bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700"
               )}
@@ -197,7 +193,10 @@ export default function ChatInterface() {
       </div>
 
       {/* Input Area */}
-      <form onSubmit={sendMessage} className="p-4 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md">
+      <form
+        onSubmit={sendMessage}
+        className="p-4 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md"
+      >
         <div className="relative flex items-center">
           <input
             type="text"
@@ -211,7 +210,12 @@ export default function ChatInterface() {
             disabled={!input.trim() || isTyping}
             className="absolute right-2 p-2 bg-blue-600 text-white rounded-full hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="w-5 h-5"
+            >
               <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
             </svg>
           </button>
@@ -220,3 +224,5 @@ export default function ChatInterface() {
     </div>
   );
 }
+
+export default withAuth(ChatInterface);

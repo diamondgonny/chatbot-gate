@@ -1,11 +1,10 @@
-"use client";
-
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { saveAuth } from "@/lib/authUtils";
 
 export default function Gate() {
   const [code, setCode] = useState("");
@@ -29,9 +28,11 @@ export default function Gate() {
       );
 
       if (response.data.valid) {
-        // Success! Animate out or redirect
-        // Store token if needed (localStorage/cookie)
-        localStorage.setItem("gate_token", response.data.token);
+        // Success! Store sessionId and JWT token
+        const { sessionId, token } = response.data;
+        saveAuth(sessionId, token);
+
+        // Redirect to hub
         router.push("/hub");
       }
     } catch (err) {
