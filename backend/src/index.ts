@@ -117,6 +117,7 @@ app.use((req, res, next) => {
 });
 
 import gateRoutes from './routes/gateRoutes';
+import authRoutes from './routes/authRoutes';
 import chatRoutes from './routes/chatRoutes';
 import sessionRoutes from './routes/sessionRoutes';
 
@@ -127,6 +128,9 @@ import sessionRoutes from './routes/sessionRoutes';
 
 // Mount the Gate routes under /api/gate
 app.use('/api/gate', gateRoutes);
+
+// Auth status routes
+app.use('/api/auth', authRoutes);
 
 // Mount the Chat routes under /api/chat
 app.use('/api/chat', chatRoutes);
