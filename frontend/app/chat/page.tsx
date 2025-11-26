@@ -7,6 +7,7 @@ import { twMerge } from 'tailwind-merge';
 import axios from "axios";
 import { withAuth } from "@/components/withAuth";
 import SessionSidebar from "@/components/SessionSidebar";
+import AlertModal from "@/components/AlertModal";
 
 interface Message {
   id: string;
@@ -22,6 +23,7 @@ function ChatInterface() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -216,19 +218,26 @@ function ChatInterface() {
     }
   };
 
-  const handleDeleteSession = async (sessionId: string) => {
+  const handleDeleteClick = (sessionId: string) => {
+    setSessionToDelete(sessionId);
+  };
+
+  const confirmDeleteSession = async () => {
+    if (!sessionToDelete) return;
+
     try {
-      await axios.delete(`http://localhost:4000/api/sessions/${sessionId}`, {
-        withCredentials: true,
-      });
+      await axios.delete(
+        `http://localhost:4000/api/sessions/${sessionToDelete}`,
+        { withCredentials: true }
+      );
 
       // Reload sessions to update sidebar
       await loadSessions();
 
       // If deleted session was the current one, switch to another or clear
-      if (currentSessionId === sessionId) {
+      if (currentSessionId === sessionToDelete) {
         const remainingSessions = sessions.filter(
-          (s) => s.sessionId !== sessionId
+          (s) => s.sessionId !== sessionToDelete
         );
         if (remainingSessions.length > 0) {
           // Switch to the first remaining session
@@ -240,6 +249,8 @@ function ChatInterface() {
       }
     } catch (error) {
       console.error("Error deleting session:", error);
+    } finally {
+      setSessionToDelete(null);
     }
   };
 
@@ -258,7 +269,7 @@ function ChatInterface() {
         sessions={sessions}
         currentSessionId={currentSessionId || undefined}
         onSessionSelect={handleSessionSelect}
-        onDeleteSession={handleDeleteSession}
+        onDeleteSession={handleDeleteClick}
         onNewChat={handleNewChat}
       />
 
@@ -347,6 +358,18 @@ function ChatInterface() {
           </div>
         </form>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AlertModal
+        isOpen={!!sessionToDelete}
+        title="채팅 삭제"
+        message="정말로 이 채팅을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+        confirmText="삭제"
+        cancelText="취소"
+        isDestructive={true}
+        onClose={() => setSessionToDelete(null)}
+        onConfirm={confirmDeleteSession}
+      />
     </div>
   );
 }
