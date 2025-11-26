@@ -79,7 +79,7 @@ export default function SessionSidebar({
                 </h3>
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <span className="capitalize">
-                    {session.lastMessage?.role === "ai" ? "" : "Me"}
+                    {session.lastMessage?.role === "ai" ? "" : ""}
                   </span>
                   <span>{formatTimeAgo(session.updatedAt)}</span>
                 </div>
