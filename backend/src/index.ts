@@ -4,6 +4,8 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { connectDB } from './db';
 import morgan from 'morgan';
+import { createWriteStream } from 'fs';
+import path from 'path';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -76,7 +78,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// Request logging (minimal); adjust format as needed
+// Request logging (structured to file + console)
+const logDirectory = path.join(process.cwd(), 'logs');
+const accessLogStream = createWriteStream(path.join(logDirectory, 'access.log'), { flags: 'a' });
+app.use(
+  morgan('combined', {
+    stream: accessLogStream,
+  })
+);
 app.use(morgan('combined'));
 
 // Simple double-submit CSRF protection for cookie-auth flows
@@ -136,8 +145,15 @@ app.get('/health', (req: Request, res: Response) => {
 // Express uses a middleware function with 4 arguments (err, req, res, next) to handle errors.
 // This catches any errors thrown in routes.
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+  const statusCode = res.statusCode >= 400 ? res.statusCode : 500;
+  const errorId = Date.now().toString(36);
+
+  console.error(`[${errorId}]`, err);
+
+  res.status(statusCode).json({
+    error: 'Internal server error',
+    requestId: errorId,
+  });
 });
 
 // Start the Server
