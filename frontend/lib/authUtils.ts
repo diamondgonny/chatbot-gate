@@ -4,21 +4,28 @@
  * Save userId to localStorage
  */
 export const saveUserId = (userId: string): void => {
-  localStorage.setItem('userId', userId);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('userId', userId);
+  }
 };
 
 /**
  * Get userId from localStorage
  */
 export const getUserId = (): string | null => {
-  return localStorage.getItem('userId');
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('userId');
+  }
+  return null;
 };
 
 /**
  * Clear authentication data (logout)
  */
 export const clearAuth = (): void => {
-  localStorage.removeItem('userId');
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('userId');
+  }
 };
 
 /**
