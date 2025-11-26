@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import axios from "axios";
+import api from "@/lib/axiosClient";
 import { withAuth } from "@/components/withAuth";
 import SessionSidebar from "@/components/SessionSidebar";
 import AlertModal from "@/components/AlertModal";
@@ -72,9 +72,7 @@ function ChatInterface() {
   // Load sessions from API
   const loadSessions = async (): Promise<Session[]> => {
     try {
-      const response = await axios.get("http://localhost:4000/api/sessions", {
-        withCredentials: true,
-      });
+      const response = await api.get("/api/sessions");
       const fetchedSessions: Session[] = response.data.sessions || [];
       setSessions(fetchedSessions);
       return fetchedSessions;
@@ -89,10 +87,7 @@ function ChatInterface() {
     const loadChatHistory = async () => {
       try {
         // Get user's sessions first
-        const sessionsResponse = await axios.get(
-          "http://localhost:4000/api/sessions",
-          { withCredentials: true }
-        );
+        const sessionsResponse = await api.get("/api/sessions");
         const fetchedSessions: Session[] = sessionsResponse.data.sessions || [];
         setSessions(fetchedSessions);
 
@@ -102,10 +97,9 @@ function ChatInterface() {
           setCurrentSessionId(latestSession.sessionId);
 
           // Load history for this session
-          const historyResponse = await axios.get(
-            `http://localhost:4000/api/chat/history?sessionId=${latestSession.sessionId}`,
-            { withCredentials: true }
-          );
+          const historyResponse = await api.get("/api/chat/history", {
+            params: { sessionId: latestSession.sessionId },
+          });
 
           if (
             historyResponse.data.messages &&
@@ -146,11 +140,7 @@ function ChatInterface() {
     let sessionId = currentSessionId;
     if (!sessionId) {
       try {
-        const newSessionResponse = await axios.post(
-          "http://localhost:4000/api/sessions",
-          {},
-          { withCredentials: true }
-        );
+        const newSessionResponse = await api.post("/api/sessions", {});
         sessionId = newSessionResponse.data.sessionId;
         setCurrentSessionId(sessionId);
         setSessions((prev) => [
@@ -181,16 +171,10 @@ function ChatInterface() {
 
     try {
       // Standard POST request with JWT authentication via cookies
-      const response = await axios.post(
-        "http://localhost:4000/api/chat/message",
-        {
-          message: userMessage.content,
-          sessionId,
-        },
-        {
-          withCredentials: true,
-        }
-      );
+      const response = await api.post("/api/chat/message", {
+        message: userMessage.content,
+        sessionId,
+      });
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -217,11 +201,7 @@ function ChatInterface() {
   const handleNewChat = async () => {
     try {
       // Create new session via API
-      const response = await axios.post(
-        "http://localhost:4000/api/sessions",
-        {},
-        { withCredentials: true }
-      );
+      const response = await api.post("/api/sessions", {});
 
       setCurrentSessionId(response.data.sessionId);
       setMessages([]); // Start with empty messages
@@ -230,17 +210,12 @@ function ChatInterface() {
       await loadSessions();
     } catch (error) {
       console.error("Error creating new session:", error);
-      if (axios.isAxiosError(error) && error.response?.status === 429) {
-        const limit = (error.response.data as any)?.limit;
-        const count = (error.response.data as any)?.count;
-        const msg =
-          (error.response.data as any)?.error ||
-          "Too many sessions. Please delete an existing session.";
-        setSessionError(
-          limit
-            ? `${msg} (${count || limit}/${limit})`
-            : msg
-        );
+      if ((error as any)?.isAxiosError && (error as any).response?.status === 429) {
+        const data = (error as any).response?.data || {};
+        const limit = (data as any)?.limit;
+        const count = (data as any)?.count;
+        const msg = (data as any)?.error || "Too many sessions. Please delete an existing session.";
+        setSessionError(limit ? `${msg} (${count || limit}/${limit})` : msg);
         return;
       }
       setSessionError("Failed to create a new session. Please try again.");
@@ -252,10 +227,9 @@ function ChatInterface() {
       setCurrentSessionId(sessionId);
 
       // Load history for selected session
-      const response = await axios.get(
-        `http://localhost:4000/api/chat/history?sessionId=${sessionId}`,
-        { withCredentials: true }
-      );
+      const response = await api.get("/api/chat/history", {
+        params: { sessionId },
+      });
 
       if (response.data.messages && response.data.messages.length > 0) {
         const loadedMessages = response.data.messages.map(
@@ -283,10 +257,7 @@ function ChatInterface() {
     if (!sessionToDelete) return;
 
     try {
-      await axios.delete(
-        `http://localhost:4000/api/sessions/${sessionToDelete}`,
-        { withCredentials: true }
-      );
+      await api.delete(`/api/sessions/${sessionToDelete}`);
 
       // Reload sessions to update sidebar
       const updatedSessions = await loadSessions();
