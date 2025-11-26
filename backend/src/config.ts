@@ -10,6 +10,6 @@ export const config = {
   modelName: 'gpt-4o-2024-11-20',
   mongoUri: process.env.MONGO_URI || '',
   // JWT Configuration
-  jwtSecret: process.env.JWT_SECRET || 'your-secret-key-change-this-in-production',
+  jwtSecret: process.env.JWT_SECRET || '',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
 };

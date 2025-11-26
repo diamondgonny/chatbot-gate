@@ -20,8 +20,15 @@ const allowedOrigins = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL ||
   .map(origin => origin.trim())
   .filter(Boolean);
 
+if (!process.env.JWT_SECRET) {
+  console.error('❌ JWT_SECRET is not set. Refusing to start without a signing secret.');
+  process.exit(1);
+}
+
 // Middleware Configuration
 // ------------------------
+// Trust proxy for correct client IP (e.g., when behind Nginx/Heroku)
+app.set('trust proxy', true);
 
 // CORS (Cross-Origin Resource Sharing)
 // Allows our frontend (running on a different port) to communicate with this backend.
@@ -49,7 +56,7 @@ app.use(cookieParser());
 // Populates `req.body` with the parsed data.
 // In Spring, this is handled by Jackson automatically for @RequestBody.
 // In FastAPI, Pydantic models handle this.
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 
 // Basic security headers (lightweight Helmet alternative)
 app.use((req, res, next) => {
