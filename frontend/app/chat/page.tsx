@@ -123,23 +123,9 @@ function ChatInterface() {
             setMessages(loadedMessages);
           }
         } else {
-          // No sessions exist, create first one
-          const newSessionResponse = await axios.post(
-            "http://localhost:4000/api/sessions",
-            {},
-            { withCredentials: true }
-          );
-          setCurrentSessionId(newSessionResponse.data.sessionId);
+          // No sessions exist; wait until user sends a message to create one
+          setCurrentSessionId(null);
           setMessages([]);
-          setSessions([
-            {
-              sessionId: newSessionResponse.data.sessionId,
-              title: newSessionResponse.data.title || "New Chat",
-              messageCount: 0,
-              lastMessage: null,
-              updatedAt: newSessionResponse.data.updatedAt,
-            },
-          ]);
         }
       } catch (error) {
         console.error("Error loading chat history:", error);
@@ -155,7 +141,34 @@ function ChatInterface() {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !currentSessionId) return;
+    if (!input.trim()) return;
+
+    // Lazily create a session if none exists yet
+    let sessionId = currentSessionId;
+    if (!sessionId) {
+      try {
+        const newSessionResponse = await axios.post(
+          "http://localhost:4000/api/sessions",
+          {},
+          { withCredentials: true }
+        );
+        sessionId = newSessionResponse.data.sessionId;
+        setCurrentSessionId(sessionId);
+        setSessions((prev) => [
+          {
+            sessionId,
+            title: newSessionResponse.data.title || "New Chat",
+            messageCount: 0,
+            lastMessage: null,
+            updatedAt: newSessionResponse.data.updatedAt,
+          },
+          ...prev,
+        ]);
+      } catch (error) {
+        console.error("Error creating session:", error);
+        return;
+      }
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -174,7 +187,7 @@ function ChatInterface() {
         "http://localhost:4000/api/chat/message",
         {
           message: userMessage.content,
-          sessionId: currentSessionId,
+          sessionId,
         },
         {
           withCredentials: true,
