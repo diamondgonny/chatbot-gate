@@ -20,6 +20,7 @@ export const createSession = async (req: Request, res: Response) => {
     if (sessionCount >= MAX_SESSIONS_PER_USER) {
       return res.status(429).json({
         error: 'Session limit reached. Delete old sessions to continue.',
+        code: 'SESSION_LIMIT_REACHED',
         limit: MAX_SESSIONS_PER_USER,
         count: sessionCount,
       });

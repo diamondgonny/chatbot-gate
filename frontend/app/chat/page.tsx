@@ -35,6 +35,7 @@ function ChatInterface() {
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -229,6 +230,20 @@ function ChatInterface() {
       await loadSessions();
     } catch (error) {
       console.error("Error creating new session:", error);
+      if (axios.isAxiosError(error) && error.response?.status === 429) {
+        const limit = (error.response.data as any)?.limit;
+        const count = (error.response.data as any)?.count;
+        const msg =
+          (error.response.data as any)?.error ||
+          "Too many sessions. Please delete an existing session.";
+        setSessionError(
+          limit
+            ? `${msg} (${count || limit}/${limit})`
+            : msg
+        );
+        return;
+      }
+      setSessionError("Failed to create a new session. Please try again.");
     }
   };
 
@@ -322,6 +337,12 @@ function ChatInterface() {
           <h2 className="text-xl font-semibold text-slate-200">AI Chat Session</h2>
           <p className="text-xs text-slate-500">Connected to Gatekeeper Node</p>
         </header>
+
+        {sessionError && (
+          <div className="mx-4 mt-3 mb-2 rounded-lg border border-amber-500/60 bg-amber-500/10 text-amber-100 px-4 py-2 text-sm">
+            {sessionError}
+          </div>
+        )}
 
         {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
