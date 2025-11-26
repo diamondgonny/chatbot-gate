@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import axios from "axios";
-import { getAuth, getAuthHeaders } from "@/lib/authUtils";
 import { withAuth } from "@/components/withAuth";
 import SessionSidebar from "@/components/SessionSidebar";
 
@@ -21,6 +20,7 @@ function ChatInterface() {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -31,28 +31,54 @@ function ChatInterface() {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  // Load chat history on mount
+  // Load chat history on mount - create first session if none exists
   useEffect(() => {
     const loadChatHistory = async () => {
       try {
-        const response = await axios.get(
-          "http://localhost:4000/api/chat/history",
-          { headers: getAuthHeaders() }
+        // Get user's sessions first
+        const sessionsResponse = await axios.get(
+          "http://localhost:4000/api/sessions",
+          { withCredentials: true }
         );
 
-        if (response.data.messages && response.data.messages.length > 0) {
-          const loadedMessages = response.data.messages.map(
-            (msg: any, idx: number) => ({
-              id: `loaded_${idx}`,
-              role: msg.role === "ai" ? "ai" : "user",
-              content: msg.content,
-              timestamp: msg.timestamp,
-            })
+        if (
+          sessionsResponse.data.sessions &&
+          sessionsResponse.data.sessions.length > 0
+        ) {
+          // Use the most recent session
+          const latestSession = sessionsResponse.data.sessions[0];
+          setCurrentSessionId(latestSession.sessionId);
+
+          // Load history for this session
+          const historyResponse = await axios.get(
+            `http://localhost:4000/api/chat/history?sessionId=${latestSession.sessionId}`,
+            { withCredentials: true }
           );
 
-          setMessages(loadedMessages);
+          if (
+            historyResponse.data.messages &&
+            historyResponse.data.messages.length > 0
+          ) {
+            const loadedMessages = historyResponse.data.messages.map(
+              (msg: any, idx: number) => ({
+                id: `loaded_${idx}`,
+                role: msg.role === "ai" ? "ai" : "user",
+                content: msg.content,
+                timestamp: msg.timestamp,
+              })
+            );
+            setMessages(loadedMessages);
+          }
         } else {
-          // No history, add welcome message
+          // No sessions exist, create first one
+          const newSessionResponse = await axios.post(
+            "http://localhost:4000/api/sessions",
+            {},
+            { withCredentials: true }
+          );
+          setCurrentSessionId(newSessionResponse.data.sessionId);
+
+          // Show welcome message
           setMessages([
             {
               id: "welcome",
@@ -64,7 +90,7 @@ function ChatInterface() {
         }
       } catch (error) {
         console.error("Error loading chat history:", error);
-        // Add welcome message on error
+        // Show welcome message on error
         setMessages([
           {
             id: "welcome",
@@ -83,7 +109,7 @@ function ChatInterface() {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || !currentSessionId) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -97,14 +123,15 @@ function ChatInterface() {
     setIsTyping(true);
 
     try {
-      // Standard POST request with JWT authentication
+      // Standard POST request with JWT authentication via cookies
       const response = await axios.post(
         "http://localhost:4000/api/chat/message",
         {
           message: userMessage.content,
+          sessionId: currentSessionId,
         },
         {
-          headers: getAuthHeaders(),
+          withCredentials: true,
         }
       );
 
@@ -130,17 +157,55 @@ function ChatInterface() {
     }
   };
 
-  const handleNewChat = () => {
-    // Clear current messages to start a new chat
-    // Note: This creates a new session on the first message sent
-    setMessages([
-      {
-        id: "welcome",
-        role: "ai",
-        content: "Hello! I am the Gatekeeper AI. What brings you here?",
-        timestamp: new Date().toISOString(),
-      },
-    ]);
+  const handleNewChat = async () => {
+    try {
+      // Create new session via API
+      const response = await axios.post(
+        "http://localhost:4000/api/sessions",
+        {},
+        { withCredentials: true }
+      );
+
+      setCurrentSessionId(response.data.sessionId);
+      setMessages([
+        {
+          id: "welcome",
+          role: "ai",
+          content: "Hello! I am the Gatekeeper AI. What brings you here?",
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+    } catch (error) {
+      console.error("Error creating new session:", error);
+    }
+  };
+
+  const handleSessionSelect = async (sessionId: string) => {
+    try {
+      setCurrentSessionId(sessionId);
+
+      // Load history for selected session
+      const response = await axios.get(
+        `http://localhost:4000/api/chat/history?sessionId=${sessionId}`,
+        { withCredentials: true }
+      );
+
+      if (response.data.messages && response.data.messages.length > 0) {
+        const loadedMessages = response.data.messages.map(
+          (msg: any, idx: number) => ({
+            id: `loaded_${idx}`,
+            role: msg.role === "ai" ? "ai" : "user",
+            content: msg.content,
+            timestamp: msg.timestamp,
+          })
+        );
+        setMessages(loadedMessages);
+      } else {
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error("Error loading session:", error);
+    }
   };
 
   if (isLoading) {
@@ -154,7 +219,11 @@ function ChatInterface() {
   return (
     <div className="flex h-screen">
       {/* Session Sidebar */}
-      <SessionSidebar onNewChat={handleNewChat} />
+      <SessionSidebar
+        currentSessionId={currentSessionId || undefined}
+        onSessionSelect={handleSessionSelect}
+        onNewChat={handleNewChat}
+      />
 
       {/* Chat Interface */}
       <div className="flex flex-col flex-1 bg-slate-900/50 shadow-2xl border-x border-slate-800">

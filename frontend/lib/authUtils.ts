@@ -1,50 +1,29 @@
-// Authentication utility functions for managing JWT and sessionId
+// Authentication utility functions for managing userId
 
 /**
- * Save authentication data to localStorage
+ * Save userId to localStorage
  */
-export const saveAuth = (sessionId: string, jwt: string): void => {
-  localStorage.setItem('sessionId', sessionId);
-  localStorage.setItem('jwt', jwt);
+export const saveUserId = (userId: string): void => {
+  localStorage.setItem('userId', userId);
 };
 
 /**
- * Get authentication data from localStorage
+ * Get userId from localStorage
  */
-export const getAuth = (): { sessionId: string | null; jwt: string | null } => {
-  return {
-    sessionId: localStorage.getItem('sessionId'),
-    jwt: localStorage.getItem('jwt'),
-  };
+export const getUserId = (): string | null => {
+  return localStorage.getItem('userId');
 };
 
 /**
  * Clear authentication data (logout)
  */
 export const clearAuth = (): void => {
-  localStorage.removeItem('sessionId');
-  localStorage.removeItem('jwt');
-};
-
-/**
- * Get Authorization headers for API calls
- */
-export const getAuthHeaders = (): Record<string, string> => {
-  const { jwt } = getAuth();
-  
-  if (!jwt) {
-    return {};
-  }
-
-  return {
-    Authorization: `Bearer ${jwt}`,
-  };
+  localStorage.removeItem('userId');
 };
 
 /**
  * Check if user is authenticated
  */
 export const isAuthenticated = (): boolean => {
-  const { sessionId, jwt } = getAuth();
-  return !!(sessionId && jwt);
+  return !!getUserId();
 };

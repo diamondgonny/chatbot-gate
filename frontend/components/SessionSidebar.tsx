@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { formatTimeAgo } from "@/lib/timeUtils";
 import axios from "axios";
-import { getAuthHeaders } from "@/lib/authUtils";
 import { motion } from "framer-motion";
 
 interface Session {
@@ -40,7 +39,7 @@ export default function SessionSidebar({
   const loadSessions = async () => {
     try {
       const response = await axios.get("http://localhost:4000/api/sessions", {
-        headers: getAuthHeaders(),
+        withCredentials: true,
       });
       setSessions(response.data.sessions || []);
     } catch (error) {

@@ -6,7 +6,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { saveAuth } from "@/lib/authUtils";
+import { saveUserId, getUserId } from "@/lib/authUtils";
 
 export default function Gate() {
   const [code, setCode] = useState("");
@@ -22,17 +22,26 @@ export default function Gate() {
     setError(false);
 
     try {
+      // Get existing userId if available
+      const existingUserId = getUserId();
+
       // Call the backend API
       // Note: In a real prod app, use an env var for the API URL
       const response = await axios.post(
         "http://localhost:4000/api/gate/validate",
-        { code }
+        {
+          code,
+          userId: existingUserId, // Send existing userId to reuse
+        },
+        {
+          withCredentials: true, // Enable cookies
+        }
       );
 
       if (response.data.valid) {
-        // Success! Store sessionId and JWT token
-        const { sessionId, token } = response.data;
-        saveAuth(sessionId, token);
+        // Success! Store userId only (JWT is in HttpOnly cookie)
+        const { userId } = response.data;
+        saveUserId(userId);
 
         // Redirect to hub
         router.push("/hub");
