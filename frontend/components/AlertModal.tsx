@@ -43,7 +43,7 @@ export default function AlertModal({
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             className="relative w-full max-w-sm bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden"
           >
-            <div className="p-6">
+            <div className="p-5 pb-0">
               <h3 className="text-lg font-semibold text-slate-100 mb-2">
                 {title}
               </h3>
@@ -54,7 +54,7 @@ export default function AlertModal({
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-700">
+            <div className="flex items-center justify-end gap-3 p-5">
               <button
                 onClick={onClose}
                 className="px-4 py-2 text-sm font-medium text-slate-300 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
