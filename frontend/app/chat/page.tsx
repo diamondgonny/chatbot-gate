@@ -62,6 +62,7 @@ function ChatInterface() {
                 timestamp: latestMessage.timestamp,
               },
               title: latestMessage.content,
+              messageCount: messages.length,
               updatedAt: latestMessage.timestamp,
             }
           : session
@@ -130,6 +131,15 @@ function ChatInterface() {
           );
           setCurrentSessionId(newSessionResponse.data.sessionId);
           setMessages([]);
+          setSessions([
+            {
+              sessionId: newSessionResponse.data.sessionId,
+              title: newSessionResponse.data.title || "New Chat",
+              messageCount: 0,
+              lastMessage: null,
+              updatedAt: newSessionResponse.data.updatedAt,
+            },
+          ]);
         }
       } catch (error) {
         console.error("Error loading chat history:", error);
