@@ -20,6 +20,11 @@ interface Session {
   sessionId: string;
   title: string;
   messageCount: number;
+  lastMessage: {
+    content: string;
+    role: string;
+    timestamp: string;
+  } | null;
   updatedAt: string;
 }
 
@@ -40,6 +45,29 @@ function ChatInterface() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping]);
+
+  // Keep sidebar titles in sync with latest message content
+  useEffect(() => {
+    if (!currentSessionId || messages.length === 0) return;
+    const latestMessage = messages[messages.length - 1];
+
+    setSessions((prev) =>
+      prev.map((session) =>
+        session.sessionId === currentSessionId
+          ? {
+              ...session,
+              lastMessage: {
+                content: latestMessage.content,
+                role: latestMessage.role,
+                timestamp: latestMessage.timestamp,
+              },
+              title: latestMessage.content,
+              updatedAt: latestMessage.timestamp,
+            }
+          : session
+      )
+    );
+  }, [messages, currentSessionId]);
 
   // Load sessions from API
   const loadSessions = async (): Promise<Session[]> => {

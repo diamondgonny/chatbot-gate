@@ -76,7 +76,7 @@ export default function SessionSidebar({
                 className="w-full text-left"
               >
                 <h3 className="text-slate-200 text-sm font-medium truncate mb-1 pr-8">
-                  {session.title}
+                  {session.lastMessage?.content || session.title}
                 </h3>
                 <div className="flex items-center justify-between text-xs text-slate-500">
                   <span>{session.messageCount} messages</span>
