@@ -1,4 +1,3 @@
-```
 "use client";
 
 import { useEffect, useState } from "react";
@@ -9,9 +8,7 @@ import { isAuthenticated } from "@/lib/authUtils";
  * Higher-Order Component for protecting routes
  * Redirects unauthenticated users to the gate page
  */
-export function withAuth<P extends object>(
-  Component: React.ComponentType<P>
-) {
+export function withAuth<P extends object>(Component: React.ComponentType<P>) {
   return function ProtectedRoute(props: P) {
     const router = useRouter();
     const [isChecking, setIsChecking] = useState(true);
