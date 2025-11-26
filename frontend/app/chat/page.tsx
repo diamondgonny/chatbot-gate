@@ -129,28 +129,12 @@ function ChatInterface() {
             { withCredentials: true }
           );
           setCurrentSessionId(newSessionResponse.data.sessionId);
-
-          // Show welcome message
-          setMessages([
-            {
-              id: "welcome",
-              role: "ai",
-              content: "Hello! I am the Gatekeeper AI. What brings you here?",
-              timestamp: new Date().toISOString(),
-            },
-          ]);
+          setMessages([]);
         }
       } catch (error) {
         console.error("Error loading chat history:", error);
-        // Show welcome message on error
-        setMessages([
-          {
-            id: "welcome",
-            role: "ai",
-            content: "Hello! I am the Gatekeeper AI. What brings you here?",
-            timestamp: new Date().toISOString(),
-          },
-        ]);
+        // Keep empty state on error; user can start chatting
+        setMessages([]);
       } finally {
         setIsLoading(false);
       }
