@@ -6,40 +6,36 @@ import { ChatSession } from '../models/ChatSession';
  * Returns list of sessions with metadata
  */
 export const getUserSessions = async (req: Request, res: Response) => {
-  const sessionId = req.sessionId; // Current session from JWT
+  const userId = req.userId; // From JWT
 
-  if (!sessionId) {
-    return res.status(401).json({ error: 'Session ID not found. Authentication required.' });
+  if (!userId) {
+    return res.status(401).json({ error: 'User ID not found. Authentication required.' });
   }
 
   try {
-    // For now, return only the current session
-    // In the future, we could track multiple sessions per user
-    const session = await ChatSession.findOne({ sessionId });
+    // Find all sessions belonging to this user
+    const sessions = await ChatSession.find({ userId }).sort({ updatedAt: -1 });
 
-    if (!session) {
-      return res.json({ sessions: [] });
-    }
+    const sessionList = sessions.map(session => {
+      const lastMessage = session.messages.length > 0 
+        ? session.messages[session.messages.length - 1]
+        : null;
 
-    // Get last message
-    const lastMessage = session.messages.length > 0 
-      ? session.messages[session.messages.length - 1]
-      : null;
+      return {
+        sessionId: session.sessionId,
+        title: session.title,
+        messageCount: session.messages.length,
+        lastMessage: lastMessage ? {
+          content: lastMessage.content,
+          role: lastMessage.role,
+          timestamp: lastMessage.timestamp,
+        } : null,
+        createdAt: session.createdAt,
+        updatedAt: session.updatedAt,
+      };
+    });
 
-    const sessionData = {
-      sessionId: session.sessionId,
-      title: session.title,
-      messageCount: session.messages.length,
-      lastMessage: lastMessage ? {
-        content: lastMessage.content,
-        role: lastMessage.role,
-        timestamp: lastMessage.timestamp,
-      } : null,
-      createdAt: session.createdAt,
-      updatedAt: session.updatedAt,
-    };
-
-    return res.json({ sessions: [sessionData] });
+    return res.json({ sessions: sessionList });
   } catch (error) {
     console.error('Error fetching user sessions:', error);
     return res.status(500).json({ error: 'Failed to fetch sessions' });
@@ -51,14 +47,14 @@ export const getUserSessions = async (req: Request, res: Response) => {
  */
 export const getSessionById = async (req: Request, res: Response) => {
   const { sessionId } = req.params;
-  const requestSessionId = req.sessionId; // From JWT
+  const userId = req.userId; // From JWT
 
-  if (!requestSessionId) {
+  if (!userId) {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
   try {
-    const session = await ChatSession.findOne({ sessionId });
+    const session = await ChatSession.findOne({ userId, sessionId });
 
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
@@ -82,14 +78,14 @@ export const getSessionById = async (req: Request, res: Response) => {
  */
 export const deleteSession = async (req: Request, res: Response) => {
   const { sessionId } = req.params;
-  const requestSessionId = req.sessionId; // From JWT
+  const userId = req.userId; // From JWT
 
-  if (!requestSessionId) {
+  if (!userId) {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
   try {
-    const result = await ChatSession.deleteOne({ sessionId });
+    const result = await ChatSession.deleteOne({ userId, sessionId });
 
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'Session not found' });

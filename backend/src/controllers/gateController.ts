@@ -8,7 +8,7 @@ import { signToken } from '../utils/jwtUtils';
 // In FastAPI, this is the function decorated with @app.post(...).
 
 export const validateGateCode = (req: Request, res: Response) => {
-  const { code } = req.body;
+  const { code, userId: existingUserId } = req.body;
 
   if (!code) {
     return res.status(400).json({ valid: false, message: 'Code is required' });
@@ -18,17 +18,24 @@ export const validateGateCode = (req: Request, res: Response) => {
   const isValid = config.validCodes.includes(code);
 
   if (isValid) {
-    // Generate a new session ID (UUID)
-    const sessionId = uuidv4();
+    // Reuse existing userId or generate new one
+    const userId = existingUserId || uuidv4();
     
-    // Sign JWT token with sessionId in payload
-    const token = signToken(sessionId);
+    // Sign JWT token with userId in payload
+    const token = signToken(userId);
+    
+    // Set JWT as HttpOnly cookie
+    res.cookie('jwt', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    });
     
     return res.json({ 
       valid: true, 
       message: 'Access granted',
-      sessionId,  // Send sessionId for client storage
-      token,      // Send JWT for authentication
+      userId,  // Send userId for client storage
     });
   } else {
     return res.status(401).json({ valid: false, message: 'Invalid code' });

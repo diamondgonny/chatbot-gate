@@ -20,15 +20,19 @@ Your persona is similar to "SimSimi" or "Lee Luda".
 `;
 
 export const chatWithAI = async (req: Request, res: Response) => {
-  const { message } = req.body;
-  const sessionId = req.sessionId; // Injected by authMiddleware
+  const { message, sessionId } = req.body;
+  const userId = req.userId; // Injected by authMiddleware
 
   if (!message) {
     return res.status(400).json({ error: 'Message is required' });
   }
 
+  if (!userId) {
+    return res.status(401).json({ error: 'User ID not found. Authentication required.' });
+  }
+
   if (!sessionId) {
-    return res.status(401).json({ error: 'Session ID not found. Authentication required.' });
+    return res.status(400).json({ error: 'Session ID is required' });
   }
 
   if (!config.openaiApiKey) {
@@ -38,10 +42,11 @@ export const chatWithAI = async (req: Request, res: Response) => {
 
   try {
     // Find or create chat session
-    let session = await ChatSession.findOne({ sessionId });
+    let session = await ChatSession.findOne({ userId, sessionId });
     
     if (!session) {
       session = new ChatSession({
+        userId,
         sessionId,
         messages: [],
         title: 'New Chat', // Will be updated with first user message
@@ -104,14 +109,19 @@ export const chatWithAI = async (req: Request, res: Response) => {
 
 // New endpoint: Get chat history for a session
 export const getChatHistory = async (req: Request, res: Response) => {
-  const sessionId = req.sessionId; // Injected by authMiddleware
+  const { sessionId } = req.query;
+  const userId = req.userId; // Injected by authMiddleware
 
-  if (!sessionId) {
-    return res.status(401).json({ error: 'Session ID not found. Authentication required.' });
+  if (!userId) {
+    return res.status(401).json({ error: 'User ID not found. Authentication required.' });
+  }
+
+  if (!sessionId || typeof sessionId !== 'string') {
+    return res.status(400).json({ error: 'Session ID is required' });
   }
 
   try {
-    const session = await ChatSession.findOne({ sessionId });
+    const session = await ChatSession.findOne({ userId, sessionId });
 
     if (!session) {
       return res.json({ messages: [] });

@@ -15,7 +15,8 @@ const MessageSchema = new Schema<IMessage>({
 
 // ChatSession interface and schema
 export interface IChatSession extends Document {
-  sessionId: string;      // UUID for permanent session identification
+  userId: string;         // UUID for user identification
+  sessionId: string;      // UUID for individual chat session
   title: string;          // Session title (defaults to first message)
   messages: IMessage[];
   createdAt: Date;
@@ -24,6 +25,7 @@ export interface IChatSession extends Document {
 
 const ChatSessionSchema = new Schema<IChatSession>(
   {
+    userId: { type: String, required: true, index: true },
     sessionId: { type: String, required: true, unique: true, index: true },
     title: { type: String, default: 'New Chat' },
     messages: [MessageSchema],

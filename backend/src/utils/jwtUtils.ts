@@ -3,16 +3,16 @@ import { config } from '../config';
 
 // JWT Payload Interface
 export interface JWTPayload {
-  sessionId: string;
+  userId: string;
 }
 
 /**
- * Signs a JWT token with the given sessionId
- * @param sessionId - The UUID session identifier
+ * Signs a JWT token with the given userId
+ * @param userId - The UUID user identifier
  * @returns Signed JWT token string
  */
-export const signToken = (sessionId: string): string => {
-  const payload: JWTPayload = { sessionId };
+export const signToken = (userId: string): string => {
+  const payload: JWTPayload = { userId };
   
   return jwt.sign(payload, config.jwtSecret, {
     expiresIn: config.jwtExpiresIn,
@@ -22,7 +22,7 @@ export const signToken = (sessionId: string): string => {
 /**
  * Verifies and decodes a JWT token
  * @param token - The JWT token string
- * @returns Decoded payload with sessionId
+ * @returns Decoded payload with userId
  * @throws Error if token is invalid or expired
  */
 export const verifyToken = (token: string): JWTPayload => {

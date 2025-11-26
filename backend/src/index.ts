@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { connectDB } from './db';
 
@@ -21,7 +22,14 @@ const PORT = process.env.PORT || 4000;
 // CORS (Cross-Origin Resource Sharing)
 // Allows our frontend (running on a different port) to communicate with this backend.
 // Similar to @CrossOrigin in Spring or CORSMiddleware in FastAPI.
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true, // Allow cookies to be sent
+}));
+
+// Cookie Parser
+// Parse cookies attached to the client request
+app.use(cookieParser());
 
 // JSON Parser
 // Automatically parses incoming JSON payloads in requests (Content-Type: application/json).

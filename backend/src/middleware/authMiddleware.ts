@@ -1,36 +1,34 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwtUtils';
 
-// Extend Express Request interface to include sessionId
+// Extend Express Request interface to include userId
 declare global {
   namespace Express {
     interface Request {
-      sessionId?: string;
+      userId?: string;
     }
   }
 }
 
 /**
  * JWT Authentication Middleware
- * Verifies JWT token from Authorization header and attaches sessionId to request
+ * Verifies JWT token from cookie and attaches userId to request
  */
 export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   try {
-    // Extract token from Authorization header (Bearer <token>)
-    const authHeader = req.headers.authorization;
+    // Extract token from cookie
+    const token = req.cookies?.jwt;
     
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      res.status(401).json({ error: 'Authorization token required' });
+    if (!token) {
+      res.status(401).json({ error: 'Authentication token required' });
       return;
     }
 
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-
-    // Verify token and extract sessionId
+    // Verify token and extract userId
     const payload = verifyToken(token);
     
-    // Attach sessionId to request object for use in controllers
-    req.sessionId = payload.sessionId;
+    // Attach userId to request object for use in controllers
+    req.userId = payload.userId;
     
     next();
   } catch (error) {
