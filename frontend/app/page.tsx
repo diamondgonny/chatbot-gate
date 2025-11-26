@@ -1,22 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import axios from "axios";
 import { useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { saveUserId, getUserId } from "@/lib/authUtils";
+import api from "@/lib/axiosClient";
 
 export default function Gate() {
   const [code, setCode] = useState("");
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    if (!cooldownUntil) return;
+    const interval = setInterval(() => {
+      if (cooldownUntil && Date.now() >= cooldownUntil) {
+        setCooldownUntil(null);
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [cooldownUntil]);
+
+  const cooldownSecondsLeft = cooldownUntil
+    ? Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000))
+    : 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!code.trim()) return;
+    if (!code.trim() || cooldownUntil) return;
 
     setLoading(true);
     setError(false);
@@ -27,14 +42,11 @@ export default function Gate() {
 
       // Call the backend API
       // Note: In a real prod app, use an env var for the API URL
-      const response = await axios.post(
-        "http://localhost:4000/api/gate/validate",
+      const response = await api.post(
+        "/api/gate/validate",
         {
           code,
           userId: existingUserId, // Send existing userId to reuse
-        },
-        {
-          withCredentials: true, // Enable cookies
         }
       );
 
@@ -49,6 +61,16 @@ export default function Gate() {
     } catch (err) {
       console.error(err);
       setError(true);
+      if (
+        (err as any)?.isAxiosError &&
+        (err as any).response?.status === 429 &&
+        (err as any).response?.data?.code === "GATE_BACKOFF"
+      ) {
+        const retryAfter = (err as any).response?.data?.retryAfter;
+        if (retryAfter) {
+          setCooldownUntil(Date.now() + retryAfter * 1000);
+        }
+      }
       // Shake animation trigger
       setTimeout(() => setError(false), 500);
     } finally {
@@ -90,9 +112,11 @@ export default function Gate() {
                 "w-full bg-slate-800/50 border border-slate-700 text-center text-xl tracking-widest py-4 px-6 rounded-2xl outline-none transition-all duration-300",
                 "focus:border-slate-500 focus:bg-slate-800/80 focus:shadow-[0_0_30px_-5px_rgba(255,255,255,0.1)]",
                 "placeholder:text-slate-600 placeholder:text-sm placeholder:tracking-normal",
-                error && "border-red-500/50 text-red-200"
+                error && "border-red-500/50 text-red-200",
+                cooldownUntil && "opacity-60 cursor-not-allowed"
               )}
               autoFocus
+              disabled={!!cooldownUntil}
             />
           </motion.div>
 
@@ -118,7 +142,9 @@ export default function Gate() {
           transition={{ delay: 1, duration: 1 }}
           className="text-xs text-slate-600 uppercase tracking-[0.2em]"
         >
-          Restricted Area
+          {cooldownUntil
+            ? `잠시 후 다시 시도하세요 (${cooldownSecondsLeft}s)`
+            : "Restricted Area"}
         </motion.p>
       </motion.div>
     </div>
