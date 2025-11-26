@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { connectDB } from './db';
+import morgan from 'morgan';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -74,6 +75,9 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Request logging (minimal); adjust format as needed
+app.use(morgan('combined'));
 
 // Simple double-submit CSRF protection for cookie-auth flows
 app.use((req, res, next) => {
