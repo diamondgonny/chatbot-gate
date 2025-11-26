@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { formatTimeAgo } from "@/lib/timeUtils";
-import axios from "axios";
 import { motion } from "framer-motion";
 
 interface Session {
@@ -19,11 +17,12 @@ interface Session {
 }
 
 interface SessionSidebarProps {
-  sessions?: any[];
+  sessions?: Session[];
   currentSessionId?: string;
   onSessionSelect?: (sessionId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
   onNewChat?: () => void;
+  loading?: boolean;
 }
 
 export default function SessionSidebar({
@@ -32,9 +31,8 @@ export default function SessionSidebar({
   onSessionSelect,
   onDeleteSession,
   onNewChat,
+  loading = false,
 }: SessionSidebarProps) {
-  const [loading, setLoading] = useState(false);
-
   if (loading) {
     return (
       <div className="w-64 bg-slate-900/50 border-r border-slate-800 p-4">

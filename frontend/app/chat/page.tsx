@@ -16,13 +16,20 @@ interface Message {
   timestamp: string;
 }
 
+interface Session {
+  sessionId: string;
+  title: string;
+  messageCount: number;
+  updatedAt: string;
+}
+
 function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [sessions, setSessions] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -35,14 +42,17 @@ function ChatInterface() {
   }, [messages, isTyping]);
 
   // Load sessions from API
-  const loadSessions = async () => {
+  const loadSessions = async (): Promise<Session[]> => {
     try {
       const response = await axios.get("http://localhost:4000/api/sessions", {
         withCredentials: true,
       });
-      setSessions(response.data.sessions || []);
+      const fetchedSessions: Session[] = response.data.sessions || [];
+      setSessions(fetchedSessions);
+      return fetchedSessions;
     } catch (error) {
       console.error("Error loading sessions:", error);
+      return [];
     }
   };
 
@@ -55,7 +65,7 @@ function ChatInterface() {
           "http://localhost:4000/api/sessions",
           { withCredentials: true }
         );
-        const fetchedSessions = sessionsResponse.data.sessions || [];
+        const fetchedSessions: Session[] = sessionsResponse.data.sessions || [];
         setSessions(fetchedSessions);
 
         if (fetchedSessions.length > 0) {
@@ -232,11 +242,11 @@ function ChatInterface() {
       );
 
       // Reload sessions to update sidebar
-      await loadSessions();
+      const updatedSessions = await loadSessions();
 
-      // If deleted session was the current one, switch to another or clear
+      // If deleted session was the current one, switch using fresh data
       if (currentSessionId === sessionToDelete) {
-        const remainingSessions = sessions.filter(
+        const remainingSessions = updatedSessions.filter(
           (s) => s.sessionId !== sessionToDelete
         );
         if (remainingSessions.length > 0) {
