@@ -1,5 +1,42 @@
 import { Request, Response } from 'express';
+import { v4 as uuidv4 } from 'uuid';
 import { ChatSession } from '../models/ChatSession';
+
+/**
+ * Create a new chat session for the current user
+ */
+export const createSession = async (req: Request, res: Response) => {
+  const userId = req.userId; // From JWT
+
+  if (!userId) {
+    return res.status(401).json({ error: 'User ID not found. Authentication required.' });
+  }
+
+  try {
+    // Generate new session ID
+    const sessionId = uuidv4();
+
+    // Create new session
+    const session = new ChatSession({
+      userId,
+      sessionId,
+      messages: [],
+      title: 'New Chat',
+    });
+
+    await session.save();
+
+    return res.json({
+      sessionId: session.sessionId,
+      title: session.title,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+    });
+  } catch (error) {
+    console.error('Error creating session:', error);
+    return res.status(500).json({ error: 'Failed to create session' });
+  }
+};
 
 /**
  * Get all sessions for the current user
