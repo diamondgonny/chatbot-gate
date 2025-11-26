@@ -32,6 +32,7 @@ app.use(express.json());
 
 import gateRoutes from './routes/gateRoutes';
 import chatRoutes from './routes/chatRoutes';
+import sessionRoutes from './routes/sessionRoutes';
 
 // ... (previous middleware)
 
@@ -43,6 +44,9 @@ app.use('/api/gate', gateRoutes);
 
 // Mount the Chat routes under /api/chat
 app.use('/api/chat', chatRoutes);
+
+// Mount the Session routes under /api/sessions
+app.use('/api/sessions', sessionRoutes);
 
 // Health Check Endpoint
 app.get('/health', (req: Request, res: Response) => {
