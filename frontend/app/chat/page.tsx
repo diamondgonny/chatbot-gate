@@ -216,6 +216,33 @@ function ChatInterface() {
     }
   };
 
+  const handleDeleteSession = async (sessionId: string) => {
+    try {
+      await axios.delete(`http://localhost:4000/api/sessions/${sessionId}`, {
+        withCredentials: true,
+      });
+
+      // Reload sessions to update sidebar
+      await loadSessions();
+
+      // If deleted session was the current one, switch to another or clear
+      if (currentSessionId === sessionId) {
+        const remainingSessions = sessions.filter(
+          (s) => s.sessionId !== sessionId
+        );
+        if (remainingSessions.length > 0) {
+          // Switch to the first remaining session
+          await handleSessionSelect(remainingSessions[0].sessionId);
+        } else {
+          // No sessions left, create a new one
+          await handleNewChat();
+        }
+      }
+    } catch (error) {
+      console.error("Error deleting session:", error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -231,6 +258,7 @@ function ChatInterface() {
         sessions={sessions}
         currentSessionId={currentSessionId || undefined}
         onSessionSelect={handleSessionSelect}
+        onDeleteSession={handleDeleteSession}
         onNewChat={handleNewChat}
       />
 
