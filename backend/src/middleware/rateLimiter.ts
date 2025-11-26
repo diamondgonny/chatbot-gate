@@ -7,27 +7,43 @@ interface RateLimitConfig {
 
 type Bucket = { count: number; expiresAt: number };
 
-const buckets = new Map<string, Bucket>();
-
 export const createRateLimiter = ({ windowMs, max }: RateLimitConfig) => {
+  // Per-limiter buckets to avoid cross-talk between different routes
+  const buckets = new Map<string, Bucket>();
+
   return (req: Request, res: Response, next: NextFunction) => {
     const key = req.ip || 'global';
     const now = Date.now();
 
-    const bucket = buckets.get(key);
+    let bucket = buckets.get(key);
     if (!bucket || bucket.expiresAt < now) {
-      buckets.set(key, { count: 1, expiresAt: now + windowMs });
-      return next();
+      bucket = { count: 0, expiresAt: now + windowMs };
     }
 
-    if (bucket.count >= max) {
-      const retryAfter = Math.ceil((bucket.expiresAt - now) / 1000);
-      res.setHeader('Retry-After', retryAfter.toString());
-      return res.status(429).json({ error: 'Too many requests. Please slow down.' });
-    }
-
+    // Pre-increment for current request
     bucket.count += 1;
+
+    const remaining = Math.max(0, max - bucket.count);
+    const retryAfterSeconds = Math.ceil((bucket.expiresAt - now) / 1000);
+
+    // Update bucket
     buckets.set(key, bucket);
+
+    // Set rate limit headers for visibility
+    res.setHeader('X-RateLimit-Limit', String(max));
+    res.setHeader('X-RateLimit-Remaining', String(Math.max(0, remaining)));
+    res.setHeader('X-RateLimit-Reset', String(Math.ceil(bucket.expiresAt / 1000)));
+
+    if (bucket.count > max) {
+      res.setHeader('Retry-After', String(retryAfterSeconds));
+      return res.status(429).json({
+        error: 'Too many requests. Please slow down.',
+        limit: max,
+        windowMs,
+        retryAfter: retryAfterSeconds,
+      });
+    }
+
     next();
   };
 };

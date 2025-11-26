@@ -9,15 +9,15 @@ const router = Router();
 router.use(authMiddleware);
 
 // POST /api/sessions - Create new session
-router.post('/', createRateLimiter({ windowMs: 60_000, max: 10 }), createSession);
+router.post('/', createRateLimiter({ windowMs: 60_000, max: 100 }), createSession);
 
 // GET /api/sessions - Get all sessions
-router.get('/', createRateLimiter({ windowMs: 60_000, max: 30 }), getUserSessions);
+router.get('/', createRateLimiter({ windowMs: 60_000, max: 300 }), getUserSessions);
 
 // GET /api/sessions/:sessionId - Get specific session details
-router.get('/:sessionId', createRateLimiter({ windowMs: 60_000, max: 60 }), getSessionById);
+router.get('/:sessionId', createRateLimiter({ windowMs: 60_000, max: 600 }), getSessionById);
 
 // DELETE /api/sessions/:sessionId - Delete a session
-router.delete('/:sessionId', createRateLimiter({ windowMs: 60_000, max: 20 }), deleteSession);
+router.delete('/:sessionId', createRateLimiter({ windowMs: 60_000, max: 200 }), deleteSession);
 
 export default router;
