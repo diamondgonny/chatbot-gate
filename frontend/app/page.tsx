@@ -15,6 +15,34 @@ export default function Gate() {
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
   const router = useRouter();
 
+  // If already authenticated (jwt cookie present), skip gate and go to hub
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkAuth = async () => {
+      try {
+        const response = await api.get("/api/auth/status");
+        const userIdFromServer = response.data?.userId;
+
+        if (userIdFromServer) {
+          saveUserId(userIdFromServer);
+        }
+
+        if (isMounted) {
+          router.replace("/hub");
+        }
+      } catch (error) {
+        // Unauthenticated: stay on gate
+      }
+    };
+
+    checkAuth();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [router]);
+
   useEffect(() => {
     if (!cooldownUntil) return;
     const interval = setInterval(() => {
