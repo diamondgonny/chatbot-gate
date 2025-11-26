@@ -61,7 +61,6 @@ export const getUserSessions = async (req: Request, res: Response) => {
       return {
         sessionId: session.sessionId,
         title: lastMessage ? lastMessage.content : session.title,
-        messageCount: session.messages.length,
         lastMessage: lastMessage ? {
           content: lastMessage.content,
           role: lastMessage.role,

@@ -6,7 +6,6 @@ import { motion } from "framer-motion";
 interface Session {
   sessionId: string;
   title: string;
-  messageCount: number;
   lastMessage: {
     content: string;
     role: string;
@@ -79,7 +78,9 @@ export default function SessionSidebar({
                   {session.lastMessage?.content || session.title}
                 </h3>
                 <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span>{session.messageCount} messages</span>
+                  <span className="capitalize">
+                    {session.lastMessage?.role === "ai" ? "" : "Me"}
+                  </span>
                   <span>{formatTimeAgo(session.updatedAt)}</span>
                 </div>
               </button>

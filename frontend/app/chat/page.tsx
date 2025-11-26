@@ -19,7 +19,6 @@ interface Message {
 interface Session {
   sessionId: string;
   title: string;
-  messageCount: number;
   lastMessage: {
     content: string;
     role: string;
@@ -62,7 +61,6 @@ function ChatInterface() {
                 timestamp: latestMessage.timestamp,
               },
               title: latestMessage.content,
-              messageCount: messages.length,
               updatedAt: latestMessage.timestamp,
             }
           : session
@@ -158,7 +156,6 @@ function ChatInterface() {
           {
             sessionId,
             title: newSessionResponse.data.title || "New Chat",
-            messageCount: 0,
             lastMessage: null,
             updatedAt: newSessionResponse.data.updatedAt,
           },
