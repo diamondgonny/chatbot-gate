@@ -179,14 +179,7 @@ function ChatInterface() {
       );
 
       setCurrentSessionId(response.data.sessionId);
-      setMessages([
-        {
-          id: "welcome",
-          role: "ai",
-          content: "Hello! I am the Gatekeeper AI. What brings you here?",
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+      setMessages([]); // Start with empty messages
 
       // Reload sessions to update sidebar
       await loadSessions();
