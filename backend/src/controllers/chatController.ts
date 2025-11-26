@@ -8,6 +8,9 @@ const openai = new OpenAI({
   apiKey: config.openaiApiKey,
 });
 
+const MAX_MESSAGE_LENGTH = 4000;
+const SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 // System Prompt: Defines the persona of the AI.
 const SYSTEM_PROMPT = `
 You are a playful, witty, and friendly AI chatbot living in a secret digital gate.
@@ -25,16 +28,20 @@ export const chatWithAI = async (req: Request, res: Response) => {
   const truncateTitle = (text: string) =>
     text.length > 50 ? text.substring(0, 50) + '...' : text;
 
-  if (!message) {
+  if (typeof message !== 'string' || !message.trim()) {
     return res.status(400).json({ error: 'Message is required' });
+  }
+
+  if (message.length > MAX_MESSAGE_LENGTH) {
+    return res.status(413).json({ error: 'Message too long' });
   }
 
   if (!userId) {
     return res.status(401).json({ error: 'User ID not found. Authentication required.' });
   }
 
-  if (!sessionId) {
-    return res.status(400).json({ error: 'Session ID is required' });
+  if (!sessionId || typeof sessionId !== 'string' || !SESSION_ID_PATTERN.test(sessionId)) {
+    return res.status(400).json({ error: 'Valid session ID is required' });
   }
 
   if (!config.openaiApiKey) {
@@ -121,8 +128,8 @@ export const getChatHistory = async (req: Request, res: Response) => {
     return res.status(401).json({ error: 'User ID not found. Authentication required.' });
   }
 
-  if (!sessionId || typeof sessionId !== 'string') {
-    return res.status(400).json({ error: 'Session ID is required' });
+  if (!sessionId || typeof sessionId !== 'string' || !SESSION_ID_PATTERN.test(sessionId)) {
+    return res.status(400).json({ error: 'Valid session ID is required' });
   }
 
   try {

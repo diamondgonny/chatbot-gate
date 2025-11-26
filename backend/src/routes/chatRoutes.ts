@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { chatWithAI, getChatHistory } from '../controllers/chatController';
 import { authMiddleware } from '../middleware/authMiddleware';
+import { createRateLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -11,11 +12,11 @@ router.use(authMiddleware);
 // Receives: { "message": "Hello" }
 // JWT token expected in Authorization header
 // Returns: { "response": "...", "timestamp": "..." }
-router.post('/message', chatWithAI);
+router.post('/message', createRateLimiter({ windowMs: 60_000, max: 30 }), chatWithAI);
 
 // GET /api/chat/history
 // JWT token expected in Authorization header
 // Returns: { "messages": [...] }
-router.get('/history', getChatHistory);
+router.get('/history', createRateLimiter({ windowMs: 60_000, max: 60 }), getChatHistory);
 
 export default router;

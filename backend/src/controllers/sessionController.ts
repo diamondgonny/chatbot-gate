@@ -2,6 +2,9 @@ import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatSession } from '../models/ChatSession';
 
+const MAX_SESSIONS_PER_USER = 50;
+const SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 /**
  * Create a new chat session for the current user
  */
@@ -13,6 +16,11 @@ export const createSession = async (req: Request, res: Response) => {
   }
 
   try {
+    const sessionCount = await ChatSession.countDocuments({ userId });
+    if (sessionCount >= MAX_SESSIONS_PER_USER) {
+      return res.status(429).json({ error: 'Session limit reached. Delete old sessions to continue.' });
+    }
+
     // Generate new session ID
     const sessionId = uuidv4();
 
@@ -89,6 +97,10 @@ export const getSessionById = async (req: Request, res: Response) => {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
+  if (!sessionId || !SESSION_ID_PATTERN.test(sessionId)) {
+    return res.status(400).json({ error: 'Valid session ID is required' });
+  }
+
   try {
     const session = await ChatSession.findOne({ userId, sessionId });
 
@@ -118,6 +130,10 @@ export const deleteSession = async (req: Request, res: Response) => {
 
   if (!userId) {
     return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  if (!sessionId || !SESSION_ID_PATTERN.test(sessionId)) {
+    return res.status(400).json({ error: 'Valid session ID is required' });
   }
 
   try {

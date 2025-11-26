@@ -15,6 +15,10 @@ connectDB();
 // In FastAPI, this is `app = FastAPI()`.
 const app = express();
 const PORT = process.env.PORT || 4000;
+const allowedOrigins = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || 'http://localhost:3000')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
 
 // Middleware Configuration
 // ------------------------
@@ -23,7 +27,16 @@ const PORT = process.env.PORT || 4000;
 // Allows our frontend (running on a different port) to communicate with this backend.
 // Similar to @CrossOrigin in Spring or CORSMiddleware in FastAPI.
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // Allow non-browser tools
+    if (allowedOrigins.length === 0) {
+      return callback(new Error('CORS origin not configured'), false);
+    }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'), false);
+  },
   credentials: true, // Allow cookies to be sent
 }));
 
@@ -37,6 +50,23 @@ app.use(cookieParser());
 // In Spring, this is handled by Jackson automatically for @RequestBody.
 // In FastAPI, Pydantic models handle this.
 app.use(express.json());
+
+// Basic security headers (lightweight Helmet alternative)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-site');
+  if (!res.getHeader('Content-Security-Policy')) {
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self';"
+    );
+  }
+  next();
+});
 
 import gateRoutes from './routes/gateRoutes';
 import chatRoutes from './routes/chatRoutes';
