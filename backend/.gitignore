@@ -1,5 +1,23 @@
-node_modules
-dist
+# Dependencies
+/node_modules
+
+# Builds and caches
+/dist
+/coverage
+/logs
+/backups
+
+# Env files
 .env
+.env.local
+.env.production
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS / editor
 .DS_Store
-coverage
