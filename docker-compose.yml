@@ -39,7 +39,7 @@ services:
         labels: "service=mongodb"
 
     networks:
-      - chatbot-network
+      - chatbot-gate_internal
 
   backend:
     build:
@@ -51,10 +51,6 @@ services:
     image: chatbot-gate-backend:${VERSION:-latest}
     container_name: chatbot-gate-backend
     restart: unless-stopped
-
-    ports:
-      # Bind to localhost only - Cloudflare Tunnel handles external access
-      - "127.0.0.1:4000:4000"
 
     environment:
       NODE_ENV: production
@@ -89,7 +85,8 @@ services:
         labels: "service=backend"
 
     networks:
-      - chatbot-network
+      - chatbot-gate_internal
+      - caddy_gateway
 
     # Security: Read-only root filesystem (except /app/logs)
     read_only: true
@@ -98,47 +95,11 @@ services:
     volumes:
       - ./backend/logs:/app/logs
 
-  cloudflared:
-    image: cloudflare/cloudflared:2024.11.0
-    container_name: chatbot-gate-tunnel
-    restart: unless-stopped
-
-    command: tunnel run
-
-    environment:
-      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
-
-    depends_on:
-      backend:
-        condition: service_healthy
-
-    # Health check (tunnel status)
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://backend:4000/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
-
-    # Resource limits
-
-    # Logging configuration
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "5m"
-        max-file: "3"
-        labels: "service=cloudflared"
-
-    networks:
-      - chatbot-network
-
 networks:
-  chatbot-network:
+  chatbot-gate_internal:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
+  caddy_gateway:
+    external: true
 
 volumes:
   mongodb_data:
