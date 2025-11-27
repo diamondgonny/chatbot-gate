@@ -48,6 +48,10 @@ app.use(cors({
     return callback(new Error('Not allowed by CORS'), false);
   },
   credentials: true, // Allow cookies to be sent
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-csrf-token'],
+  exposedHeaders: ['Set-Cookie'],
+  maxAge: 86400, // 24 hours preflight cache
 }));
 
 // Cookie Parser
