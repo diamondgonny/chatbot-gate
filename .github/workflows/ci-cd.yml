@@ -1,0 +1,216 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - 'docker-compose*.yml'
+      - '.github/workflows/ci-cd.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'docker-compose*.yml'
+
+env:
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run TypeScript type check
+        working-directory: backend
+        run: npx tsc --noEmit
+
+      # Add ESLint when configured
+      # - name: Run linter
+      #   working-directory: backend
+      #   run: npm run lint
+
+  build-and-test:
+    name: Build & Test Docker Image
+    runs-on: ubuntu-latest
+    needs: [lint-and-typecheck]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build production image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.prod
+          push: false
+          load: true
+          tags: chatbot-gate-backend:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Check image size
+        run: |
+          IMAGE_SIZE=$(docker images chatbot-gate-backend:test --format "{{.Size}}" | head -1)
+          echo "Image size: $IMAGE_SIZE"
+
+          # Extract numeric value (handles both MB and GB)
+          SIZE_VALUE=$(echo "$IMAGE_SIZE" | grep -oE '[0-9]+(\.[0-9]+)?')
+          SIZE_UNIT=$(echo "$IMAGE_SIZE" | grep -oE '[A-Z]+')
+
+          echo "Size value: $SIZE_VALUE $SIZE_UNIT"
+
+          # Fail if image is larger than 200MB
+          if [ "$SIZE_UNIT" = "GB" ]; then
+            echo "Error: Image size ($IMAGE_SIZE) exceeds 200MB limit"
+            exit 1
+          elif [ "$SIZE_UNIT" = "MB" ]; then
+            if (( $(echo "$SIZE_VALUE > 200" | bc -l) )); then
+              echo "Error: Image size ($SIZE_VALUE MB) exceeds 200MB limit"
+              exit 1
+            fi
+          fi
+
+          echo "✅ Image size check passed: $IMAGE_SIZE"
+
+      - name: Test container startup
+        run: |
+          # Create test .env file
+          cat > .env.test << EOF
+          MONGO_INITDB_ROOT_USERNAME=test
+          MONGO_INITDB_ROOT_PASSWORD=test
+          MONGO_INITDB_DATABASE=test
+          JWT_SECRET=test-secret-key-for-ci-only
+          OPENAI_API_KEY=sk-test-fake-key
+          FRONTEND_URLS=http://localhost:3000
+          EOF
+
+          # Start services
+          docker compose -f docker-compose.yml --env-file .env.test up -d mongodb backend
+
+          # Wait for backend to be healthy
+          echo "Waiting for backend to be healthy..."
+          for i in {1..30}; do
+            HEALTH=$(docker inspect --format='{{.State.Health.Status}}' chatbot-gate-backend 2>/dev/null || echo "none")
+            echo "Attempt $i/30... Health: $HEALTH"
+
+            if [ "$HEALTH" = "healthy" ]; then
+              echo "✅ Backend is healthy!"
+              break
+            fi
+
+            sleep 2
+          done
+
+          if [ "$HEALTH" != "healthy" ]; then
+            echo "❌ Backend failed to become healthy"
+            docker compose -f docker-compose.yml logs backend
+            exit 1
+          fi
+
+          # Test health endpoint
+          curl -f http://localhost:4000/health || exit 1
+
+          # Cleanup
+          docker compose -f docker-compose.yml down -v
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: './backend'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-and-test, security-scan]
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    environment:
+      name: staging
+      url: https://staging.your-domain.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            cd /opt/chatbot-gate
+            git pull origin develop
+            docker compose pull
+            docker compose up -d --build
+            docker compose ps
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-and-test, security-scan]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: production
+      url: https://your-domain.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH (Rolling Update)
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.PRODUCTION_HOST }}
+          username: ${{ secrets.PRODUCTION_USER }}
+          key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          script: |
+            cd /opt/chatbot-gate
+            git pull origin main
+
+            # Run rolling update script
+            export VERSION=$(git rev-parse --short HEAD)
+            ./scripts/deploy.sh
+
+            # Verify deployment
+            docker compose ps
+            curl -f http://localhost:4000/health || exit 1
