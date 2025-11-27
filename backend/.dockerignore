@@ -58,4 +58,6 @@ docker-compose*.yml
 # Misc
 .prettierrc
 .eslintrc*
-# tsconfig.json - Required for TypeScript build in Dockerfile.prod
+
+# Explicitly keep the TS config for Docker builds
+!tsconfig.json
