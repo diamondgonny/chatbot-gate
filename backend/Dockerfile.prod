@@ -1,0 +1,83 @@
+# ============================================
+# Stage 1: Dependencies (Builder)
+# ============================================
+FROM node:20.18.1-alpine AS deps
+
+# Security: Run as non-root
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 expressjs
+
+WORKDIR /app
+
+# Copy package files for dependency installation
+COPY --chown=expressjs:nodejs package*.json ./
+
+# Install production dependencies only
+# --omit=dev excludes devDependencies (typescript, nodemon, etc.)
+# --ignore-scripts prevents postinstall hooks for security
+RUN npm ci --omit=dev --ignore-scripts && \
+    npm cache clean --force
+
+# ============================================
+# Stage 2: Build (TypeScript Compilation)
+# ============================================
+FROM node:20.18.1-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install ALL dependencies (including devDependencies for build)
+RUN npm ci --ignore-scripts
+
+# Copy source code
+COPY tsconfig.json ./
+COPY src ./src
+
+# Compile TypeScript to JavaScript
+RUN npm run build && \
+    # Remove source maps from production build
+    find dist -name "*.map" -type f -delete
+
+# ============================================
+# Stage 3: Production Runtime
+# ============================================
+FROM node:20.18.1-alpine AS production
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Security: Run as non-root
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 expressjs
+
+WORKDIR /app
+
+# Copy production dependencies from deps stage
+COPY --from=deps --chown=expressjs:nodejs /app/node_modules ./node_modules
+
+# Copy compiled JavaScript from builder stage
+COPY --from=builder --chown=expressjs:nodejs /app/dist ./dist
+
+# Copy package.json for version info (optional)
+COPY --chown=expressjs:nodejs package.json ./
+
+# Create logs directory with proper permissions
+RUN mkdir -p /app/logs && chown -R expressjs:nodejs /app/logs
+
+# Security: Switch to non-root user
+USER expressjs
+
+# Expose port
+EXPOSE 4000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:4000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start application
+CMD ["node", "dist/index.js"]
