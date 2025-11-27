@@ -7,7 +7,7 @@ export const config = {
   // Parse the comma-separated list of codes into an array
   validCodes: (process.env.VALID_CODES || '').split(',').map(code => code.trim()),
   openaiApiKey: process.env.OPENAI_API_KEY,
-  modelName: 'gpt-4o-2024-11-20',
+  modelName: 'gpt-5.1-chat-latest',
   mongoUri: process.env.MONGO_URI || '',
   // JWT Configuration
   jwtSecret: process.env.JWT_SECRET || '',
