@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config';
 import { signToken } from '../utils/jwtUtils';
+import { appendFileSync } from 'fs';
+import path from 'path';
 
 const FAILURE_WINDOW_MS = 5 * 60 * 1000; // 5 minutes window to decay failures
 const BACKOFF_FAILS = 5;
@@ -52,6 +54,13 @@ export const validateGateCode = (req: Request, res: Response) => {
     const retryAfter = Math.ceil(
       (BACKOFF_SECONDS * 1000 - (nowMs() - bucket.lastFail)) / 1000
     );
+    try {
+      const logPath = path.join(process.cwd(), 'logs', 'backoff.log');
+      const entry = `[${new Date().toISOString()}] ip=${key} reason=backoff retryAfter=${retryAfter}s failures=${bucket.count}\n`;
+      appendFileSync(logPath, entry);
+    } catch (e) {
+      // fail silently; logging should not break flow
+    }
     res.setHeader('Retry-After', retryAfter.toString());
     return res.status(429).json({
       error: 'Too many invalid attempts. Please wait before retrying.',
@@ -93,6 +102,13 @@ export const validateGateCode = (req: Request, res: Response) => {
     const inBackoff = updated.count >= BACKOFF_FAILS;
     const retryAfter = inBackoff ? BACKOFF_SECONDS : undefined;
     if (inBackoff && retryAfter) {
+      try {
+        const logPath = path.join(process.cwd(), 'logs', 'backoff.log');
+        const entry = `[${new Date().toISOString()}] ip=${key} reason=enter-backoff retryAfter=${retryAfter}s failures=${updated.count}\n`;
+        appendFileSync(logPath, entry);
+      } catch (e) {
+        // fail silently; logging should not break flow
+      }
       res.setHeader('Retry-After', retryAfter.toString());
       return res.status(429).json({
         valid: false,
