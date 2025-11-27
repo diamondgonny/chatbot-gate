@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   mongodb:
     # Expose MongoDB on all interfaces for dev tools (Compass, etc.)
