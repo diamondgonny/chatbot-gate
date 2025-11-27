@@ -180,7 +180,7 @@ jobs:
           oauth-secret: ${{ secrets.TAILSCALE_OAUTH_SECRET }}
           tags: tag:ci
 
-      - name: Deploy via SSH
+      - name: Deploy via SSH (Blue-Green)
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.STAGING_TAILSCALE_HOST }}
@@ -190,8 +190,26 @@ jobs:
             cd /opt/chatbot-gate
             git pull origin develop
             cd backend
-            docker compose pull
-            docker compose up -d --build
+
+            # Initialize deployment state if needed
+            if [[ ! -f .deployment-state ]]; then
+              echo "Initializing deployment state..."
+              ./scripts/init-deployment-state.sh
+            fi
+
+            # Backup MongoDB before deployment
+            echo "Creating MongoDB backup..."
+            ./scripts/backup-mongodb.sh
+
+            # Run blue-green deployment
+            export VERSION=$(git rev-parse --short HEAD)
+            ./scripts/deploy-blue-green.sh
+
+            # Verify deployment
+            sleep 5
+            source .deployment-state
+            echo "Active environment: ${ACTIVE_ENV} on port ${ACTIVE_PORT}"
+            curl -f http://localhost:${ACTIVE_PORT}/health || exit 1
             docker compose ps
 
   deploy-production:
@@ -214,7 +232,7 @@ jobs:
           oauth-secret: ${{ secrets.TAILSCALE_OAUTH_SECRET }}
           tags: tag:ci
 
-      - name: Deploy via SSH (Rolling Update)
+      - name: Deploy via SSH (Blue-Green)
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.PRODUCTION_TAILSCALE_HOST }}
@@ -223,12 +241,25 @@ jobs:
           script: |
             cd /opt/chatbot-gate
             git pull origin main
-
-            # Run rolling update script
-            export VERSION=$(git rev-parse --short HEAD)
             cd backend
-            ./scripts/deploy.sh
+
+            # Initialize deployment state if needed
+            if [[ ! -f .deployment-state ]]; then
+              echo "Initializing deployment state..."
+              ./scripts/init-deployment-state.sh
+            fi
+
+            # Backup MongoDB before deployment
+            echo "Creating MongoDB backup..."
+            ./scripts/backup-mongodb.sh
+
+            # Run blue-green deployment
+            export VERSION=$(git rev-parse --short HEAD)
+            ./scripts/deploy-blue-green.sh
 
             # Verify deployment
+            sleep 5
+            source .deployment-state
+            echo "Active environment: ${ACTIVE_ENV} on port ${ACTIVE_PORT}"
+            curl -f http://localhost:${ACTIVE_PORT}/health || exit 1
             docker compose ps
-            curl -f http://localhost:4000/health || exit 1
