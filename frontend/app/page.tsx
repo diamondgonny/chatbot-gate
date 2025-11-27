@@ -164,16 +164,37 @@ export default function Gate() {
         </form>
 
         {/* Hint / Footer */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1, duration: 1 }}
-          className="text-xs text-slate-600 uppercase tracking-[0.2em]"
-        >
-          {cooldownUntil
-            ? `잠시 후 다시 시도하세요 (${cooldownSecondsLeft}s)`
-            : "Restricted Area"}
-        </motion.p>
+        {/* Footer / Status Message */}
+        <div className="h-12 flex items-center justify-center w-full">
+          <AnimatePresence mode="wait">
+            {cooldownUntil ? (
+              <motion.div
+                key="cooldown"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="flex items-center gap-3 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-full text-red-200"
+              >
+                <div className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
+                <span className="text-sm font-medium tracking-wide">
+                  잠시 후 다시 시도하세요{" "}
+                  <span className="font-mono ml-1">{cooldownSecondsLeft}s</span>
+                </span>
+              </motion.div>
+            ) : (
+              <motion.p
+                key="welcome"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ delay: 0.5, duration: 1 }}
+                className="text-xs text-slate-600 uppercase tracking-[0.2em]"
+              >
+                WELCOME
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
       </motion.div>
     </div>
   );
