@@ -5,13 +5,13 @@ on:
     branches: [main, develop]
     paths:
       - 'backend/**'
-      - 'docker-compose*.yml'
+      - 'backend/docker-compose*.yml'
       - '.github/workflows/ci-cd.yml'
   pull_request:
     branches: [main]
     paths:
       - 'backend/**'
-      - 'docker-compose*.yml'
+      - 'backend/docker-compose*.yml'
 
 env:
   DOCKER_BUILDKIT: 1
@@ -96,7 +96,7 @@ jobs:
       - name: Test container startup
         run: |
           # Create test .env file
-          cat > .env.test << EOF
+          cat > backend/.env.test << EOF
           MONGO_INITDB_ROOT_USERNAME=test
           MONGO_INITDB_ROOT_PASSWORD=test
           MONGO_INITDB_DATABASE=test
@@ -106,7 +106,7 @@ jobs:
           EOF
 
           # Start services
-          docker compose -f docker-compose.yml --env-file .env.test up -d mongodb backend
+          docker compose -f backend/docker-compose.yml --env-file backend/.env.test up -d mongodb backend
 
           # Wait for backend to be healthy
           echo "Waiting for backend to be healthy..."
@@ -132,7 +132,7 @@ jobs:
           curl -f http://localhost:4000/health || exit 1
 
           # Cleanup
-          docker compose -f docker-compose.yml down -v
+          docker compose -f backend/docker-compose.yml --env-file backend/.env.test down -v
 
   security-scan:
     name: Security Scan
@@ -180,6 +180,7 @@ jobs:
           script: |
             cd /opt/chatbot-gate
             git pull origin develop
+            cd backend
             docker compose pull
             docker compose up -d --build
             docker compose ps
@@ -209,6 +210,7 @@ jobs:
 
             # Run rolling update script
             export VERSION=$(git rev-parse --short HEAD)
+            cd backend
             ./scripts/deploy.sh
 
             # Verify deployment
