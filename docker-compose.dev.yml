@@ -21,4 +21,10 @@ services:
       - /app/node_modules
     read_only: false
     tmpfs: []
+    networks:
+      - chatbot-gate_internal
 
+# Override networks for development
+networks:
+  chatbot-gate_internal:
+    driver: bridge
