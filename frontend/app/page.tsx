@@ -43,18 +43,26 @@ export default function Gate() {
     };
   }, [router]);
 
+  const [now, setNow] = useState(Date.now());
+
   useEffect(() => {
     if (!cooldownUntil) return;
+
+    // Update 'now' every second to trigger re-render for countdown
     const interval = setInterval(() => {
-      if (cooldownUntil && Date.now() >= cooldownUntil) {
+      const current = Date.now();
+      setNow(current);
+
+      if (current >= cooldownUntil) {
         setCooldownUntil(null);
       }
-    }, 500);
+    }, 1000);
+
     return () => clearInterval(interval);
   }, [cooldownUntil]);
 
   const cooldownSecondsLeft = cooldownUntil
-    ? Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000))
+    ? Math.max(0, Math.ceil((cooldownUntil - now) / 1000))
     : 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
