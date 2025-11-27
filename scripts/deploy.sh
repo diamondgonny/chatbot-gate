@@ -15,8 +15,10 @@ echo "🚀 Starting deployment of ${IMAGE_NAME}:${VERSION}"
 echo "📦 Building new Docker image..."
 docker compose -f "${COMPOSE_FILE}" build "${SERVICE_NAME}"
 
-# Tag the image
-docker tag "${IMAGE_NAME}:latest" "${IMAGE_NAME}:${VERSION}"
+# Tag versioned image as latest for consistency
+if [ "${VERSION}" != "latest" ]; then
+  docker tag "${IMAGE_NAME}:${VERSION}" "${IMAGE_NAME}:latest"
+fi
 
 echo "✅ Image built: ${IMAGE_NAME}:${VERSION}"
 
