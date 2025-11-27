@@ -71,6 +71,8 @@ services:
       PORT: 4000
       MONGO_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017/${MONGO_INITDB_DATABASE:-chatbot_gate}?authSource=admin
       JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+      VALID_CODES: ${VALID_CODES:-sample-code-1,sample-code-2}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       FRONTEND_URLS: ${FRONTEND_URLS}
 
