@@ -2,29 +2,70 @@ services:
   mongodb:
     command: ["mongod", "--verbose"]
 
+  # Development backend (single instance, no blue-green)
   backend:
     build:
       context: .
       dockerfile: Dockerfile.dev
+      args:
+        NODE_ENV: development
+
     image: chatbot-gate-backend:dev
+    container_name: chatbot-gate-backend-dev
     pull_policy: build
-    environment:
-      NODE_ENV: development
-      NODE_OPTIONS: "--max-old-space-size=1024"
+    restart: unless-stopped
+
     ports:
       - "127.0.0.1:4000:4000"
-      - "127.0.0.1:9229:9229"
+      - "127.0.0.1:9229:9229"  # Node debugger
+
+    environment:
+      NODE_ENV: development
+      PORT: 4000
+      NODE_OPTIONS: "--max-old-space-size=1024"
+      DEPLOYMENT_ENV: dev
+      MONGO_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017/${MONGO_INITDB_DATABASE:-chatbot_gate}?authSource=admin
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+      VALID_CODES: ${VALID_CODES:-sample-code-1,sample-code-2}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      FRONTEND_URLS: ${FRONTEND_URLS}
+
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+    # Development-specific volumes for hot reload
     volumes:
       - ./src:/app/src:delegated
       - ./tsconfig.json:/app/tsconfig.json:ro
       - ./logs:/app/logs
       - /app/node_modules
+
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=backend-dev"
+
+    # Development: No read-only restrictions
     read_only: false
     tmpfs: []
+
     networks:
       - chatbot-gate_internal
 
-# Override networks for development
+# Development networks
 networks:
   chatbot-gate_internal:
     driver: bridge
