@@ -140,12 +140,12 @@ export default function Gate() {
             transition={{ type: "tween", duration: 0.4 }}
           >
             <input
-              type="text"
+              type="password"
               value={code}
               onChange={(e) => setCode(e.target.value)}
               placeholder="ENTER ACCESS CODE"
               className={twMerge(
-                "w-full bg-slate-800/50 border border-slate-700 text-center text-xl tracking-widest py-4 px-6 rounded-2xl outline-none transition-all duration-300",
+                "w-full bg-slate-800/50 border border-slate-700 text-center text-3xl tracking-widest py-4 px-6 rounded-2xl outline-none transition-all duration-300",
                 "focus:border-slate-500 focus:bg-slate-800/80 focus:shadow-[0_0_30px_-5px_rgba(255,255,255,0.1)]",
                 "placeholder:text-slate-600 placeholder:text-sm placeholder:tracking-normal",
                 error && "border-red-500/50 text-red-200",
