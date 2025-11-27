@@ -3,16 +3,3 @@
 *.swp
 .idea
 .vscode
-
-# Env files
-.env
-.env.local
-.env.production
-.env.*.local
-
-# Logs
-npm-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-*.log
-/tmp/chatbot-gate-backend.log
