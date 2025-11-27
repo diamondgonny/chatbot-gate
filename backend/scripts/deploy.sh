@@ -4,7 +4,12 @@ set -euo pipefail
 # Zero-Downtime Rolling Update Deployment Script
 # Uses health checks and graceful shutdown for minimal downtime (2-5 seconds)
 
-COMPOSE_FILE="docker-compose.yml"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+cd "${REPO_ROOT}"
+
+COMPOSE_FILE="${REPO_ROOT}/docker-compose.yml"
 SERVICE_NAME="backend"
 IMAGE_NAME="chatbot-gate-backend"
 VERSION="${VERSION:-latest}"

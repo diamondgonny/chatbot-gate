@@ -43,7 +43,7 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile.prod
       args:
         NODE_ENV: production
@@ -93,7 +93,7 @@ services:
     tmpfs:
       - /tmp:noexec,nosuid,size=64m
     volumes:
-      - ./backend/logs:/app/logs
+      - ./logs:/app/logs
 
 networks:
   chatbot-gate_internal:

@@ -4,7 +4,7 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile.dev
     image: chatbot-gate-backend:dev
     pull_policy: build
@@ -15,9 +15,9 @@ services:
       - "127.0.0.1:4000:4000"
       - "127.0.0.1:9229:9229"
     volumes:
-      - ./backend/src:/app/src:delegated
-      - ./backend/tsconfig.json:/app/tsconfig.json:ro
-      - ./backend/logs:/app/logs
+      - ./src:/app/src:delegated
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./logs:/app/logs
       - /app/node_modules
     read_only: false
     tmpfs: []

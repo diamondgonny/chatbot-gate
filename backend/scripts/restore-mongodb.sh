@@ -4,10 +4,15 @@ set -euo pipefail
 # MongoDB Restore Script
 # Usage: ./scripts/restore-mongodb.sh <backup_file>
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+cd "${REPO_ROOT}"
+
 if [ $# -eq 0 ]; then
   echo "Usage: $0 <backup_file>"
   echo "Available backups:"
-  ls -1 ./backups/mongodb/*.archive 2>/dev/null || echo "  No backups found"
+  ls -1 "${REPO_ROOT}"/backups/mongodb/*.archive 2>/dev/null || echo "  No backups found"
   exit 1
 fi
 
@@ -19,10 +24,13 @@ if [ ! -f "${BACKUP_FILE}" ]; then
 fi
 
 # Load environment variables
-if [ -f .env.local ]; then
-  export $(grep -v '^#' .env.local | xargs)
-elif [ -f .env ]; then
-  export $(grep -v '^#' .env | xargs)
+if [ -f "${REPO_ROOT}/.env.local" ]; then
+  export $(grep -v '^#' "${REPO_ROOT}/.env.local" | xargs)
+elif [ -f "${REPO_ROOT}/.env" ]; then
+  export $(grep -v '^#' "${REPO_ROOT}/.env" | xargs)
+elif [ -f "${REPO_ROOT}/../.env" ]; then
+  echo "Warning: Using ../.env (consider moving env files into backend/)"
+  export $(grep -v '^#' "${REPO_ROOT}/../.env" | xargs)
 else
   echo "Error: No .env.local or .env file found"
   exit 1
@@ -38,7 +46,7 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 # Run mongorestore inside the container
-docker compose exec -T mongodb mongorestore \
+docker compose -f "${REPO_ROOT}/docker-compose.yml" exec -T mongodb mongorestore \
   --username="${MONGO_INITDB_ROOT_USERNAME}" \
   --password="${MONGO_INITDB_ROOT_PASSWORD}" \
   --authenticationDatabase=admin \
