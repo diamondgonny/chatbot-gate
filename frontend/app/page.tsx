@@ -198,7 +198,7 @@ export default function Gate() {
                 transition={{ delay: 0.5, duration: 1 }}
                 className="text-xs text-slate-600 uppercase tracking-[0.2em]"
               >
-                WELCOME
+                AD ASTRA PER ASPERA
               </motion.p>
             )}
           </AnimatePresence>

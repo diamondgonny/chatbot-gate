@@ -19,9 +19,7 @@ function Hub() {
           <h2 className="text-2xl font-semibold text-slate-200 mb-2">
             AI Chat
           </h2>
-          <p className="text-slate-400">
-            Talk to the Gatekeeper AI. Ask anything.
-          </p>
+          <p className="text-slate-400">Talk to our AI, your travel friend.</p>
         </Link>
 
         <div className="p-8 bg-slate-800/20 border border-slate-800 rounded-2xl opacity-50 cursor-not-allowed">
