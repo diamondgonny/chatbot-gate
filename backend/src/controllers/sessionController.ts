@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 import { ChatSession } from '../models/ChatSession';
+import { randomUUID } from 'crypto';
 
 const MAX_SESSIONS_PER_USER = 50;
 const SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -27,7 +27,7 @@ export const createSession = async (req: Request, res: Response) => {
     }
 
     // Generate new session ID
-    const sessionId = uuidv4();
+    const sessionId = randomUUID();
 
     // Create new session
     const session = new ChatSession({

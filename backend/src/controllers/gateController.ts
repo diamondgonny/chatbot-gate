@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 import { config } from '../config';
 import { signToken } from '../utils/jwtUtils';
 import { appendFileSync } from 'fs';
 import path from 'path';
+import { randomUUID } from 'crypto';
 
 const FAILURE_WINDOW_MS = 5 * 60 * 1000; // 5 minutes window to decay failures
 const BACKOFF_FAILS = 5;
@@ -79,7 +79,7 @@ export const validateGateCode = (req: Request, res: Response) => {
   if (isValid) {
     clearFailure(key);
     // Reuse existing userId or generate new one
-    const userId = existingUserId || uuidv4();
+    const userId = existingUserId || randomUUID();
     
     // Sign JWT token with userId in payload
     const token = signToken(userId);
