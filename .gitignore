@@ -8,6 +8,9 @@ coverage
 
 # Env files
 .env
+.env.local
+.env.production
+.env.*.local
 
 # Logs
 npm-debug.log*
@@ -21,3 +24,6 @@ pnpm-debug.log*
 *.swp
 .idea
 .vscode
+
+# Docker volumes and backups
+backups/
