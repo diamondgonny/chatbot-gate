@@ -12,6 +12,7 @@ services:
       NODE_ENV: development
       NODE_OPTIONS: "--max-old-space-size=1024"
     ports:
+      - "127.0.0.1:4000:4000"
       - "127.0.0.1:9229:9229"
     volumes:
       - ./backend/src:/app/src:delegated
@@ -21,6 +22,3 @@ services:
     read_only: false
     tmpfs: []
 
-  cloudflared:
-    profiles:
-      - with-tunnel
