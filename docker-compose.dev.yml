@@ -1,53 +1,26 @@
 services:
   mongodb:
-    # Expose MongoDB on all interfaces for dev tools (Compass, etc.)
-    ports:
-      - "27017:27017"
-
-    # More verbose logging in development
-    command: ["mongod", "--logLevel", "debug"]
-
-    # No resource limits in dev
-    deploy:
-      resources: {}
+    command: ["mongod", "--verbose"]
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
-
     image: chatbot-gate-backend:dev
-
-    # Expose on all interfaces for dev
-    ports:
-      - "4000:4000"
-      # Node.js debugger
-      - "9229:9229"
-
+    pull_policy: build
     environment:
       NODE_ENV: development
-
-    # Mount source code for hot reload
+      NODE_OPTIONS: "--max-old-space-size=1024"
+    ports:
+      - "127.0.0.1:9229:9229"
     volumes:
       - ./backend/src:/app/src:delegated
       - ./backend/tsconfig.json:/app/tsconfig.json:ro
       - ./backend/logs:/app/logs
-      # Prevent node_modules from being overwritten
       - /app/node_modules
-
-    # Override command for debugging
-    # Uncomment to enable debugger:
-    # command: ["npm", "run", "dev", "--", "--inspect=0.0.0.0:9229"]
-
-    # No resource limits in dev
-    deploy:
-      resources: {}
-
-    # Remove read-only restriction
     read_only: false
     tmpfs: []
 
   cloudflared:
-    # Optional in development
     profiles:
       - with-tunnel
