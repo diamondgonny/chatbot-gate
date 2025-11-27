@@ -173,7 +173,7 @@ export default function Gate() {
 
         {/* Hint / Footer */}
         {/* Footer / Status Message */}
-        <div className="h-12 flex items-center justify-center w-full">
+        <div className="flex justify-center w-full">
           <AnimatePresence mode="wait">
             {cooldownUntil ? (
               <motion.div
