@@ -1,3 +1,5 @@
+# Note: Frontend is deployed via Vercel separately; this workflow targets backend only.
+
 name: CI/CD Pipeline
 
 on:
