@@ -243,7 +243,7 @@ jobs:
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [build-and-test, security-scan]
+    needs: [build-and-push, build-and-test, security-scan]
     if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
     environment:
       name: staging
@@ -275,7 +275,8 @@ jobs:
             echo "${{ secrets.GHCR_DEPLOY_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
             # Set environment variables for deployment
-            export VERSION=$(git rev-parse --short HEAD)
+            # Use the exact primary-tag that was built, tested, and scanned
+            export VERSION="${{ needs.build-and-push.outputs.primary-tag }}"
             export GITHUB_REPO="${{ github.repository }}"
 
             # Initialize deployment state if needed
@@ -306,7 +307,7 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [build-and-test, security-scan]
+    needs: [build-and-push, build-and-test, security-scan]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     environment:
       name: production
@@ -338,7 +339,8 @@ jobs:
             echo "${{ secrets.GHCR_DEPLOY_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
             # Set environment variables for deployment
-            export VERSION=$(git rev-parse --short HEAD)
+            # Use the exact primary-tag that was built, tested, and scanned
+            export VERSION="${{ needs.build-and-push.outputs.primary-tag }}"
             export GITHUB_REPO="${{ github.repository }}"
 
             # Initialize deployment state if needed
