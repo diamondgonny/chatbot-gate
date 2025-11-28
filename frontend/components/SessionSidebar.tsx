@@ -22,6 +22,7 @@ interface SessionSidebarProps {
   onDeleteSession?: (sessionId: string) => void;
   onNewChat?: () => void;
   loading?: boolean;
+  loadingSessionId?: string;
 }
 
 export default function SessionSidebar({
@@ -31,6 +32,7 @@ export default function SessionSidebar({
   onDeleteSession,
   onNewChat,
   loading = false,
+  loadingSessionId,
 }: SessionSidebarProps) {
   if (loading) {
     return (
@@ -59,41 +61,50 @@ export default function SessionSidebar({
             아직 채팅이 없습니다
           </div>
         ) : (
-          sessions.map((session) => (
-            <motion.div
-              key={session.sessionId}
-              className={`relative group w-full text-left px-3 py-3 rounded-lg transition-colors ${
-                currentSessionId === session.sessionId
-                  ? "bg-slate-800 border border-slate-700"
-                  : "hover:bg-slate-800/50"
-              }`}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <button
-                onClick={() => onSessionSelect?.(session.sessionId)}
-                className="w-full text-left"
-              >
-                <h3 className="text-slate-200 text-sm font-medium truncate mb-1 pr-8">
-                  {session.lastMessage?.content || session.title}
-                </h3>
-                <div className="flex items-center justify-between text-xs text-slate-500">
-                  <span className="capitalize">
-                    {session.lastMessage?.role === "ai" ? "" : ""}
-                  </span>
-                  <span>{formatTimeAgo(session.updatedAt)}</span>
-                </div>
-              </button>
+          sessions.map((session) => {
+            const isActive = currentSessionId === session.sessionId;
+            const isLoading = loadingSessionId === session.sessionId;
 
-              {/* Delete Button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDeleteSession?.(session.sessionId);
-                }}
-                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-600 rounded text-slate-400 hover:text-white"
-                title="Delete session"
+            return (
+              <motion.div
+                key={session.sessionId}
+                className={`relative group w-full text-left px-3 py-3 rounded-lg transition-colors ${
+                  isActive
+                    ? "bg-slate-800 border border-slate-700"
+                    : "hover:bg-slate-800/50"
+                } ${isLoading ? "opacity-50 cursor-wait" : ""}`}
+                whileHover={{ scale: isLoading ? 1 : 1.02 }}
+                whileTap={{ scale: isLoading ? 1 : 0.98 }}
               >
+                <button
+                  onClick={() => onSessionSelect?.(session.sessionId)}
+                  className="w-full text-left"
+                  disabled={isLoading}
+                >
+                  <h3 className="text-slate-200 text-sm font-medium truncate mb-1 pr-8 flex items-center gap-2">
+                    {session.lastMessage?.content || session.title}
+                    {isLoading && (
+                      <span className="inline-block animate-spin text-blue-400">⟳</span>
+                    )}
+                  </h3>
+                  <div className="flex items-center justify-between text-xs text-slate-500">
+                    <span className="capitalize">
+                      {session.lastMessage?.role === "ai" ? "" : ""}
+                    </span>
+                    <span>{formatTimeAgo(session.updatedAt)}</span>
+                  </div>
+                </button>
+
+                {/* Delete Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteSession?.(session.sessionId);
+                  }}
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-600 rounded text-slate-400 hover:text-white"
+                  title="Delete session"
+                  disabled={isLoading}
+                >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   className="h-4 w-4"
@@ -110,7 +121,8 @@ export default function SessionSidebar({
                 </svg>
               </button>
             </motion.div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
