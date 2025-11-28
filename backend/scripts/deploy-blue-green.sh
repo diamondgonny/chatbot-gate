@@ -86,7 +86,21 @@ EOF
 
 # Pull image from GHCR
 pull_image() {
-  log "Pulling image from GHCR: ${IMAGE_FULL_NAME}:${VERSION}"
+  # Determine if VERSION is a full GHCR tag or just a tag name
+  local PULL_TARGET
+  local TAG_ONLY
+
+  if [[ "$VERSION" == ghcr.io/* ]]; then
+    # VERSION is a full GHCR tag (e.g., ghcr.io/owner/repo/chatbot-gate-backend:main-abc123)
+    PULL_TARGET="$VERSION"
+    TAG_ONLY=$(echo "$VERSION" | awk -F: '{print $NF}')
+    log "Pulling image from GHCR (full tag): ${PULL_TARGET}"
+  else
+    # VERSION is just a tag name (e.g., abc123 or main-abc123)
+    PULL_TARGET="${IMAGE_FULL_NAME}:${VERSION}"
+    TAG_ONLY="$VERSION"
+    log "Pulling image from GHCR: ${PULL_TARGET}"
+  fi
 
   # Verify GHCR authentication
   if ! docker info | grep -q "Username:"; then
@@ -106,13 +120,13 @@ pull_image() {
   while [ $attempt -le $retries ]; do
     log "Pull attempt ${attempt}/${retries}..."
 
-    if docker pull "${IMAGE_FULL_NAME}:${VERSION}"; then
+    if docker pull "${PULL_TARGET}"; then
       success "Image pulled successfully"
 
       # Tag for docker-compose compatibility
-      docker tag "${IMAGE_FULL_NAME}:${VERSION}" "${IMAGE_NAME}:${VERSION}" || true
-      docker tag "${IMAGE_FULL_NAME}:${VERSION}" "${IMAGE_NAME}:latest" || true
-      docker tag "${IMAGE_FULL_NAME}:${VERSION}" "${IMAGE_NAME}:${INACTIVE_ENV}-${VERSION}" || true
+      docker tag "${PULL_TARGET}" "${IMAGE_NAME}:${TAG_ONLY}" || true
+      docker tag "${PULL_TARGET}" "${IMAGE_NAME}:latest" || true
+      docker tag "${PULL_TARGET}" "${IMAGE_NAME}:${INACTIVE_ENV}-${TAG_ONLY}" || true
 
       return 0
     fi
