@@ -12,10 +12,11 @@ WORKDIR /app
 # Copy package files for dependency installation
 COPY --chown=expressjs:nodejs package*.json ./
 
-# Install production dependencies only
+# Install production dependencies only with build cache
 # --omit=dev excludes devDependencies (typescript, nodemon, etc.)
 # --ignore-scripts prevents postinstall hooks for security
-RUN npm ci --omit=dev --ignore-scripts && \
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm ci --omit=dev --ignore-scripts && \
     npm cache clean --force
 
 # ============================================
@@ -28,8 +29,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install ALL dependencies (including devDependencies for build)
-RUN npm ci --ignore-scripts
+# Install ALL dependencies (including devDependencies for build) with build cache
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm ci --ignore-scripts
 
 # Copy source code
 COPY tsconfig.json ./
