@@ -14,6 +14,8 @@ STATE_FILE="${REPO_ROOT}/.deployment-state"
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.yml"
 VERSION="${VERSION:-$(git rev-parse --short HEAD 2>/dev/null || echo 'dev')}"
 IMAGE_NAME="chatbot-gate-backend"
+GITHUB_REPO="${GITHUB_REPO:-owner/chatbot-gate}"
+IMAGE_FULL_NAME="ghcr.io/${GITHUB_REPO}/chatbot-gate-backend"
 
 # Configuration
 HEALTH_CHECK_MAX_WAIT=90
@@ -82,20 +84,46 @@ EOF
   success "State updated: ${new_active} is now active on port ${new_active_port}"
 }
 
-# Build Docker image
-build_image() {
-  log "Building Docker image: ${IMAGE_NAME}:${VERSION}"
+# Pull image from GHCR
+pull_image() {
+  log "Pulling image from GHCR: ${IMAGE_FULL_NAME}:${VERSION}"
 
-  if ! docker compose -f "${COMPOSE_FILE}" build "backend-${INACTIVE_ENV}"; then
-    error "Failed to build Docker image"
-    exit 1
+  # Verify GHCR authentication
+  if ! docker info | grep -q "Username:"; then
+    warning "Not logged into GHCR - attempting login..."
+    if [[ -n "${GHCR_TOKEN:-}" ]]; then
+      echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USERNAME:-$USER}" --password-stdin
+    else
+      error "GHCR_TOKEN not set and not logged in to GHCR"
+      exit 1
+    fi
   fi
 
-  # Tag images
-  docker tag "${IMAGE_NAME}:latest" "${IMAGE_NAME}:${VERSION}" || true
-  docker tag "${IMAGE_NAME}:latest" "${IMAGE_NAME}:${INACTIVE_ENV}-${VERSION}" || true
+  # Pull with retry logic
+  local retries=3
+  local attempt=1
 
-  success "Image built successfully: ${IMAGE_NAME}:${VERSION}"
+  while [ $attempt -le $retries ]; do
+    log "Pull attempt ${attempt}/${retries}..."
+
+    if docker pull "${IMAGE_FULL_NAME}:${VERSION}"; then
+      success "Image pulled successfully"
+
+      # Tag for docker-compose compatibility
+      docker tag "${IMAGE_FULL_NAME}:${VERSION}" "${IMAGE_NAME}:${VERSION}" || true
+      docker tag "${IMAGE_FULL_NAME}:${VERSION}" "${IMAGE_NAME}:latest" || true
+      docker tag "${IMAGE_FULL_NAME}:${VERSION}" "${IMAGE_NAME}:${INACTIVE_ENV}-${VERSION}" || true
+
+      return 0
+    fi
+
+    warning "Pull failed (attempt ${attempt}/${retries})"
+    attempt=$((attempt + 1))
+    sleep 5
+  done
+
+  error "Failed to pull image after ${retries} attempts"
+  exit 1
 }
 
 # Start inactive environment
@@ -261,6 +289,29 @@ cleanup_old_env() {
   success "Old ${ACTIVE_ENV} environment cleaned up"
 }
 
+# Cleanup old images
+cleanup_old_images() {
+  log "Cleaning up old images..."
+
+  # Remove dangling images
+  docker image prune -f
+
+  # Keep last 3 tagged versions of our image
+  local old_images=$(docker images "${IMAGE_FULL_NAME}" --format "{{.ID}} {{.Tag}}" | \
+    grep -v "${VERSION}" | \
+    grep -v "latest" | \
+    sort -r | \
+    tail -n +4 | \
+    awk '{print $1}')
+
+  if [[ -n "$old_images" ]]; then
+    log "Removing old image versions..."
+    echo "$old_images" | xargs -r docker rmi -f || true
+  fi
+
+  success "Image cleanup complete"
+}
+
 # Show deployment banner
 show_banner() {
   echo ""
@@ -295,22 +346,22 @@ main() {
   show_banner
 
   # Step 1: Load state
-  log "📋 Step 1/8: Loading deployment state..."
+  log "📋 Step 1/9: Loading deployment state..."
   load_state
   echo ""
 
-  # Step 2: Build image
-  log "🔨 Step 2/8: Building Docker image..."
-  build_image
+  # Step 2: Pull image from GHCR
+  log "📦 Step 2/9: Pulling Docker image from GHCR..."
+  pull_image
   echo ""
 
   # Step 3: Start inactive environment
-  log "🚀 Step 3/8: Starting inactive environment..."
+  log "🚀 Step 3/9: Starting inactive environment..."
   start_inactive_env
   echo ""
 
   # Step 4: Health check
-  log "🏥 Step 4/8: Performing health checks..."
+  log "🏥 Step 4/9: Performing health checks..."
   if ! wait_for_healthy; then
     error "Deployment failed: ${INACTIVE_ENV} is unhealthy"
     echo ""
@@ -324,7 +375,7 @@ main() {
   echo ""
 
   # Step 5: Switch traffic
-  log "🔀 Step 5/8: Switching traffic to new environment..."
+  log "🔀 Step 5/9: Switching traffic to new environment..."
   if ! switch_traffic; then
     error "Failed to switch traffic"
     rollback
@@ -332,7 +383,7 @@ main() {
   echo ""
 
   # Step 6: Validate deployment
-  log "✓ Step 6/8: Validating deployment..."
+  log "✓ Step 6/9: Validating deployment..."
   if ! validate_deployment; then
     error "Validation failed"
     rollback
@@ -340,13 +391,18 @@ main() {
   echo ""
 
   # Step 7: Cleanup old environment
-  log "🧹 Step 7/8: Cleaning up old environment..."
+  log "🧹 Step 7/9: Cleaning up old environment..."
   cleanup_old_env
   echo ""
 
   # Step 8: Update state (flip active/inactive)
-  log "💾 Step 8/8: Updating deployment state..."
+  log "💾 Step 8/9: Updating deployment state..."
   save_state "${INACTIVE_ENV}" "${INACTIVE_PORT}" "${ACTIVE_ENV}" "${ACTIVE_PORT}"
+  echo ""
+
+  # Step 9: Cleanup old images
+  log "🗑️  Step 9/9: Cleaning up old images..."
+  cleanup_old_images
   echo ""
 
   # Show summary
