@@ -225,7 +225,7 @@ jobs:
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'image'
-          image-ref: ${{ needs.build-and-push.outputs.image-tag }}
+          image-ref: ${{ needs.build-and-push.outputs.primary-tag }}
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
