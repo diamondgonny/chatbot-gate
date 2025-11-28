@@ -48,10 +48,17 @@ jobs:
       #   working-directory: backend
       #   run: npm run lint
 
-  build-and-test:
-    name: Build & Test Docker Image
+  build-and-push:
+    name: Build & Push to GHCR
     runs-on: ubuntu-latest
     needs: [lint-and-typecheck]
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
 
     steps:
       - name: Checkout code
@@ -60,16 +67,64 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build production image
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}/chatbot-gate-backend
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix={{branch}}-,format=short
+            type=ref,event=branch
+
+      - name: Build and push
+        id: build
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           file: ./backend/Dockerfile.prod
-          push: false
-          load: true
-          tags: chatbot-gate-backend:test
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      - name: Image digest
+        run: echo "Image digest: ${{ steps.build.outputs.digest }}"
+
+  build-and-test:
+    name: Build & Test Docker Image
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and test GHCR image
+        run: |
+          IMAGE_TAG=$(echo "${{ needs.build-and-push.outputs.image-tag }}" | head -n 1)
+          echo "Pulling image: $IMAGE_TAG"
+          docker pull $IMAGE_TAG
+          docker tag $IMAGE_TAG chatbot-gate-backend:test
 
       - name: Check image size
         run: |
@@ -139,17 +194,24 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
-    needs: [build-and-test]
+    needs: [build-and-push]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
         with:
-          scan-type: 'fs'
-          scan-ref: './backend'
+          scan-type: 'image'
+          image-ref: ${{ needs.build-and-push.outputs.image-tag }}
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
@@ -191,6 +253,13 @@ jobs:
             git pull origin develop
             cd backend
 
+            # Login to GHCR
+            echo "${{ secrets.GHCR_DEPLOY_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+
+            # Set environment variables for deployment
+            export VERSION=$(git rev-parse --short HEAD)
+            export GITHUB_REPO="${{ github.repository }}"
+
             # Initialize deployment state if needed
             if [[ ! -f .deployment-state ]]; then
               echo "Initializing deployment state..."
@@ -201,8 +270,7 @@ jobs:
             echo "Creating MongoDB backup..."
             ./scripts/backup-mongodb.sh
 
-            # Run blue-green deployment
-            export VERSION=$(git rev-parse --short HEAD)
+            # Run blue-green deployment (now pulls from GHCR)
             ./scripts/deploy-blue-green.sh
 
             # Verify deployment
@@ -210,6 +278,11 @@ jobs:
             source .deployment-state
             echo "Active environment: ${ACTIVE_ENV} on port ${ACTIVE_PORT}"
             curl -f http://localhost:${ACTIVE_PORT}/health || exit 1
+
+            # Cleanup old images
+            docker image prune -f
+            docker images | grep "chatbot-gate-backend" | grep -v "${VERSION}" | awk '{print $3}' | head -n -3 | xargs -r docker rmi || true
+
             docker compose ps
 
   deploy-production:
@@ -243,6 +316,13 @@ jobs:
             git pull origin main
             cd backend
 
+            # Login to GHCR
+            echo "${{ secrets.GHCR_DEPLOY_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+
+            # Set environment variables for deployment
+            export VERSION=$(git rev-parse --short HEAD)
+            export GITHUB_REPO="${{ github.repository }}"
+
             # Initialize deployment state if needed
             if [[ ! -f .deployment-state ]]; then
               echo "Initializing deployment state..."
@@ -253,8 +333,7 @@ jobs:
             echo "Creating MongoDB backup..."
             ./scripts/backup-mongodb.sh
 
-            # Run blue-green deployment
-            export VERSION=$(git rev-parse --short HEAD)
+            # Run blue-green deployment (now pulls from GHCR)
             ./scripts/deploy-blue-green.sh
 
             # Verify deployment
@@ -262,4 +341,9 @@ jobs:
             source .deployment-state
             echo "Active environment: ${ACTIVE_ENV} on port ${ACTIVE_PORT}"
             curl -f http://localhost:${ACTIVE_PORT}/health || exit 1
+
+            # Cleanup old images
+            docker image prune -f
+            docker images | grep "chatbot-gate-backend" | grep -v "${VERSION}" | awk '{print $3}' | head -n -3 | xargs -r docker rmi || true
+
             docker compose ps
