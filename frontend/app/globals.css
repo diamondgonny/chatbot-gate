@@ -19,7 +19,7 @@ body {
 /* Custom Scrollbar */
 @layer utilities {
   .scrollbar-custom {
-    scrollbar-width: thin;
+    scrollbar-width: auto;
     scrollbar-color: rgba(51, 65, 85, 0.5) transparent;
   }
 
