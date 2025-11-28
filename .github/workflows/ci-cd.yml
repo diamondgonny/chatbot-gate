@@ -98,7 +98,8 @@ jobs:
           platforms: linux/amd64
 
       - name: Image digest
-        run: echo "Image digest: ${{ steps.build.outputs.digest }}"
+        run: |
+          echo "Image digest: ${{ steps.build.outputs.digest }}"
 
   build-and-test:
     name: Build & Test Docker Image
