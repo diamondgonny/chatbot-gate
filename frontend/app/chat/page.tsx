@@ -70,6 +70,16 @@ function ChatInterface() {
     );
   }, [messages, currentSessionId]);
 
+  // Auto-dismiss session error after 10 seconds
+  useEffect(() => {
+    if (sessionError) {
+      const timer = setTimeout(() => {
+        setSessionError(null);
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [sessionError]);
+
   // Load sessions from API
   const loadSessions = async (): Promise<Session[]> => {
     try {
