@@ -133,11 +133,11 @@ jobs:
           IMAGE_TAG="${{ needs.build-and-push.outputs.primary-tag }}"
           echo "Pulling image: $IMAGE_TAG"
           docker pull $IMAGE_TAG
-          docker tag $IMAGE_TAG chatbot-gate-backend:test
 
       - name: Check image size
         run: |
-          IMAGE_SIZE=$(docker images chatbot-gate-backend:test --format "{{.Size}}" | head -1)
+          IMAGE_TAG="${{ needs.build-and-push.outputs.primary-tag }}"
+          IMAGE_SIZE=$(docker images $IMAGE_TAG --format "{{.Size}}" | head -1)
           echo "Image size: $IMAGE_SIZE"
 
           # Extract numeric value (handles both MB and GB)
@@ -160,10 +160,14 @@ jobs:
           echo "✅ Image size check passed: $IMAGE_SIZE"
 
       - name: Test container startup
-        env:
-          GITHUB_REPO: ${{ github.repository }}
-          VERSION: test
         run: |
+          # Extract VERSION from primary-tag (e.g., ghcr.io/owner/repo:main-abc123 -> main-abc123)
+          PRIMARY_TAG="${{ needs.build-and-push.outputs.primary-tag }}"
+          VERSION=$(echo "$PRIMARY_TAG" | awk -F: '{print $NF}')
+
+          echo "Using GITHUB_REPO=${{ github.repository }}"
+          echo "Using VERSION=$VERSION"
+
           # Create test .env file
           cat > backend/.env.test << EOF
           MONGO_INITDB_ROOT_USERNAME=test
@@ -173,7 +177,7 @@ jobs:
           OPENAI_API_KEY=sk-test-fake-key
           FRONTEND_URLS=http://localhost:3000
           GITHUB_REPO=${{ github.repository }}
-          VERSION=test
+          VERSION=$VERSION
           EOF
 
           # Start services using CI compose configuration
