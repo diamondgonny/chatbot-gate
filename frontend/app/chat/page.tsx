@@ -25,6 +25,7 @@ interface Session {
     timestamp: string;
   } | null;
   updatedAt: string;
+  createdAt: string;
 }
 
 function ChatInterface() {
@@ -145,10 +146,13 @@ function ChatInterface() {
         setCurrentSessionId(sessionId);
         setSessions((prev) => [
           {
-            sessionId,
+            sessionId: sessionId!,
             title: newSessionResponse.data.title || "New Chat",
             lastMessage: null,
             updatedAt: newSessionResponse.data.updatedAt,
+            createdAt:
+              newSessionResponse.data.createdAt ||
+              newSessionResponse.data.updatedAt,
           },
           ...prev,
         ]);
@@ -210,11 +214,16 @@ function ChatInterface() {
       await loadSessions();
     } catch (error) {
       console.error("Error creating new session:", error);
-      if ((error as any)?.isAxiosError && (error as any).response?.status === 429) {
+      if (
+        (error as any)?.isAxiosError &&
+        (error as any).response?.status === 429
+      ) {
         const data = (error as any).response?.data || {};
         const limit = (data as any)?.limit;
         const count = (data as any)?.count;
-        const msg = (data as any)?.error || "Too many sessions. Please delete an existing session.";
+        const msg =
+          (data as any)?.error ||
+          "Too many sessions. Please delete an existing session.";
         setSessionError(limit ? `${msg} (${count || limit}/${limit})` : msg);
         return;
       }
@@ -305,7 +314,9 @@ function ChatInterface() {
       <div className="flex flex-col flex-1 bg-slate-900/50 shadow-2xl border-x border-slate-800">
         {/* Header */}
         <header className="p-4 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 min-h-[88px] flex flex-col justify-center">
-          <h2 className="text-xl font-semibold text-slate-200">AI Chat Session</h2>
+          <h2 className="text-xl font-semibold text-slate-200">
+            AI Chat Session
+          </h2>
           <p className="text-xs text-slate-500">Connected to Gatekeeper Node</p>
         </header>
 
@@ -316,7 +327,7 @@ function ChatInterface() {
         )}
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+        <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-custom">
           {messages.map((msg) => (
             <motion.div
               key={msg.id}
