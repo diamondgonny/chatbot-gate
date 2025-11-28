@@ -63,20 +63,21 @@ function ChatInterface() {
   }, [messages, isTyping]);
 
   // Keep sidebar titles in sync with latest message content
+  // IMPORTANT: Only depend on messages, NOT currentSessionId
+  // This prevents the effect from running during session switches
   useEffect(() => {
-    if (!currentSessionId || messages.length === 0) return;
+    if (messages.length === 0) return;
 
-    // CRITICAL FIX: Only update if messages belong to intended session
-    if (intendedSessionRef.current !== currentSessionId) {
-      return; // Skip stale update from previous session
-    }
+    // Get the intended session at the time messages were loaded
+    const targetSessionId = intendedSessionRef.current;
+    if (!targetSessionId) return;
 
     const latestMessage = messages[messages.length - 1];
 
     setSessions((prev) => {
-      // Update metadata
+      // Update metadata for the intended session only
       const updated = prev.map((session) =>
-        session.sessionId === currentSessionId
+        session.sessionId === targetSessionId
           ? {
               ...session,
               lastMessage: {
@@ -93,7 +94,7 @@ function ChatInterface() {
       // Re-sort after update
       return sortSessionsByUpdatedAt(updated);
     });
-  }, [messages, currentSessionId]);
+  }, [messages]);
 
   // Auto-dismiss session error after 10 seconds
   useEffect(() => {
