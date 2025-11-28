@@ -130,7 +130,7 @@ jobs:
 
       - name: Pull and test GHCR image
         run: |
-          IMAGE_TAG=$(echo "${{ needs.build-and-push.outputs.image-tag }}" | head -n 1)
+          IMAGE_TAG="${{ needs.build-and-push.outputs.primary-tag }}"
           echo "Pulling image: $IMAGE_TAG"
           docker pull $IMAGE_TAG
           docker tag $IMAGE_TAG chatbot-gate-backend:test
@@ -160,6 +160,9 @@ jobs:
           echo "✅ Image size check passed: $IMAGE_SIZE"
 
       - name: Test container startup
+        env:
+          GITHUB_REPO: ${{ github.repository }}
+          VERSION: test
         run: |
           # Create test .env file
           cat > backend/.env.test << EOF
@@ -169,15 +172,17 @@ jobs:
           JWT_SECRET=test-secret-key-for-ci-only
           OPENAI_API_KEY=sk-test-fake-key
           FRONTEND_URLS=http://localhost:3000
+          GITHUB_REPO=${{ github.repository }}
+          VERSION=test
           EOF
 
-          # Start services
-          docker compose -f backend/docker-compose.yml --env-file backend/.env.test up -d mongodb backend
+          # Start services using CI compose configuration
+          docker compose -f backend/docker-compose.yml -f backend/docker-compose.ci.yml --env-file backend/.env.test up -d mongodb backend
 
           # Wait for backend to be healthy
           echo "Waiting for backend to be healthy..."
           for i in {1..30}; do
-            HEALTH=$(docker inspect --format='{{.State.Health.Status}}' chatbot-gate-backend 2>/dev/null || echo "none")
+            HEALTH=$(docker inspect --format='{{.State.Health.Status}}' chatbot-gate-backend-ci 2>/dev/null || echo "none")
             echo "Attempt $i/30... Health: $HEALTH"
 
             if [ "$HEALTH" = "healthy" ]; then
@@ -190,7 +195,7 @@ jobs:
 
           if [ "$HEALTH" != "healthy" ]; then
             echo "❌ Backend failed to become healthy"
-            docker compose -f docker-compose.yml logs backend
+            docker compose -f backend/docker-compose.yml -f backend/docker-compose.ci.yml logs backend
             exit 1
           fi
 
@@ -198,7 +203,7 @@ jobs:
           curl -f http://localhost:4000/health || exit 1
 
           # Cleanup
-          docker compose -f backend/docker-compose.yml --env-file backend/.env.test down -v
+          docker compose -f backend/docker-compose.yml -f backend/docker-compose.ci.yml --env-file backend/.env.test down -v
 
   security-scan:
     name: Security Scan
