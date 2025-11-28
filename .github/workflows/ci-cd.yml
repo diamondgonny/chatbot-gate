@@ -342,7 +342,7 @@ jobs:
           username: ${{ secrets.PRODUCTION_USER }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
-            cd /opt/chatbot-gate
+            cd /home/user/lab/apps/chatbot-gate
             git fetch origin
             git checkout ${{ github.sha }}
             cd backend
