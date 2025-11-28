@@ -226,7 +226,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: 'image'
           image-ref: ${{ needs.build-and-push.outputs.primary-tag }}
@@ -268,7 +268,8 @@ jobs:
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
             cd /opt/chatbot-gate
-            git pull origin develop
+            git fetch origin
+            git checkout ${{ github.sha }}
             cd backend
 
             # Login to GHCR
@@ -299,9 +300,15 @@ jobs:
             echo "Active environment: ${ACTIVE_ENV} on port ${ACTIVE_PORT}"
             curl -f http://localhost:${ACTIVE_PORT}/health || exit 1
 
-            # Cleanup old images
+            # Cleanup old images (keep current version and last 2 versions)
             docker image prune -f
-            docker images | grep "chatbot-gate-backend" | grep -v "${VERSION}" | awk '{print $3}' | head -n -3 | xargs -r docker rmi || true
+            docker images --filter "reference=ghcr.io/${{ github.repository }}/chatbot-gate-backend:*" \
+              --format "{{.ID}} {{.Tag}}" | \
+              grep -v "${VERSION}" | \
+              sort -r | \
+              tail -n +3 | \
+              awk '{print $1}' | \
+              xargs -r docker rmi || true
 
             docker compose ps
 
@@ -333,7 +340,8 @@ jobs:
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
           script: |
             cd /opt/chatbot-gate
-            git pull origin main
+            git fetch origin
+            git checkout ${{ github.sha }}
             cd backend
 
             # Login to GHCR
@@ -364,8 +372,14 @@ jobs:
             echo "Active environment: ${ACTIVE_ENV} on port ${ACTIVE_PORT}"
             curl -f http://localhost:${ACTIVE_PORT}/health || exit 1
 
-            # Cleanup old images
+            # Cleanup old images (keep current version and last 2 versions)
             docker image prune -f
-            docker images | grep "chatbot-gate-backend" | grep -v "${VERSION}" | awk '{print $3}' | head -n -3 | xargs -r docker rmi || true
+            docker images --filter "reference=ghcr.io/${{ github.repository }}/chatbot-gate-backend:*" \
+              --format "{{.ID}} {{.Tag}}" | \
+              grep -v "${VERSION}" | \
+              sort -r | \
+              tail -n +3 | \
+              awk '{print $1}' | \
+              xargs -r docker rmi || true
 
             docker compose ps
