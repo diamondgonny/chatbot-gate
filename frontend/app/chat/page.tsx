@@ -37,10 +37,25 @@ function ChatInterface() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const intendedSessionRef = useRef<string | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Maintain sessions in descending updatedAt order (most recent first)
+  const sortSessionsByUpdatedAt = (sessionList: Session[]) => {
+    return [...sessionList].sort((a, b) => {
+      const timeA = new Date(a.updatedAt).getTime();
+      const timeB = new Date(b.updatedAt).getTime();
+      if (timeA === timeB) {
+        // Secondary sort for stability
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }
+      return timeB - timeA; // Most recent first
+    });
   };
 
   useEffect(() => {
@@ -50,10 +65,17 @@ function ChatInterface() {
   // Keep sidebar titles in sync with latest message content
   useEffect(() => {
     if (!currentSessionId || messages.length === 0) return;
+
+    // CRITICAL FIX: Only update if messages belong to intended session
+    if (intendedSessionRef.current !== currentSessionId) {
+      return; // Skip stale update from previous session
+    }
+
     const latestMessage = messages[messages.length - 1];
 
-    setSessions((prev) =>
-      prev.map((session) =>
+    setSessions((prev) => {
+      // Update metadata
+      const updated = prev.map((session) =>
         session.sessionId === currentSessionId
           ? {
               ...session,
@@ -66,8 +88,11 @@ function ChatInterface() {
               updatedAt: latestMessage.timestamp,
             }
           : session
-      )
-    );
+      );
+
+      // Re-sort after update
+      return sortSessionsByUpdatedAt(updated);
+    });
   }, [messages, currentSessionId]);
 
   // Auto-dismiss session error after 10 seconds
@@ -105,6 +130,7 @@ function ChatInterface() {
         if (fetchedSessions.length > 0) {
           // Use the most recent session
           const latestSession = fetchedSessions[0];
+          intendedSessionRef.current = latestSession.sessionId;
           setCurrentSessionId(latestSession.sessionId);
 
           // Load history for this session
@@ -153,6 +179,7 @@ function ChatInterface() {
       try {
         const newSessionResponse = await api.post("/api/sessions", {});
         sessionId = newSessionResponse.data.sessionId;
+        intendedSessionRef.current = sessionId;
         setCurrentSessionId(sessionId);
         setSessions((prev) => [
           {
@@ -217,6 +244,7 @@ function ChatInterface() {
       // Create new session via API
       const response = await api.post("/api/sessions", {});
 
+      intendedSessionRef.current = response.data.sessionId;
       setCurrentSessionId(response.data.sessionId);
       setMessages([]); // Start with empty messages
 
@@ -242,7 +270,14 @@ function ChatInterface() {
   };
 
   const handleSessionSelect = async (sessionId: string) => {
+    // Prevent unnecessary work if clicking current session
+    if (sessionId === currentSessionId) return;
+
     try {
+      setLoadingSessionId(sessionId); // Immediate feedback
+
+      // Set ref FIRST (synchronous) before state (asynchronous)
+      intendedSessionRef.current = sessionId;
       setCurrentSessionId(sessionId);
 
       // Load history for selected session
@@ -265,6 +300,8 @@ function ChatInterface() {
       }
     } catch (error) {
       console.error("Error loading session:", error);
+    } finally {
+      setLoadingSessionId(null); // Always clear
     }
   };
 
@@ -318,6 +355,7 @@ function ChatInterface() {
         onSessionSelect={handleSessionSelect}
         onDeleteSession={handleDeleteClick}
         onNewChat={handleNewChat}
+        loadingSessionId={loadingSessionId || undefined}
       />
 
       {/* Chat Interface */}
