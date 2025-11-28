@@ -1,0 +1,39 @@
+# CI/CD Testing Configuration
+# Extends base docker-compose.yml for GitHub Actions testing
+
+services:
+  # Backend service for CI testing (not blue-green)
+  backend:
+    image: ghcr.io/${GITHUB_REPO}/chatbot-gate-backend:${VERSION:-latest}
+    container_name: chatbot-gate-backend-ci
+    pull_policy: always
+
+    ports:
+      - "4000:4000"
+
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DEPLOYMENT_ENV: ci
+      MONGO_URI: mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongodb:27017/${MONGO_INITDB_DATABASE:-chatbot_gate}?authSource=admin
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+      VALID_CODES: ${VALID_CODES:-sample-code-1,sample-code-2}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      FRONTEND_URLS: ${FRONTEND_URLS}
+
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+
+    networks:
+      - chatbot-gate_internal
+
+  # MongoDB inherited from base docker-compose.yml
