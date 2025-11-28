@@ -57,8 +57,9 @@ jobs:
       packages: write
 
     outputs:
-      image-tag: ${{ steps.meta.outputs.tags }}
+      image-tags: ${{ steps.meta.outputs.tags }}
       image-digest: ${{ steps.build.outputs.digest }}
+      primary-tag: ${{ steps.primary.outputs.tag }}
 
     steps:
       - name: Checkout code
@@ -100,6 +101,13 @@ jobs:
       - name: Image digest
         run: |
           echo "Image digest: ${{ steps.build.outputs.digest }}"
+
+      - name: Extract primary tag
+        id: primary
+        run: |
+          PRIMARY_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
+          echo "tag=${PRIMARY_TAG}" >> $GITHUB_OUTPUT
+          echo "Primary tag: ${PRIMARY_TAG}"
 
   build-and-test:
     name: Build & Test Docker Image
