@@ -39,6 +39,20 @@ export const createSession = async (req: Request, res: Response) => {
 
     await session.save();
 
+    // Double-check to prevent race condition
+    // If multiple requests hit simultaneously, some might slip through the first check
+    const finalCount = await ChatSession.countDocuments({ userId });
+    if (finalCount > MAX_SESSIONS_PER_USER) {
+      // Rollback: delete the session we just created
+      await ChatSession.deleteOne({ sessionId });
+      return res.status(429).json({
+        error: 'Session limit reached. Delete old sessions to continue.',
+        code: 'SESSION_LIMIT_REACHED',
+        limit: MAX_SESSIONS_PER_USER,
+        count: finalCount - 1, // Subtract the one we just deleted
+      });
+    }
+
     return res.json({
       sessionId: session.sessionId,
       title: session.title,
