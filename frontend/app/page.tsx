@@ -138,22 +138,26 @@ export default function Gate() {
           <motion.div
             animate={error ? { x: [-10, 10, -10, 10, 0] } : {}}
             transition={{ type: "tween", duration: 0.4 }}
+            className="relative"
           >
             <input
               type="password"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="ENTER ACCESS CODE"
               className={twMerge(
                 "w-full bg-slate-800/50 border border-slate-700 text-center text-3xl tracking-widest py-4 px-6 rounded-2xl outline-none transition-all duration-300",
                 "focus:border-slate-500 focus:bg-slate-800/80 focus:shadow-[0_0_30px_-5px_rgba(255,255,255,0.1)]",
-                "placeholder:text-slate-600 placeholder:text-sm placeholder:tracking-normal",
                 error && "border-red-500/50 text-red-200",
                 cooldownUntil && "opacity-60 cursor-not-allowed"
               )}
               autoFocus
               disabled={!!cooldownUntil}
             />
+            {!code && (
+              <span className="absolute inset-0 flex items-center justify-center text-slate-600 text-sm tracking-normal pointer-events-none select-none">
+                ENTER ACCESS CODE
+              </span>
+            )}
           </motion.div>
 
           {/* Loading / Submit Indicator */}
