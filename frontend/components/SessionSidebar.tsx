@@ -81,10 +81,14 @@ export default function SessionSidebar({
                   className="w-full text-left"
                   disabled={isLoading}
                 >
-                  <h3 className="text-slate-200 text-sm font-medium truncate mb-1 pr-8 flex items-center gap-2">
-                    {session.lastMessage?.content || session.title}
+                  <h3 className="text-slate-200 text-sm font-medium mb-1 pr-4 flex items-center gap-2">
+                    <span className="truncate">
+                      {session.lastMessage?.content || session.title}
+                    </span>
                     {isLoading && (
-                      <span className="inline-block animate-spin text-blue-400">⟳</span>
+                      <span className="flex-shrink-0 inline-block animate-spin text-blue-400">
+                        ⟳
+                      </span>
                     )}
                   </h3>
                   <div className="flex items-center justify-between text-xs text-slate-500">
@@ -105,22 +109,22 @@ export default function SessionSidebar({
                   title="Delete session"
                   disabled={isLoading}
                 >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-              </button>
-            </motion.div>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-4 w-4"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </button>
+              </motion.div>
             );
           })
         )}
