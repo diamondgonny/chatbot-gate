@@ -63,9 +63,9 @@ services:
     tmpfs: []
 
     networks:
-      - chatbot-gate_internal
+      - internal
 
 # Development networks
 networks:
-  chatbot-gate_internal:
+  internal:
     driver: bridge

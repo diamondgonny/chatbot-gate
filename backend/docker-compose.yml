@@ -39,7 +39,7 @@ services:
         labels: "service=mongodb"
 
     networks:
-      - chatbot-gate_internal
+      - internal
 
   # Blue Environment (Port 4000)
   backend-blue:
@@ -82,7 +82,7 @@ services:
         labels: "service=backend-blue"
 
     networks:
-      - chatbot-gate_internal
+      - internal
       - caddy_downstream
 
     # Security: Read-only root filesystem (except /app/logs)
@@ -136,7 +136,7 @@ services:
         labels: "service=backend-green"
 
     networks:
-      - chatbot-gate_internal
+      - internal
       - caddy_downstream
 
     # Security: Read-only root filesystem (except /app/logs)
@@ -150,7 +150,7 @@ services:
       - green
 
 networks:
-  chatbot-gate_internal:
+  internal:
     driver: bridge
     internal: true
   caddy_downstream:

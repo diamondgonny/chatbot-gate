@@ -34,6 +34,6 @@ services:
       start_period: 40s
 
     networks:
-      - chatbot-gate_internal
+      - internal
 
   # MongoDB inherited from base docker-compose.yml
