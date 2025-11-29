@@ -253,9 +253,6 @@ jobs:
     #   url: https://staging.your-domain.com
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Connect to Tailscale
         uses: tailscale/github-action@v4
         with:
@@ -270,24 +267,24 @@ jobs:
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
-            cd /opt/chatbot-gate
-            git fetch origin
-            git checkout ${{ github.sha }}
-            cd backend
+            # Set working directory
+            cd /opt/chatbot-gate/backend
 
             # Login to GHCR
             echo "${{ secrets.GHCR_DEPLOY_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
 
             # Set environment variables for deployment
-            # Extract tag portion from full GHCR image reference
             PRIMARY_TAG="${{ needs.build-and-push.outputs.primary-tag }}"
             export VERSION=$(echo "$PRIMARY_TAG" | awk -F: '{print $NF}')
             export GITHUB_REPO="${{ github.repository }}"
 
-            # Initialize deployment state if needed
+            echo "Deploying VERSION=$VERSION from GITHUB_REPO=$GITHUB_REPO"
+
+            # Verify deployment state exists
             if [[ ! -f .deployment-state ]]; then
-              echo "Initializing deployment state..."
-              ./scripts/init-deployment-state.sh
+              echo "❌ ERROR: .deployment-state not found!"
+              echo "Run installation script first: ./scripts/install-deployment-files.sh staging"
+              exit 1
             fi
 
             # Backup MongoDB before deployment
