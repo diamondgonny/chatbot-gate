@@ -4,26 +4,45 @@ set -euo pipefail
 #############################################
 # Blue-Green Deployment Script
 # Zero-downtime deployment with automatic rollback
+#
+# Usage:
+#   ./deploy-blue-green.sh                # Normal deployment
+#   ./deploy-blue-green.sh --find-upstream # Find Caddy upstream path only
 #############################################
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
+# Parse command line arguments
+FIND_UPSTREAM_ONLY=false
+for arg in "$@"; do
+  case $arg in
+    --find-upstream|--validate-caddy)
+      FIND_UPSTREAM_ONLY=true
+      shift
+      ;;
+  esac
+done
+
 STATE_FILE="${REPO_ROOT}/.deployment-state"
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.yml"
-VERSION="${VERSION:?VERSION environment variable is required}"
 IMAGE_NAME="chatbot-gate-backend"
 GITHUB_REPO="${GITHUB_REPO:-owner/chatbot-gate}"
 IMAGE_FULL_NAME="ghcr.io/${GITHUB_REPO}/chatbot-gate-backend"
 
-# Validate VERSION is set and not empty
-if [[ -z "${VERSION}" ]]; then
-  echo -e "${RED}ERROR: VERSION environment variable is not set${NC}"
-  echo -e "${RED}This must be set by the CI/CD pipeline${NC}"
-  exit 1
+# VERSION validation (skip for --find-upstream mode)
+if [[ "${FIND_UPSTREAM_ONLY}" == "false" ]]; then
+  VERSION="${VERSION:?VERSION environment variable is required}"
+
+  # Validate VERSION is set and not empty
+  if [[ -z "${VERSION}" ]]; then
+    echo -e "${RED}ERROR: VERSION environment variable is not set${NC}"
+    echo -e "${RED}This must be set by the CI/CD pipeline${NC}"
+    exit 1
+  fi
+  echo -e "${BLUE}Deploying version: ${VERSION}${NC}"
 fi
-echo -e "${BLUE}Deploying version: ${VERSION}${NC}"
 
 # Configuration
 HEALTH_CHECK_MAX_WAIT=90
@@ -31,6 +50,7 @@ HEALTH_CHECK_INTERVAL=3
 VALIDATION_PERIOD=10
 CADDY_CONTAINER="caddy"  # Caddy container name
 CADDY_ADMIN_API="http://localhost:2019"  # Internal to Caddy container
+CADDY_UPSTREAM_PATH="${CADDY_UPSTREAM_PATH:-}"  # Auto-detect or set via env var
 
 # Colors for output
 RED='\033[0;31m'
@@ -54,6 +74,90 @@ success() {
 
 warning() {
   echo -e "${YELLOW}$(date '+%Y-%m-%d %H:%M:%S') - ⚠️${NC} $*"
+}
+
+# Auto-detect and validate Caddy upstream path
+validate_caddy_upstream_path() {
+  log "Detecting Caddy upstream path for api.chatbotgate.click..."
+
+  # Verify Caddy container is running
+  if ! docker ps --format '{{.Names}}' | grep -q "^${CADDY_CONTAINER}$"; then
+    error "Caddy container ${CADDY_CONTAINER} is not running"
+    return 1
+  fi
+
+  # If path already set via env var, validate it
+  if [[ -n "${CADDY_UPSTREAM_PATH}" ]]; then
+    log "Using provided path: ${CADDY_UPSTREAM_PATH}"
+    if docker exec "${CADDY_CONTAINER}" curl -f -s "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" > /dev/null 2>&1; then
+      success "Caddy upstream path validated: ${CADDY_UPSTREAM_PATH}"
+      return 0
+    else
+      warning "Provided path is invalid, attempting auto-detection..."
+    fi
+  fi
+
+  # Auto-detect path by searching for api.chatbotgate.click
+  log "Auto-detecting upstream path..."
+
+  local config
+  config=$(docker exec "${CADDY_CONTAINER}" curl -s "${CADDY_ADMIN_API}/config/apps/http/servers")
+
+  if [ -z "$config" ]; then
+    error "Failed to fetch Caddy configuration"
+    return 1
+  fi
+
+  # Get server names
+  local servers
+  servers=$(echo "$config" | jq -r 'keys[]' 2>/dev/null)
+
+  if [ -z "$servers" ]; then
+    error "No servers found in Caddy configuration"
+    return 1
+  fi
+
+  # Search each server for api.chatbotgate.click
+  for server in $servers; do
+    local routes_count
+    routes_count=$(echo "$config" | jq -r ".\"$server\".routes | length" 2>/dev/null)
+
+    if [ -z "$routes_count" ] || [ "$routes_count" = "null" ]; then
+      continue
+    fi
+
+    # Search each route
+    for i in $(seq 0 $((routes_count - 1))); do
+      local host
+      host=$(echo "$config" | jq -r ".\"$server\".routes[$i].match[0].host[0] // empty" 2>/dev/null)
+
+      if [[ "$host" == "api.chatbotgate.click" ]]; then
+        CADDY_UPSTREAM_PATH="/config/apps/http/servers/$server/routes/$i/handle/0/upstreams"
+
+        # Verify path is accessible
+        if docker exec "${CADDY_CONTAINER}" curl -f -s "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" > /dev/null 2>&1; then
+          success "Auto-detected upstream path: ${CADDY_UPSTREAM_PATH}"
+
+          # Show current upstream
+          local current_upstream
+          current_upstream=$(docker exec "${CADDY_CONTAINER}" curl -s "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" | jq -r '.[0].dial' 2>/dev/null)
+          log "Current upstream: ${current_upstream}"
+
+          return 0
+        fi
+      fi
+    done
+  done
+
+  error "Could not auto-detect upstream path for api.chatbotgate.click"
+  error "Please set CADDY_UPSTREAM_PATH environment variable manually"
+  error ""
+  error "To find the path, run:"
+  error "  docker exec ${CADDY_CONTAINER} curl ${CADDY_ADMIN_API}/config/apps/http/servers | jq"
+  error ""
+  error "Look for the route with host 'api.chatbotgate.click' and set:"
+  error "  export CADDY_UPSTREAM_PATH='/config/apps/http/servers/SERVER/routes/N/handle/0/upstreams'"
+  return 1
 }
 
 # Validate Docker network connectivity
@@ -259,13 +363,13 @@ switch_traffic() {
   fi
 
   # Update Caddy upstream via Admin API (via docker exec)
-  # NOTE: Adjust API path based on actual Caddy config structure
   local response
-  response=$(docker exec "${CADDY_CONTAINER}" curl -f -X PATCH "${CADDY_ADMIN_API}/config/apps/http/servers/srv0/routes/0/handle/0/upstreams" \
+  response=$(docker exec "${CADDY_CONTAINER}" curl -f -X PATCH "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" \
     -H "Content-Type: application/json" \
     -d "[{\"dial\": \"${container_name}:4000\"}]" 2>&1) || {
       error "Failed to update Caddy upstream"
       error "Response: ${response}"
+      error "Current path: ${CADDY_UPSTREAM_PATH}"
       error "Verify Caddy API path with: docker exec ${CADDY_CONTAINER} curl ${CADDY_ADMIN_API}/config/ | jq"
       return 1
     }
@@ -316,12 +420,12 @@ rollback() {
   # Switch traffic back to active environment (via docker exec)
   log "Reverting Caddy upstream to ${active_container}..."
   local response
-  response=$(docker exec "${CADDY_CONTAINER}" curl -f -X PATCH "${CADDY_ADMIN_API}/config/apps/http/servers/srv0/routes/0/handle/0/upstreams" \
+  response=$(docker exec "${CADDY_CONTAINER}" curl -f -X PATCH "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" \
     -H "Content-Type: application/json" \
     -d "[{\"dial\": \"${active_container}:4000\"}]" 2>&1) || {
       error "⚠️  CRITICAL: Rollback failed - manual intervention required!"
       error "Manual command:"
-      error "docker exec ${CADDY_CONTAINER} curl -X PATCH ${CADDY_ADMIN_API}/config/apps/http/servers/srv0/routes/0/handle/0/upstreams \\"
+      error "docker exec ${CADDY_CONTAINER} curl -X PATCH ${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH} \\"
       error "  -H 'Content-Type: application/json' \\"
       error "  -d '[{\"dial\": \"${active_container}:4000\"}]'"
       exit 2
@@ -412,22 +516,30 @@ main() {
   show_banner
 
   # Step 1: Load state
-  log "📋 Step 1/10: Loading deployment state..."
+  log "📋 Step 1/11: Loading deployment state..."
   load_state
   echo ""
 
-  # Step 2: Pull image from GHCR
-  log "📦 Step 2/10: Pulling Docker image from GHCR..."
+  # Step 2: Validate Caddy upstream path
+  log "🔍 Step 2/11: Validating Caddy upstream path..."
+  if ! validate_caddy_upstream_path; then
+    error "Caddy upstream path validation failed"
+    exit 1
+  fi
+  echo ""
+
+  # Step 3: Pull image from GHCR
+  log "📦 Step 3/11: Pulling Docker image from GHCR..."
   pull_image
   echo ""
 
-  # Step 3: Start inactive environment
-  log "🚀 Step 3/10: Starting inactive environment..."
+  # Step 4: Start inactive environment
+  log "🚀 Step 4/11: Starting inactive environment..."
   start_inactive_env
   echo ""
 
-  # Step 4: Health check
-  log "🏥 Step 4/10: Performing health checks..."
+  # Step 5: Health check
+  log "🏥 Step 5/11: Performing health checks..."
   if ! wait_for_healthy; then
     error "Deployment failed: ${INACTIVE_ENV} is unhealthy"
     echo ""
@@ -440,42 +552,42 @@ main() {
   fi
   echo ""
 
-  # Step 5: Network validation
-  log "🔌 Step 5/10: Validating network connectivity..."
+  # Step 6: Network validation
+  log "🔌 Step 6/11: Validating network connectivity..."
   if ! validate_networks; then
     error "Network validation failed"
     rollback
   fi
   echo ""
 
-  # Step 6: Switch traffic
-  log "🔀 Step 6/10: Switching traffic to new environment..."
+  # Step 7: Switch traffic
+  log "🔀 Step 7/11: Switching traffic to new environment..."
   if ! switch_traffic; then
     error "Failed to switch traffic"
     rollback
   fi
   echo ""
 
-  # Step 7: Validate deployment
-  log "✓ Step 7/10: Validating deployment..."
+  # Step 8: Validate deployment
+  log "✓ Step 8/11: Validating deployment..."
   if ! validate_deployment; then
     error "Validation failed"
     rollback
   fi
   echo ""
 
-  # Step 8: Cleanup old environment
-  log "🧹 Step 8/10: Cleaning up old environment..."
+  # Step 9: Cleanup old environment
+  log "🧹 Step 9/11: Cleaning up old environment..."
   cleanup_old_env
   echo ""
 
-  # Step 9: Update state (flip active/inactive)
-  log "💾 Step 9/10: Updating deployment state..."
+  # Step 10: Update state (flip active/inactive)
+  log "💾 Step 10/11: Updating deployment state..."
   save_state "${INACTIVE_ENV}" "${INACTIVE_PORT}" "${ACTIVE_ENV}" "${ACTIVE_PORT}"
   echo ""
 
-  # Step 10: Cleanup old images
-  log "🗑️  Step 10/10: Cleaning up old images..."
+  # Step 11: Cleanup old images
+  log "🗑️  Step 11/11: Cleaning up old images..."
   cleanup_old_images
   echo ""
 
@@ -488,5 +600,33 @@ main() {
 # Trap errors and handle cleanup
 trap 'error "Deployment failed at line $LINENO"' ERR
 
-# Execute main flow
-main "$@"
+# Execute based on mode
+if [[ "${FIND_UPSTREAM_ONLY}" == "true" ]]; then
+  # Find upstream mode - only detect and display path
+  echo ""
+  echo "╔════════════════════════════════════════════════════════════╗"
+  echo "║        CADDY UPSTREAM PATH DETECTION                      ║"
+  echo "╚════════════════════════════════════════════════════════════╝"
+  echo ""
+
+  if validate_caddy_upstream_path; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "✅ Success! Use this environment variable for deployment:"
+    echo ""
+    echo "  export CADDY_UPSTREAM_PATH='${CADDY_UPSTREAM_PATH}'"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    exit 0
+  else
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "❌ Failed to detect upstream path"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    exit 1
+  fi
+else
+  # Normal deployment mode
+  main "$@"
+fi
