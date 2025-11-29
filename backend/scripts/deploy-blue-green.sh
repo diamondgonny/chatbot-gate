@@ -396,12 +396,19 @@ switch_traffic() {
     return 1
   fi
 
-  # Update Caddy upstream via Admin API (via docker exec)
+  # Update Caddy upstream via Admin API (via docker exec using sh + nc)
   local response
-  response=$(docker exec "${CADDY_CONTAINER}" wget -qO- --method=PATCH \
-    --header="Content-Type: application/json" \
-    --body-data="[{\"dial\": \"${container_name}:4000\"}]" \
-    "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" 2>&1) || {
+  local json_data="[{\"dial\": \"${container_name}:4000\"}]"
+  local content_length=${#json_data}
+
+  response=$(docker exec "${CADDY_CONTAINER}" sh -c "
+    printf 'PATCH ${CADDY_UPSTREAM_PATH} HTTP/1.1\r\n'
+    printf 'Host: localhost:2019\r\n'
+    printf 'Content-Type: application/json\r\n'
+    printf 'Content-Length: ${content_length}\r\n'
+    printf '\r\n'
+    printf '${json_data}'
+  " | docker exec -i "${CADDY_CONTAINER}" nc localhost 2019 2>&1) || {
       error "Failed to update Caddy upstream"
       error "Response: ${response}"
       error "Current path: ${CADDY_UPSTREAM_PATH}"
@@ -452,19 +459,23 @@ rollback() {
   local active_container="chatbot-gate-backend-${ACTIVE_ENV}"
   error "🔄 ROLLBACK: Switching back to ${active_container}"
 
-  # Switch traffic back to active environment (via docker exec)
+  # Switch traffic back to active environment (via docker exec using sh + nc)
   log "Reverting Caddy upstream to ${active_container}..."
   local response
-  response=$(docker exec "${CADDY_CONTAINER}" wget -qO- --method=PATCH \
-    --header="Content-Type: application/json" \
-    --body-data="[{\"dial\": \"${active_container}:4000\"}]" \
-    "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" 2>&1) || {
+  local json_data="[{\"dial\": \"${active_container}:4000\"}]"
+  local content_length=${#json_data}
+
+  response=$(docker exec "${CADDY_CONTAINER}" sh -c "
+    printf 'PATCH ${CADDY_UPSTREAM_PATH} HTTP/1.1\r\n'
+    printf 'Host: localhost:2019\r\n'
+    printf 'Content-Type: application/json\r\n'
+    printf 'Content-Length: ${content_length}\r\n'
+    printf '\r\n'
+    printf '${json_data}'
+  " | docker exec -i "${CADDY_CONTAINER}" nc localhost 2019 2>&1) || {
       error "⚠️  CRITICAL: Rollback failed - manual intervention required!"
       error "Manual command:"
-      error "docker exec ${CADDY_CONTAINER} wget -qO- --method=PATCH \\"
-      error "  --header='Content-Type: application/json' \\"
-      error "  --body-data='[{\"dial\": \"${active_container}:4000\"}]' \\"
-      error "  ${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}"
+      error "docker exec ${CADDY_CONTAINER} sh -c \"printf 'PATCH ${CADDY_UPSTREAM_PATH} HTTP/1.1\\r\\n'; printf 'Host: localhost:2019\\r\\n'; printf 'Content-Type: application/json\\r\\n'; printf 'Content-Length: ${content_length}\\r\\n'; printf '\\r\\n'; printf '${json_data}'\" | docker exec -i ${CADDY_CONTAINER} nc localhost 2019"
       exit 2
     }
 
