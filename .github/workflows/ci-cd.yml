@@ -297,8 +297,9 @@ jobs:
             # Verify deployment
             sleep 5
             source .deployment-state
-            echo "Active environment: ${ACTIVE_ENV} on port ${ACTIVE_PORT}"
-            curl -f http://localhost:${ACTIVE_PORT}/health || exit 1
+            echo "Active environment: ${ACTIVE_ENV}"
+            ACTIVE_CONTAINER="chatbot-gate-backend-${ACTIVE_ENV}"
+            docker exec "${ACTIVE_CONTAINER}" curl -f http://localhost:4000/health || exit 1
 
             # Cleanup old images (keep current version and last 2 versions)
             docker image prune -f
@@ -366,8 +367,9 @@ jobs:
             # Verify deployment
             sleep 5
             source .deployment-state
-            echo "Active environment: ${ACTIVE_ENV} on port ${ACTIVE_PORT}"
-            curl -f http://localhost:${ACTIVE_PORT}/health || exit 1
+            echo "Active environment: ${ACTIVE_ENV}"
+            ACTIVE_CONTAINER="chatbot-gate-backend-${ACTIVE_ENV}"
+            docker exec "${ACTIVE_CONTAINER}" curl -f http://localhost:4000/health || exit 1
 
             # Cleanup old images (keep current version and last 2 versions)
             docker image prune -f

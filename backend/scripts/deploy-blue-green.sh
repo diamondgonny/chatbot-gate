@@ -55,6 +55,38 @@ warning() {
   echo -e "${YELLOW}$(date '+%Y-%m-%d %H:%M:%S') - ⚠️${NC} $*"
 }
 
+# Validate Docker network connectivity
+validate_networks() {
+  log "Validating Docker network connectivity..."
+
+  # Check network exists
+  if ! docker network inspect caddy_downstream > /dev/null 2>&1; then
+    error "caddy_downstream network does not exist"
+    error "Create: docker network create caddy_downstream"
+    return 1
+  fi
+
+  local container_name="chatbot-gate-backend-${INACTIVE_ENV}"
+
+  # Verify container on network
+  local network_check
+  network_check=$(docker inspect "${container_name}" --format '{{json .NetworkSettings.Networks}}' | grep -c "caddy_downstream" || echo "0")
+
+  if [ "$network_check" -eq 0 ]; then
+    error "Container not on caddy_downstream network"
+    return 1
+  fi
+
+  # Test DNS resolution from Caddy
+  if docker exec caddy getent hosts "${container_name}" > /dev/null 2>&1; then
+    success "Caddy can resolve ${container_name}"
+  else
+    warning "Caddy cannot resolve ${container_name} (may be OK if caddy not running)"
+  fi
+
+  return 0
+}
+
 # Load deployment state
 load_state() {
   if [[ ! -f "$STATE_FILE" ]]; then
@@ -203,44 +235,50 @@ wait_for_healthy() {
 
 # Switch Caddy upstream
 switch_traffic() {
-  log "Switching traffic from ${ACTIVE_ENV}:${ACTIVE_PORT} to ${INACTIVE_ENV}:${INACTIVE_PORT}"
+  local container_name="chatbot-gate-backend-${INACTIVE_ENV}"
+  log "Switching traffic from ${ACTIVE_ENV} to ${container_name}"
 
-  # First, verify Caddy Admin API is accessible
+  # Verify Caddy Admin API accessible
   if ! curl -f -s "${CADDY_ADMIN_API}/config/" > /dev/null 2>&1; then
-    error "Caddy Admin API is not accessible at ${CADDY_ADMIN_API}"
-    error "Make sure Caddy is running and Admin API is enabled"
+    error "Caddy Admin API not accessible at ${CADDY_ADMIN_API}"
+    error "Make sure Caddy is running"
+    return 1
+  fi
+
+  # Verify container exists and is on network
+  if ! docker inspect "${container_name}" > /dev/null 2>&1; then
+    error "Container ${container_name} does not exist"
     return 1
   fi
 
   # Update Caddy upstream via Admin API
-  # This updates the reverse_proxy upstream to point to the new port
+  # NOTE: Adjust API path based on actual Caddy config structure
   local response
-  response=$(curl -f -X PATCH "${CADDY_ADMIN_API}/config/apps/http/servers/srv0/routes/0/handle/0" \
+  response=$(curl -f -X PATCH "${CADDY_ADMIN_API}/config/apps/http/servers/srv0/routes/0/handle/0/upstreams" \
     -H "Content-Type: application/json" \
-    -d "{
-      \"upstreams\": [{
-        \"dial\": \"localhost:${INACTIVE_PORT}\"
-      }]
-    }" 2>&1) || {
+    -d "[{\"dial\": \"${container_name}:4000\"}]" 2>&1) || {
       error "Failed to update Caddy upstream"
       error "Response: ${response}"
+      error "Verify Caddy API path with: curl ${CADDY_ADMIN_API}/config/ | jq"
       return 1
     }
 
-  success "Traffic switched to ${INACTIVE_ENV} on port ${INACTIVE_PORT}"
+  success "Traffic switched to ${container_name}:4000"
   return 0
 }
 
 # Validate new environment
 validate_deployment() {
-  log "Validating ${INACTIVE_ENV} for ${VALIDATION_PERIOD}s..."
+  local container_name="chatbot-gate-backend-${INACTIVE_ENV}"
+  log "Validating ${container_name} for ${VALIDATION_PERIOD}s..."
 
   local checks=0
   local failures=0
   local max_checks=$((VALIDATION_PERIOD / 2))
 
   while [ $checks -lt $max_checks ]; do
-    if ! curl -f -s "http://localhost:${INACTIVE_PORT}/health" > /dev/null; then
+    # Health check via docker exec (no port binding needed)
+    if ! docker exec "${container_name}" curl -f -s http://localhost:4000/health > /dev/null 2>&1; then
       failures=$((failures + 1))
       warning "Health check failed (${failures} failures)"
     else
@@ -255,7 +293,7 @@ validate_deployment() {
 
   # Allow up to 1 transient failure
   if [ $failures -gt 1 ]; then
-    error "Too many health check failures during validation: ${failures}"
+    error "Too many health check failures: ${failures}"
     return 1
   fi
 
@@ -265,25 +303,24 @@ validate_deployment() {
 
 # Rollback function
 rollback() {
-  error "🔄 ROLLBACK: Switching back to ${ACTIVE_ENV}:${ACTIVE_PORT}"
+  local active_container="chatbot-gate-backend-${ACTIVE_ENV}"
+  error "🔄 ROLLBACK: Switching back to ${active_container}"
 
   # Switch traffic back to active environment
-  log "Reverting Caddy upstream to ${ACTIVE_ENV}..."
+  log "Reverting Caddy upstream to ${active_container}..."
   local response
-  response=$(curl -f -X PATCH "${CADDY_ADMIN_API}/config/apps/http/servers/srv0/routes/0/handle/0" \
+  response=$(curl -f -X PATCH "${CADDY_ADMIN_API}/config/apps/http/servers/srv0/routes/0/handle/0/upstreams" \
     -H "Content-Type: application/json" \
-    -d "{
-      \"upstreams\": [{
-        \"dial\": \"localhost:${ACTIVE_PORT}\"
-      }]
-    }" 2>&1) || {
+    -d "[{\"dial\": \"${active_container}:4000\"}]" 2>&1) || {
       error "⚠️  CRITICAL: Rollback failed - manual intervention required!"
-      error "Manually switch Caddy to port ${ACTIVE_PORT}"
-      error "Response: ${response}"
+      error "Manual command:"
+      error "curl -X PATCH ${CADDY_ADMIN_API}/config/apps/http/servers/srv0/routes/0/handle/0/upstreams \\"
+      error "  -H 'Content-Type: application/json' \\"
+      error "  -d '[{\"dial\": \"${active_container}:4000\"}]'"
       exit 2
     }
 
-  success "Traffic reverted to ${ACTIVE_ENV}"
+  success "Traffic reverted to ${active_container}:4000"
 
   # Stop failed inactive environment
   log "Stopping failed ${INACTIVE_ENV} environment..."
@@ -368,22 +405,22 @@ main() {
   show_banner
 
   # Step 1: Load state
-  log "📋 Step 1/9: Loading deployment state..."
+  log "📋 Step 1/10: Loading deployment state..."
   load_state
   echo ""
 
   # Step 2: Pull image from GHCR
-  log "📦 Step 2/9: Pulling Docker image from GHCR..."
+  log "📦 Step 2/10: Pulling Docker image from GHCR..."
   pull_image
   echo ""
 
   # Step 3: Start inactive environment
-  log "🚀 Step 3/9: Starting inactive environment..."
+  log "🚀 Step 3/10: Starting inactive environment..."
   start_inactive_env
   echo ""
 
   # Step 4: Health check
-  log "🏥 Step 4/9: Performing health checks..."
+  log "🏥 Step 4/10: Performing health checks..."
   if ! wait_for_healthy; then
     error "Deployment failed: ${INACTIVE_ENV} is unhealthy"
     echo ""
@@ -396,34 +433,42 @@ main() {
   fi
   echo ""
 
-  # Step 5: Switch traffic
-  log "🔀 Step 5/9: Switching traffic to new environment..."
+  # Step 5: Network validation
+  log "🔌 Step 5/10: Validating network connectivity..."
+  if ! validate_networks; then
+    error "Network validation failed"
+    rollback
+  fi
+  echo ""
+
+  # Step 6: Switch traffic
+  log "🔀 Step 6/10: Switching traffic to new environment..."
   if ! switch_traffic; then
     error "Failed to switch traffic"
     rollback
   fi
   echo ""
 
-  # Step 6: Validate deployment
-  log "✓ Step 6/9: Validating deployment..."
+  # Step 7: Validate deployment
+  log "✓ Step 7/10: Validating deployment..."
   if ! validate_deployment; then
     error "Validation failed"
     rollback
   fi
   echo ""
 
-  # Step 7: Cleanup old environment
-  log "🧹 Step 7/9: Cleaning up old environment..."
+  # Step 8: Cleanup old environment
+  log "🧹 Step 8/10: Cleaning up old environment..."
   cleanup_old_env
   echo ""
 
-  # Step 8: Update state (flip active/inactive)
-  log "💾 Step 8/9: Updating deployment state..."
+  # Step 9: Update state (flip active/inactive)
+  log "💾 Step 9/10: Updating deployment state..."
   save_state "${INACTIVE_ENV}" "${INACTIVE_PORT}" "${ACTIVE_ENV}" "${ACTIVE_PORT}"
   echo ""
 
-  # Step 9: Cleanup old images
-  log "🗑️  Step 9/9: Cleaning up old images..."
+  # Step 10: Cleanup old images
+  log "🗑️  Step 10/10: Cleaning up old images..."
   cleanup_old_images
   echo ""
 
