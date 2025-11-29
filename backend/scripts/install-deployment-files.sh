@@ -7,9 +7,9 @@ set -euo pipefail
 ENVIRONMENT=${1:-staging}
 
 if [ "$ENVIRONMENT" = "staging" ]; then
-    DEPLOY_DIR="/opt/chatbot-gate/backend"
+    DEPLOY_DIR="/home/user/lab/apps/chatbot-gate-backend-staging"
 elif [ "$ENVIRONMENT" = "production" ]; then
-    DEPLOY_DIR="/home/user/lab/apps/chatbot-gate/backend"
+    DEPLOY_DIR="/home/user/lab/apps/chatbot-gate-backend"
 else
     echo "Error: Invalid environment. Use 'staging' or 'production'"
     exit 1
