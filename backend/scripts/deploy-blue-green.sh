@@ -235,7 +235,7 @@ validate_networks() {
 load_state() {
   if [[ ! -f "$STATE_FILE" ]]; then
     error "State file not found: $STATE_FILE"
-    error "Run './scripts/setup-deployment.sh' first"
+    error "Run './scripts/init-setup-deployment.sh' first"
     exit 1
   fi
 
