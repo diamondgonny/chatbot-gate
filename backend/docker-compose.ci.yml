@@ -36,4 +36,7 @@ services:
     networks:
       - internal
 
-  # MongoDB inherited from base docker-compose.yml
+networks:
+  internal:
+    driver: bridge
+    internal: false
