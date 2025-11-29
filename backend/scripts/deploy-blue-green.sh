@@ -25,6 +25,13 @@ for arg in "$@"; do
   esac
 done
 
+# Colors for output (define early for use in validation)
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
 STATE_FILE="${REPO_ROOT}/.deployment-state"
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.yml"
 IMAGE_NAME="chatbot-gate-backend"
@@ -51,13 +58,6 @@ VALIDATION_PERIOD=10
 CADDY_CONTAINER="caddy"  # Caddy container name
 CADDY_ADMIN_API="http://localhost:2019"  # Internal to Caddy container
 CADDY_UPSTREAM_PATH="${CADDY_UPSTREAM_PATH:-}"  # Auto-detect or set via env var
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
 
 # Logging functions
 log() {
