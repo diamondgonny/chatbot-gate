@@ -121,15 +121,24 @@ import json, sys
 def find_upstreams_path(routes, base_path, target_host="api.chatbotgate.click"):
     """Recursively search for upstreams in route handlers (including subroutes)"""
     for idx, route in enumerate(routes):
-        # Check if this route matches our target host
-        matches = route.get("match", [])
-        for match in matches:
-            if target_host in match.get("host", []):
-                # Found matching route, search handlers recursively
-                handlers = route.get("handle", [])
-                path = search_handlers(handlers, f"{base_path}/routes/{idx}/handle")
-                if path:
-                    return path
+        # If target_host is set, check if this route matches
+        if target_host:
+            matches = route.get("match", [])
+            host_found = False
+            for match in matches:
+                if target_host in match.get("host", []):
+                    host_found = True
+                    break
+
+            if not host_found:
+                continue
+
+        # Found matching route (or no target_host filter), search handlers
+        handlers = route.get("handle", [])
+        path = search_handlers(handlers, f"{base_path}/routes/{idx}/handle")
+        if path:
+            return path
+
     return None
 
 def search_handlers(handlers, base_path):
