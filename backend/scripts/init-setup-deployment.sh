@@ -151,7 +151,7 @@ ACTIVE_PORT=4000
 INACTIVE_ENV=green
 INACTIVE_PORT=4001
 LAST_DEPLOYMENT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-VERSION=initial
+VERSION=main
 EOF
 
     # Set proper permissions
