@@ -11,6 +11,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
+STATE_FILE=".deployment-state"
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -133,14 +135,23 @@ main() {
 
   # Step 3: Initialize deployment state
   log "Step 3/5: Initializing deployment state..."
-  if [[ -f "${SCRIPT_DIR}/init-deployment-state.sh" ]]; then
-    if ! "${SCRIPT_DIR}/init-deployment-state.sh"; then
-      error "Failed to initialize deployment state"
-      exit 1
-    fi
+
+  if [[ -f "$STATE_FILE" ]]; then
+    log "Deployment state file already exists"
   else
-    error "init-deployment-state.sh not found"
-    exit 1
+    # Create initial state file with blue as active
+    cat > "$STATE_FILE" << EOF
+ACTIVE_ENV=blue
+ACTIVE_PORT=4000
+INACTIVE_ENV=green
+INACTIVE_PORT=4001
+LAST_DEPLOYMENT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+VERSION=initial
+EOF
+
+    # Set proper permissions
+    chmod 644 "$STATE_FILE"
+    success "Created deployment state file"
   fi
   echo ""
 
