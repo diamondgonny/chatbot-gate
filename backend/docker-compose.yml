@@ -152,6 +152,7 @@ services:
 networks:
   chatbot-gate_internal:
     driver: bridge
+    internal: true
   caddy_downstream:
     external: true
 
