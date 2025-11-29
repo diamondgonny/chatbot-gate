@@ -32,8 +32,8 @@ mkdir -p "${BACKUP_DIR}"
 
 echo "Creating MongoDB backup: ${BACKUP_NAME}"
 
-# Run mongodump inside the container
-docker compose -f "${COMPOSE_FILE}" exec -T mongodb mongodump \
+# Run mongodump inside the container as the current host user to avoid root-owned files
+docker compose -f "${COMPOSE_FILE}" exec -T --user "$(id -u):$(id -g)" mongodb mongodump \
   --username="${MONGO_INITDB_ROOT_USERNAME}" \
   --password="${MONGO_INITDB_ROOT_PASSWORD}" \
   --authenticationDatabase=admin \
