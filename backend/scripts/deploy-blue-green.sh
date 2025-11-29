@@ -12,10 +12,18 @@ cd "${REPO_ROOT}"
 
 STATE_FILE="${REPO_ROOT}/.deployment-state"
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.yml"
-VERSION="${VERSION:-$(git rev-parse --short HEAD 2>/dev/null || echo 'dev')}"
+VERSION="${VERSION:?VERSION environment variable is required}"
 IMAGE_NAME="chatbot-gate-backend"
 GITHUB_REPO="${GITHUB_REPO:-owner/chatbot-gate}"
 IMAGE_FULL_NAME="ghcr.io/${GITHUB_REPO}/chatbot-gate-backend"
+
+# Validate VERSION is set and not empty
+if [[ -z "${VERSION}" ]]; then
+  echo -e "${RED}ERROR: VERSION environment variable is not set${NC}"
+  echo -e "${RED}This must be set by the CI/CD pipeline${NC}"
+  exit 1
+fi
+echo -e "${BLUE}Deploying version: ${VERSION}${NC}"
 
 # Configuration
 HEALTH_CHECK_MAX_WAIT=90
