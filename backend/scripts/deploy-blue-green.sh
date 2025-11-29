@@ -384,7 +384,7 @@ switch_traffic() {
   fi
 
   # Verify Caddy Admin API accessible (via docker exec)
-  if ! docker exec "${CADDY_CONTAINER}" curl -f -s "${CADDY_ADMIN_API}/config/" > /dev/null 2>&1; then
+  if ! docker exec "${CADDY_CONTAINER}" wget -qO- "${CADDY_ADMIN_API}/config/" > /dev/null 2>&1; then
     error "Caddy Admin API not accessible inside container"
     error "Make sure Caddy is running properly"
     return 1
@@ -398,13 +398,14 @@ switch_traffic() {
 
   # Update Caddy upstream via Admin API (via docker exec)
   local response
-  response=$(docker exec "${CADDY_CONTAINER}" curl -f -X PATCH "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" \
-    -H "Content-Type: application/json" \
-    -d "[{\"dial\": \"${container_name}:4000\"}]" 2>&1) || {
+  response=$(docker exec "${CADDY_CONTAINER}" wget -qO- --method=PATCH \
+    --header="Content-Type: application/json" \
+    --body-data="[{\"dial\": \"${container_name}:4000\"}]" \
+    "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" 2>&1) || {
       error "Failed to update Caddy upstream"
       error "Response: ${response}"
       error "Current path: ${CADDY_UPSTREAM_PATH}"
-      error "Verify Caddy API path with: docker exec ${CADDY_CONTAINER} curl ${CADDY_ADMIN_API}/config/ | jq"
+      error "Verify Caddy API path with: docker exec ${CADDY_CONTAINER} wget -qO- ${CADDY_ADMIN_API}/config/"
       return 1
     }
 
@@ -423,7 +424,7 @@ validate_deployment() {
 
   while [ $checks -lt $max_checks ]; do
     # Health check via docker exec (no port binding needed)
-    if ! docker exec "${container_name}" curl -f -s http://localhost:4000/health > /dev/null 2>&1; then
+    if ! docker exec "${container_name}" wget -qO- http://localhost:4000/health > /dev/null 2>&1; then
       failures=$((failures + 1))
       warning "Health check failed (${failures} failures)"
     else
@@ -454,14 +455,16 @@ rollback() {
   # Switch traffic back to active environment (via docker exec)
   log "Reverting Caddy upstream to ${active_container}..."
   local response
-  response=$(docker exec "${CADDY_CONTAINER}" curl -f -X PATCH "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" \
-    -H "Content-Type: application/json" \
-    -d "[{\"dial\": \"${active_container}:4000\"}]" 2>&1) || {
+  response=$(docker exec "${CADDY_CONTAINER}" wget -qO- --method=PATCH \
+    --header="Content-Type: application/json" \
+    --body-data="[{\"dial\": \"${active_container}:4000\"}]" \
+    "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" 2>&1) || {
       error "⚠️  CRITICAL: Rollback failed - manual intervention required!"
       error "Manual command:"
-      error "docker exec ${CADDY_CONTAINER} curl -X PATCH ${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH} \\"
-      error "  -H 'Content-Type: application/json' \\"
-      error "  -d '[{\"dial\": \"${active_container}:4000\"}]'"
+      error "docker exec ${CADDY_CONTAINER} wget -qO- --method=PATCH \\"
+      error "  --header='Content-Type: application/json' \\"
+      error "  --body-data='[{\"dial\": \"${active_container}:4000\"}]' \\"
+      error "  ${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}"
       exit 2
     }
 
