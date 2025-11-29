@@ -270,8 +270,7 @@ jobs:
             # Set working directory
             cd /home/user/lab/apps/chatbot-gate-backend-staging
 
-            # Login to GHCR
-            echo "${{ secrets.GHCR_DEPLOY_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+            # Public repository - no GHCR login needed
 
             # Set environment variables for deployment
             PRIMARY_TAG="${{ needs.build-and-push.outputs.primary-tag }}"
@@ -340,8 +339,7 @@ jobs:
             # Set working directory
             cd /home/user/lab/apps/chatbot-gate-backend
 
-            # Login to GHCR
-            echo "${{ secrets.GHCR_DEPLOY_TOKEN }}" | docker login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+            # Public repository - no GHCR login needed
 
             # Set environment variables for deployment
             PRIMARY_TAG="${{ needs.build-and-push.outputs.primary-tag }}"

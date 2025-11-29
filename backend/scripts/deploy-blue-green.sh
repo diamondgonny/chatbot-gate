@@ -289,16 +289,8 @@ pull_image() {
     log "Pulling image from GHCR: ${PULL_TARGET}"
   fi
 
-  # Verify GHCR authentication
-  if ! docker info | grep -q "Username:"; then
-    warning "Not logged into GHCR - attempting login..."
-    if [[ -n "${GHCR_TOKEN:-}" ]]; then
-      echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USERNAME:-$USER}" --password-stdin
-    else
-      error "GHCR_TOKEN not set and not logged in to GHCR"
-      exit 1
-    fi
-  fi
+  # Public repository - no authentication required
+  log "Pulling from public GHCR repository..."
 
   # Pull with retry logic
   local retries=3
