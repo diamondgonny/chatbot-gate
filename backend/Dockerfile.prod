@@ -48,7 +48,7 @@ RUN npm run build && \
 FROM node:20.18.1-alpine AS production
 
 # Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init curl
+RUN apk add --no-cache dumb-init
 
 # Security: Run as non-root
 RUN addgroup --system --gid 1001 nodejs && \
