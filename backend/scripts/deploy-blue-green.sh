@@ -76,8 +76,8 @@ warning() {
   echo -e "${YELLOW}$(date '+%Y-%m-%d %H:%M:%S') - ⚠️${NC} $*"
 }
 
-# Auto-detect and validate Caddy upstream path
-# Uses Python (if available) or brute-force method (no external dependencies required)
+# Auto-detect Caddy upstream path for api.chatbotgate.click
+# Handles nested subroute structures automatically
 validate_caddy_upstream_path() {
   log "Detecting Caddy upstream path for api.chatbotgate.click..."
 
@@ -90,7 +90,7 @@ validate_caddy_upstream_path() {
   # If path already set via env var, validate it
   if [[ -n "${CADDY_UPSTREAM_PATH}" ]]; then
     log "Using provided path: ${CADDY_UPSTREAM_PATH}"
-    if docker exec "${CADDY_CONTAINER}" curl -f -s "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" > /dev/null 2>&1; then
+    if docker exec "${CADDY_CONTAINER}" wget -qO- "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" > /dev/null 2>&1; then
       success "Caddy upstream path validated: ${CADDY_UPSTREAM_PATH}"
       return 0
     else
@@ -98,105 +98,99 @@ validate_caddy_upstream_path() {
     fi
   fi
 
-  # Method 1: Try Python-based detection (most reliable if available)
-  if command -v python3 &> /dev/null; then
-    log "Attempting Python-based detection..."
+  # Fetch Caddy configuration
+  local config
+  config=$(docker exec "${CADDY_CONTAINER}" wget -qO- "${CADDY_ADMIN_API}/config/apps/http/servers" 2>/dev/null)
 
-    local config
-    config=$(docker exec "${CADDY_CONTAINER}" curl -s "${CADDY_ADMIN_API}/config/apps/http/servers")
+  if [ -z "$config" ]; then
+    error "Failed to fetch Caddy configuration"
+    return 1
+  fi
 
-    if [ -z "$config" ]; then
-      error "Failed to fetch Caddy configuration"
-      return 1
-    fi
+  # Python-based recursive detection (handles nested subroutes)
+  if ! command -v python3 &> /dev/null; then
+    error "Python3 is required for auto-detection but not found"
+    error "Install: apt-get install python3 or yum install python3"
+    return 1
+  fi
 
-    local result
-    result=$(echo "$config" | python3 -c "
+  local result
+  result=$(echo "$config" | python3 -c '
 import json, sys
+
+def find_upstreams_path(routes, base_path, target_host="api.chatbotgate.click"):
+    """Recursively search for upstreams in route handlers (including subroutes)"""
+    for idx, route in enumerate(routes):
+        # Check if this route matches our target host
+        matches = route.get("match", [])
+        for match in matches:
+            if target_host in match.get("host", []):
+                # Found matching route, search handlers recursively
+                handlers = route.get("handle", [])
+                path = search_handlers(handlers, f"{base_path}/routes/{idx}/handle")
+                if path:
+                    return path
+    return None
+
+def search_handlers(handlers, base_path):
+    """Search for upstreams in handler array (supports nested subroutes)"""
+    for idx, handler in enumerate(handlers):
+        handler_path = f"{base_path}/{idx}"
+
+        # Direct upstreams found
+        if "upstreams" in handler:
+            for upstream in handler["upstreams"]:
+                if "chatbot-gate-backend" in upstream.get("dial", ""):
+                    return f"{handler_path}/upstreams"
+
+        # Nested subroute handler
+        if handler.get("handler") == "subroute":
+            nested_routes = handler.get("routes", [])
+            path = find_upstreams_path(nested_routes, handler_path, target_host=None)
+            if path:
+                return path
+
+    return None
+
 try:
     data = json.load(sys.stdin)
     for server_name, server_config in data.items():
-        routes = server_config.get('routes', [])
-        for idx, route in enumerate(routes):
-            matches = route.get('match', [])
-            for match in matches:
-                hosts = match.get('host', [])
-                if 'api.chatbotgate.click' in hosts:
-                    path = f'/config/apps/http/servers/{server_name}/routes/{idx}/handle/0/upstreams'
-                    print(path)
-                    sys.exit(0)
-except:
+        routes = server_config.get("routes", [])
+        base_path = f"/config/apps/http/servers/{server_name}"
+        result = find_upstreams_path(routes, base_path)
+        if result:
+            print(result)
+            sys.exit(0)
+except Exception:
     pass
-" 2>/dev/null)
+' 2>/dev/null)
 
-    if [[ -n "$result" ]]; then
-      CADDY_UPSTREAM_PATH="$result"
+  if [[ -z "$result" ]]; then
+    error "Could not find upstream path for api.chatbotgate.click"
+    error "Set manually: export CADDY_UPSTREAM_PATH='/config/apps/http/servers/...'"
+    return 1
+  fi
 
-      # Verify path is accessible
-      if docker exec "${CADDY_CONTAINER}" curl -f -s "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" > /dev/null 2>&1; then
-        success "Auto-detected upstream path (Python): ${CADDY_UPSTREAM_PATH}"
+  CADDY_UPSTREAM_PATH="$result"
+  success "Auto-detected upstream path: ${CADDY_UPSTREAM_PATH}"
 
-        # Show current upstream
-        local current_upstream
-        current_upstream=$(docker exec "${CADDY_CONTAINER}" curl -s "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" | python3 -c "
+  # Show current upstream
+  local current_upstream
+  current_upstream=$(docker exec "${CADDY_CONTAINER}" wget -qO- "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" 2>/dev/null | python3 -c '
 import json, sys
 try:
     data = json.load(sys.stdin)
     if data and len(data) > 0:
-        print(data[0].get('dial', ''))
+        print(data[0].get("dial", ""))
 except:
     pass
-" 2>/dev/null)
+' 2>/dev/null)
 
-        if [[ -n "$current_upstream" ]]; then
-          log "Current upstream: ${current_upstream}"
-        fi
-
-        return 0
-      fi
-    fi
+  if [[ -n "$current_upstream" ]]; then
+    log "Current upstream: ${current_upstream}"
   fi
 
-  # Method 2: Brute-force fallback (no external dependencies)
-  log "Python not available or failed, using brute-force method..."
-
-  local servers=("srv0" "srv1" "srv2" "chatbot_gate" "api" "default")
-
-  for server in "${servers[@]}"; do
-    for i in {0..9}; do
-      local test_path="/config/apps/http/servers/$server/routes/$i/handle/0/upstreams"
-
-      # Test if path exists and contains our backend
-      local upstreams
-      upstreams=$(docker exec "${CADDY_CONTAINER}" curl -s "${CADDY_ADMIN_API}${test_path}" 2>/dev/null)
-
-      if echo "$upstreams" | grep -q "chatbot-gate-backend"; then
-        CADDY_UPSTREAM_PATH="$test_path"
-        success "Auto-detected upstream path (brute-force): ${CADDY_UPSTREAM_PATH}"
-
-        # Extract current upstream (simple grep)
-        local current_upstream
-        current_upstream=$(echo "$upstreams" | grep -o '"dial":"[^"]*"' | head -1 | cut -d'"' -f4)
-
-        if [[ -n "$current_upstream" ]]; then
-          log "Current upstream: ${current_upstream}"
-        fi
-
-        return 0
-      fi
-    done
-  done
-
-  # All methods failed
-  error "Could not auto-detect upstream path for api.chatbotgate.click"
-  error "Please set CADDY_UPSTREAM_PATH environment variable manually"
-  error ""
-  error "To find the path, run:"
-  error "  docker exec ${CADDY_CONTAINER} curl ${CADDY_ADMIN_API}/config/apps/http/servers"
-  error ""
-  error "Look for the route with host 'api.chatbotgate.click' and set:"
-  error "  export CADDY_UPSTREAM_PATH='/config/apps/http/servers/SERVER/routes/N/handle/0/upstreams'"
-  return 1
+  return 0
 }
 
 # Validate Docker network connectivity
