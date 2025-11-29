@@ -552,12 +552,12 @@ show_summary() {
 
 # Main deployment flow
 main() {
-  show_banner
-
   # Step 1: Load state
   log "📋 Step 1/11: Loading deployment state..."
   load_state
   echo ""
+
+  show_banner
 
   # Step 2: Validate Caddy upstream path
   log "🔍 Step 2/11: Validating Caddy upstream path..."
