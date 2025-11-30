@@ -228,11 +228,6 @@ EOF
   echo "State file initialized:"
   echo "  📄 ./.deployment-state"
   echo ""
-  echo "Next steps:"
-  echo "  1. Configure .env file with required secrets"
-  echo "  2. Start MongoDB: docker compose up -d mongodb"
-  echo "  3. Run deployment: ./scripts/deploy-blue-green.sh"
-  echo ""
 }
 
 # Run main
