@@ -13,6 +13,8 @@ BACKUP_DIR="${REPO_ROOT}/backups/mongodb"
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.yml"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_NAME="chatbot_gate_${TIMESTAMP}"
+HOST_UID="$(id -u)"
+HOST_GID="$(id -g)"
 
 # Load environment variables
 if [ -f "${REPO_ROOT}/.env.local" ]; then
@@ -32,8 +34,12 @@ mkdir -p "${BACKUP_DIR}"
 
 echo "Creating MongoDB backup: ${BACKUP_NAME}"
 
+# Ensure the backup volume inside the container is writable by the host user
+docker compose -f "${COMPOSE_FILE}" exec -T mongodb sh -c \
+  "chown -R ${HOST_UID}:${HOST_GID} /backups && chmod -R u+rwX /backups"
+
 # Run mongodump inside the container as the current host user to avoid root-owned files
-docker compose -f "${COMPOSE_FILE}" exec -T --user "$(id -u):$(id -g)" mongodb mongodump \
+docker compose -f "${COMPOSE_FILE}" exec -T --user "${HOST_UID}:${HOST_GID}" mongodb mongodump \
   --username="${MONGO_INITDB_ROOT_USERNAME}" \
   --password="${MONGO_INITDB_ROOT_PASSWORD}" \
   --authenticationDatabase=admin \
