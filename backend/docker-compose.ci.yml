@@ -4,7 +4,7 @@
 services:
   # Backend service for CI testing (not blue-green)
   backend:
-    image: ghcr.io/${GITHUB_REPO}/chatbot-gate-backend:${VERSION:-latest}
+    image: ghcr.io/${GITHUB_REPO:-diamondgonny/chatbot-gate}/chatbot-gate-backend:${VERSION:-latest}
     container_name: chatbot-gate-backend-ci
     pull_policy: always
 

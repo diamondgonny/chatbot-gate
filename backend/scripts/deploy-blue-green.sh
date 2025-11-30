@@ -35,7 +35,7 @@ NC='\033[0m' # No Color
 STATE_FILE="${REPO_ROOT}/.deployment-state"
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.yml"
 IMAGE_NAME="chatbot-gate-backend"
-GITHUB_REPO="${GITHUB_REPO:-owner/chatbot-gate}"
+GITHUB_REPO="${GITHUB_REPO:-diamondgonny/chatbot-gate}"
 IMAGE_FULL_NAME="ghcr.io/${GITHUB_REPO}/chatbot-gate-backend"
 
 # VERSION validation (skip for --find-upstream mode)
@@ -278,7 +278,8 @@ pull_image() {
   local TAG_ONLY
 
   if [[ "$VERSION" == ghcr.io/* ]]; then
-    # VERSION is a full GHCR tag (e.g., ghcr.io/owner/repo/chatbot-gate-backend:main-abc123)
+    # VERSION is a full GHCR tag
+    # (e.g., ghcr.io/diamondgonny/chatbot-gate/chatbot-gate-backend:main-abc123)
     PULL_TARGET="$VERSION"
     TAG_ONLY=$(echo "$VERSION" | awk -F: '{print $NF}')
     log "Pulling image from GHCR (full tag): ${PULL_TARGET}"

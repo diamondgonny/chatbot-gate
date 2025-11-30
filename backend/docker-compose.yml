@@ -43,7 +43,7 @@ services:
 
   # Blue Environment (Port 4000)
   backend-blue:
-    image: ghcr.io/${GITHUB_REPO}/chatbot-gate-backend:${VERSION:-latest}
+    image: ghcr.io/${GITHUB_REPO:-diamondgonny/chatbot-gate}/chatbot-gate-backend:${VERSION:-latest}
     pull_policy: always
     container_name: chatbot-gate-backend-blue
     restart: unless-stopped
@@ -97,7 +97,7 @@ services:
 
   # Green Environment (Port 4001)
   backend-green:
-    image: ghcr.io/${GITHUB_REPO}/chatbot-gate-backend:${VERSION:-latest}
+    image: ghcr.io/${GITHUB_REPO:-diamondgonny/chatbot-gate}/chatbot-gate-backend:${VERSION:-latest}
     pull_policy: always
     container_name: chatbot-gate-backend-green
     restart: unless-stopped
