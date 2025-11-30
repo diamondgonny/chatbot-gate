@@ -46,7 +46,7 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 # Run mongorestore inside the container
-docker compose -f "${REPO_ROOT}/docker-compose.yml" exec -T mongodb mongorestore \
+docker compose -f "${REPO_ROOT}/docker-compose.yml" --profile db exec -T mongodb mongorestore \
   --username="${MONGO_INITDB_ROOT_USERNAME}" \
   --password="${MONGO_INITDB_ROOT_PASSWORD}" \
   --authenticationDatabase=admin \

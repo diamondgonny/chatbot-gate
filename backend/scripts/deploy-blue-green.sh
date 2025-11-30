@@ -37,6 +37,7 @@ COMPOSE_FILE="${REPO_ROOT}/docker-compose.yml"
 IMAGE_NAME="chatbot-gate-backend"
 GITHUB_REPO="${GITHUB_REPO:-diamondgonny/chatbot-gate}"
 IMAGE_FULL_NAME="ghcr.io/${GITHUB_REPO}/chatbot-gate-backend"
+DB_PROFILE="--profile db"
 
 # VERSION validation (skip for --find-upstream mode)
 if [[ "${FIND_UPSTREAM_ONLY}" == "false" ]]; then
@@ -326,11 +327,11 @@ start_inactive_env() {
 
   # Stop and remove if exists
   log "Cleaning up any existing ${INACTIVE_ENV} containers..."
-  docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" down 2>/dev/null || true
+  docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} rm -s -f "backend-${INACTIVE_ENV}" 2>/dev/null || true
 
   # Start with profile
   log "Starting backend-${INACTIVE_ENV}..."
-  if ! docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" up -d "backend-${INACTIVE_ENV}"; then
+  if ! docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} up -d --no-deps --force-recreate "backend-${INACTIVE_ENV}"; then
     error "Failed to start ${INACTIVE_ENV} environment"
     exit 1
   fi
@@ -484,7 +485,8 @@ rollback() {
 
   # Stop failed inactive environment
   log "Stopping failed ${INACTIVE_ENV} environment..."
-  docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" down || true
+  docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} stop -t 10 "backend-${INACTIVE_ENV}" 2>/dev/null || true
+  docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} rm -f "backend-${INACTIVE_ENV}" 2>/dev/null || true
 
   # Log rollback event
   echo "ROLLBACK - $(date -u +"%Y-%m-%dT%H:%M:%SZ") - Attempted: ${INACTIVE_ENV} → Reverted to: ${ACTIVE_ENV} - Version: ${VERSION}" >> deployment-rollback.log
@@ -499,11 +501,11 @@ cleanup_old_env() {
 
   # Graceful shutdown with 30s timeout
   log "Stopping ${ACTIVE_ENV} container..."
-  docker compose -f "${COMPOSE_FILE}" --profile "${ACTIVE_ENV}" stop -t 30 "backend-${ACTIVE_ENV}" 2>/dev/null || true
+  docker compose -f "${COMPOSE_FILE}" --profile "${ACTIVE_ENV}" ${DB_PROFILE} stop -t 30 "backend-${ACTIVE_ENV}" 2>/dev/null || true
 
   # Remove container
   log "Removing ${ACTIVE_ENV} container..."
-  docker compose -f "${COMPOSE_FILE}" --profile "${ACTIVE_ENV}" rm -f "backend-${ACTIVE_ENV}" 2>/dev/null || true
+  docker compose -f "${COMPOSE_FILE}" --profile "${ACTIVE_ENV}" ${DB_PROFILE} rm -f "backend-${ACTIVE_ENV}" 2>/dev/null || true
 
   success "Old ${ACTIVE_ENV} environment cleaned up"
 }
@@ -593,10 +595,11 @@ main() {
     error "Deployment failed: ${INACTIVE_ENV} is unhealthy"
     echo ""
     error "Logs from ${INACTIVE_ENV}:"
-    docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" logs --tail=50 "backend-${INACTIVE_ENV}"
+    docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} logs --tail=50 "backend-${INACTIVE_ENV}"
     echo ""
     log "Cleaning up failed deployment..."
-    docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" down
+    docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} stop -t 10 "backend-${INACTIVE_ENV}" 2>/dev/null || true
+    docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} rm -f "backend-${INACTIVE_ENV}" 2>/dev/null || true
     exit 1
   fi
   echo ""

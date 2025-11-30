@@ -3,6 +3,8 @@ services:
     image: mongo:7.0.14
     container_name: chatbot-gate-mongo
     restart: unless-stopped
+    profiles:
+      - db
 
     ports:
       # Bind to localhost only for security
