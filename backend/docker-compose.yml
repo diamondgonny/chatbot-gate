@@ -16,8 +16,8 @@ services:
       MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-chatbot_gate}
 
     volumes:
-      - mongodb_data:/data/db
-      - mongodb_config:/data/configdb
+      - ./volumes/data/db:/data/db
+      - ./volumes/data/configdb:/data/configdb
       # Backup volume
       - ./backups/mongodb:/backups
 
@@ -157,9 +157,3 @@ networks:
     internal: true
   caddy_downstream:
     external: true
-
-volumes:
-  mongodb_data:
-    driver: local
-  mongodb_config:
-    driver: local

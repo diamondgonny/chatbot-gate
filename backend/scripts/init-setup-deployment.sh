@@ -61,6 +61,8 @@ show_sudo_guidance() {
 create_and_secure_directory() {
   local dir="$1"
   local description="$2"
+  local owner="${3:-1001}"
+  local perm="${4:-755}"
 
   if [[ -d "$dir" ]]; then
     log "Directory already exists: $dir"
@@ -70,12 +72,14 @@ create_and_secure_directory() {
       local current_owner
       current_owner=$(stat -c '%u' "$dir" 2>/dev/null || stat -f '%u' "$dir" 2>/dev/null)
 
-      if [[ "$current_owner" != "1001" ]]; then
-        warning "Fixing ownership: $dir (was UID $current_owner)"
-        chown 1001:1001 "$dir"
-        chmod 755 "$dir"
+      if [[ "$current_owner" != "$owner" ]]; then
+        warning "Fixing ownership: $dir (was UID $current_owner, expected $owner)"
+        chown "${owner}:${owner}" "$dir"
         success "Ownership corrected"
       fi
+      chmod "$perm" "$dir" || warning "Failed to set permissions for $dir"
+    else
+      warning "Cannot adjust ownership (not running as root); ensure container UID ${owner} can write to $dir"
     fi
     return 0
   fi
@@ -88,16 +92,16 @@ create_and_secure_directory() {
 
   # Set ownership if running as root
   if [[ $EUID -eq 0 ]]; then
-    if chown 1001:1001 "$dir" && chmod 755 "$dir"; then
-      success "Created $description: $dir (1001:1001 755)"
+    if chown "${owner}:${owner}" "$dir" && chmod "$perm" "$dir"; then
+      success "Created $description: $dir (${owner}:${owner} ${perm})"
     else
       error "Failed to set ownership for: $dir"
       return 1
     fi
   else
-    chmod 755 "$dir"
+    chmod "$perm" "$dir"
     warning "Created $description: $dir (current user)"
-    warning "  Container (UID 1001) may not have write access"
+    warning "  Container (UID ${owner}) may not have write access"
   fi
 
   return 0
@@ -158,6 +162,10 @@ main() {
   create_and_secure_directory "${REPO_ROOT}/logs/blue" "Blue environment logs" || failed=1
   create_and_secure_directory "${REPO_ROOT}/logs/green" "Green environment logs" || failed=1
   create_and_secure_directory "${REPO_ROOT}/backups/mongodb" "MongoDB backup storage" || failed=1
+  create_and_secure_directory "${REPO_ROOT}/volumes" "Volume storage root" || failed=1
+  create_and_secure_directory "${REPO_ROOT}/volumes/data" "Volume data root" || failed=1
+  create_and_secure_directory "${REPO_ROOT}/volumes/data/db" "MongoDB data directory" 999 770 || failed=1
+  create_and_secure_directory "${REPO_ROOT}/volumes/data/configdb" "MongoDB config directory" 999 770 || failed=1
 
   if [[ $failed -eq 1 ]]; then
     error "Directory creation failed"
