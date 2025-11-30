@@ -105,8 +105,9 @@ app.use((req, res, next) => {
     const token = require('crypto').randomBytes(16).toString('hex');
     res.cookie('csrfToken', token, {
       httpOnly: false,
-      sameSite: 'strict',
-      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      secure: true, // Cloudflare handles HTTPS
+      domain: '.chatbotgate.click', // Share across subdomains
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
     });
