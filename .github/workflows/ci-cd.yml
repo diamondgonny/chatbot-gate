@@ -266,6 +266,9 @@ jobs:
 
       - name: Deploy via SSH (Blue-Green)
         uses: appleboy/ssh-action@v1.0.0
+        env:
+          GHCR_DEPLOY_TOKEN: ${{ secrets.GHCR_DEPLOY_TOKEN }}
+          GHCR_DEPLOY_USER: ${{ secrets.GHCR_DEPLOY_USER }}
         with:
           host: ${{ secrets.PRODUCTION_TAILSCALE_HOST }}
           username: ${{ secrets.PRODUCTION_USER }}
