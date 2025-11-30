@@ -12,6 +12,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
 STATE_FILE=".deployment-state"
+STATE_OWNER="${SUDO_USER:-$USER}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -102,6 +103,32 @@ create_and_secure_directory() {
   return 0
 }
 
+# Ensure the state file is owned by the invoking non-root user when run with sudo
+ensure_state_file_owner() {
+  # Only adjust when running as root via sudo
+  if [[ $EUID -ne 0 ]]; then
+    return 0
+  fi
+
+  if [[ -z "${SUDO_USER:-}" ]]; then
+    warning "State file owned by root (no SUDO_USER detected); adjust manually if needed"
+    return 0
+  fi
+
+  local group
+  group=$(id -gn "$STATE_OWNER" 2>/dev/null || true)
+  if [[ -z "$group" ]]; then
+    warning "Could not determine group for $STATE_OWNER; skipping ownership change"
+    return 0
+  fi
+
+  if chown "$STATE_OWNER:$group" "$STATE_FILE"; then
+    success "Set state file ownership to $STATE_OWNER:$group"
+  else
+    warning "Failed to set ownership for $STATE_FILE; adjust manually"
+  fi
+}
+
 # Main setup function
 main() {
   echo ""
@@ -143,6 +170,7 @@ main() {
 
   if [[ -f "$STATE_FILE" ]]; then
     log "Deployment state file already exists"
+    ensure_state_file_owner
   else
     # Create initial state file with blue as active
     cat > "$STATE_FILE" << EOF
@@ -156,6 +184,7 @@ EOF
 
     # Set proper permissions
     chmod 644 "$STATE_FILE"
+    ensure_state_file_owner
     success "Created deployment state file"
   fi
   echo ""
