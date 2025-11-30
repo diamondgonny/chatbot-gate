@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { config } from '../config';
+import { config, cookieConfig } from '../config';
 import { signToken } from '../utils/jwtUtils';
 import { appendFileSync } from 'fs';
 import path from 'path';
@@ -86,10 +86,11 @@ export const validateGateCode = (req: Request, res: Response) => {
     
     // Set JWT as HttpOnly cookie
     res.cookie('jwt', token, {
-      httpOnly: true,
-      secure: true, // Cloudflare handles HTTPS
-      sameSite: 'lax',
-      domain: '.chatbotgate.click', // Share across subdomains
+      httpOnly: true, // Security: prevent JavaScript access
+      secure: cookieConfig.secure,
+      sameSite: cookieConfig.sameSite,
+      domain: cookieConfig.domain,
+      path: '/',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
     

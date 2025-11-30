@@ -3,6 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import { connectDB } from './db';
+import { cookieConfig } from './config';
 import morgan from 'morgan';
 import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import path from 'path';
@@ -104,10 +105,10 @@ app.use((req, res, next) => {
   if (!csrfCookie) {
     const token = require('crypto').randomBytes(16).toString('hex');
     res.cookie('csrfToken', token, {
-      httpOnly: false,
-      sameSite: 'lax',
-      secure: true, // Cloudflare handles HTTPS
-      domain: '.chatbotgate.click', // Share across subdomains
+      httpOnly: false, // CSRF token must be readable by frontend
+      sameSite: cookieConfig.sameSite,
+      secure: cookieConfig.secure,
+      domain: cookieConfig.domain,
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
     });
