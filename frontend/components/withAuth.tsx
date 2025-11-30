@@ -20,7 +20,13 @@ export function withAuth<P extends object>(Component: React.ComponentType<P>) {
       const verifyAuth = async () => {
         try {
           const response = await api.get("/api/auth/status");
-          const userIdFromServer = response.data?.userId;
+          const { authenticated, userId: userIdFromServer } = response.data ?? {};
+
+          if (!authenticated) {
+            clearAuth();
+            router.replace("/");
+            return;
+          }
 
           // Keep local storage aligned with the server's user id
           if (userIdFromServer) {

@@ -22,14 +22,16 @@ export default function Gate() {
     const checkAuth = async () => {
       try {
         const response = await api.get("/api/auth/status");
-        const userIdFromServer = response.data?.userId;
+        const { authenticated, userId: userIdFromServer } = response.data ?? {};
 
-        if (userIdFromServer) {
-          saveUserId(userIdFromServer);
-        }
+        if (authenticated) {
+          if (userIdFromServer) {
+            saveUserId(userIdFromServer);
+          }
 
-        if (isMounted) {
-          router.replace("/hub");
+          if (isMounted) {
+            router.replace("/hub");
+          }
         }
       } catch (error) {
         // Unauthenticated: stay on gate
