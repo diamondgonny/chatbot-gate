@@ -113,6 +113,9 @@ jobs:
     name: Build & Test Docker Image
     runs-on: ubuntu-latest
     needs: [build-and-push]
+    permissions:
+      contents: read
+      packages: read
 
     steps:
       - name: Checkout code
@@ -215,6 +218,7 @@ jobs:
     needs: [build-and-push]
     permissions:
       contents: read
+      packages: read
       security-events: write
 
     steps:
@@ -266,11 +270,13 @@ jobs:
           host: ${{ secrets.STAGING_TAILSCALE_HOST }}
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
+          envs: GHCR_DEPLOY_TOKEN,GHCR_DEPLOY_USER
           script: |
             # Set working directory
             cd /home/user/lab/apps/chatbot-gate-backend-staging
 
-            # Public repository - no GHCR login needed
+            # Authenticate to GHCR (private package)
+            echo "${GHCR_DEPLOY_TOKEN}" | docker login ghcr.io -u "${GHCR_DEPLOY_USER}" --password-stdin
 
             # Set environment variables for deployment
             PRIMARY_TAG="${{ needs.build-and-push.outputs.primary-tag }}"
@@ -335,11 +341,13 @@ jobs:
           host: ${{ secrets.PRODUCTION_TAILSCALE_HOST }}
           username: ${{ secrets.PRODUCTION_USER }}
           key: ${{ secrets.PRODUCTION_SSH_KEY }}
+          envs: GHCR_DEPLOY_TOKEN,GHCR_DEPLOY_USER
           script: |
             # Set working directory
             cd /home/user/lab/apps/chatbot-gate-backend
 
-            # Public repository - no GHCR login needed
+            # Authenticate to GHCR (private package)
+            echo "${GHCR_DEPLOY_TOKEN}" | docker login ghcr.io -u "${GHCR_DEPLOY_USER}" --password-stdin
 
             # Set environment variables for deployment
             PRIMARY_TAG="${{ needs.build-and-push.outputs.primary-tag }}"
