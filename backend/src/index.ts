@@ -32,8 +32,11 @@ if (!process.env.JWT_SECRET) {
 
 // Middleware Configuration
 // ------------------------
-// Trust proxy for correct client IP (e.g., when behind Nginx/Heroku)
-app.set('trust proxy', true);
+// Trust only the first proxy hop (e.g., Cloudflare, Nginx).
+// Setting to `true` trusts ALL X-Forwarded-For values, allowing clients
+// to spoof IPs and bypass rate limiting. Using `1` trusts only the
+// immediate upstream proxy's header.
+app.set('trust proxy', 1);
 
 // Metrics collection - must be early to capture all requests
 app.use(metricsMiddleware);
