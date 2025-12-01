@@ -3,14 +3,16 @@ import { register } from '../metrics/metricsRegistry';
 
 const router = Router();
 
+// Normalize IPv6-mapped addresses (::ffff:x.x.x.x -> x.x.x.x)
+const normalizeIP = (ip: string): string => ip.replace(/^::ffff:/i, '');
+
 // Allowed IP patterns for metrics access (localhost, Docker networks)
 const ALLOWED_IP_PATTERNS = [
   /^127\.0\.0\.1$/,
-  /^::1$/,
-  /^::ffff:127\.0\.0\.1$/,
-  /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/,      // Docker default bridge
+  /^::1$/,                                       // IPv6 localhost
+  /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/,             // Docker default bridge
   /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/, // Docker bridge networks
-  /^192\.168\.\d{1,3}\.\d{1,3}$/,         // Private networks
+  /^192\.168\.\d{1,3}\.\d{1,3}$/,                // Private networks
 ];
 
 // Middleware: restrict metrics to internal IPs or secret token
@@ -22,7 +24,7 @@ const metricsGuard = (req: Request, res: Response, next: NextFunction) => {
   }
 
   // Option 2: Check for allowed internal IPs
-  const clientIp = req.ip || '';
+  const clientIp = normalizeIP(req.ip || '');
   const isAllowed = ALLOWED_IP_PATTERNS.some((pattern) => pattern.test(clientIp));
 
   if (isAllowed) {
