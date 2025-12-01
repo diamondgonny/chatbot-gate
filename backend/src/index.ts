@@ -104,6 +104,8 @@ app.use(morgan('combined'));
 app.use((req, res, next) => {
   const csrfHeader = req.header('x-csrf-token');
   const csrfCookie = req.cookies?.csrfToken;
+  const method = req.method.toUpperCase();
+  const requiresCsrf = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
 
   // Issue a CSRF token if none present
   if (!csrfCookie) {
@@ -116,12 +118,17 @@ app.use((req, res, next) => {
       maxAge: 24 * 60 * 60 * 1000,
       path: '/',
     });
+
+    // Reject state-changing requests without a token
+    // Client must first make a GET request to obtain the CSRF token
+    if (requiresCsrf) {
+      return res.status(403).json({ error: 'CSRF token required' });
+    }
+
     return next();
   }
 
   // For state-changing requests, require header to match cookie
-  const method = req.method.toUpperCase();
-  const requiresCsrf = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
   if (requiresCsrf && csrfHeader !== csrfCookie) {
     return res.status(403).json({ error: 'CSRF token mismatch' });
   }
