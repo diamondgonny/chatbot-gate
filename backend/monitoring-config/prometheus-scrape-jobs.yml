@@ -4,8 +4,13 @@
 # under the `scrape_configs:` section.
 #
 # Prerequisites:
-#   - Both Prometheus and chatbot-gate-backend must be on the same Docker network (caddy_upstream)
-#   - The backend must expose port 4000 (default)
+#   - Prometheus must be on the same Docker network as backend (caddy_upstream)
+#   - Backend containers: chatbot-gate-backend-blue and chatbot-gate-backend-green
+#
+# Blue-Green Deployment:
+#   - Both containers are listed as targets
+#   - Only one container is active at a time (the other returns up=0)
+#   - Use `deployment_env` label to distinguish blue/green in Grafana
 #
 # Usage:
 #   1. Copy the scrape job below
@@ -20,7 +25,9 @@
 
   - job_name: 'chatbot-gate-backend'
     static_configs:
-      - targets: ['chatbot-gate-backend:4000']
+      - targets:
+          - 'chatbot-gate-backend-blue:4000'
+          - 'chatbot-gate-backend-green:4000'
     metrics_path: '/metrics'
     scrape_interval: 15s
     scrape_timeout: 10s
