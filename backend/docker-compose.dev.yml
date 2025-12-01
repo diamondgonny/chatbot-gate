@@ -69,3 +69,4 @@ services:
 networks:
   internal:
     driver: bridge
+    internal: false
