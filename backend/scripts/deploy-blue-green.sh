@@ -208,9 +208,9 @@ validate_networks() {
   log "Validating Docker network connectivity..."
 
   # Check network exists
-  if ! docker network inspect caddy_downstream > /dev/null 2>&1; then
-    error "caddy_downstream network does not exist"
-    error "Create: docker network create caddy_downstream"
+  if ! docker network inspect caddy_upstream > /dev/null 2>&1; then
+    error "caddy_upstream network does not exist"
+    error "Create: docker network create caddy_upstream"
     return 1
   fi
 
@@ -218,10 +218,10 @@ validate_networks() {
 
   # Verify container on network
   local network_check
-  network_check=$(docker inspect "${container_name}" --format '{{json .NetworkSettings.Networks}}' | grep -c "caddy_downstream" || echo "0")
+  network_check=$(docker inspect "${container_name}" --format '{{json .NetworkSettings.Networks}}' | grep -c "caddy_upstream" || echo "0")
 
   if [ "$network_check" -eq 0 ]; then
-    error "Container not on caddy_downstream network"
+    error "Container not on caddy_upstream network"
     return 1
   fi
 

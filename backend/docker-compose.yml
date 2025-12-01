@@ -85,7 +85,7 @@ services:
 
     networks:
       - internal
-      - caddy_downstream
+      - caddy_upstream
 
     # Security: Read-only root filesystem (except /app/logs)
     read_only: true
@@ -139,7 +139,7 @@ services:
 
     networks:
       - internal
-      - caddy_downstream
+      - caddy_upstream
 
     # Security: Read-only root filesystem (except /app/logs)
     read_only: true
@@ -155,5 +155,5 @@ networks:
   internal:
     driver: bridge
     internal: true
-  caddy_downstream:
+  caddy_upstream:
     external: true
