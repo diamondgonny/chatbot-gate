@@ -9,9 +9,21 @@ interface RateLimitConfig {
 
 type Bucket = { count: number; expiresAt: number };
 
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // Clean up expired buckets every 5 minutes
+
 export const createRateLimiter = ({ windowMs, max, routeName = 'unknown' }: RateLimitConfig) => {
   // Per-limiter buckets to avoid cross-talk between different routes
   const buckets = new Map<string, Bucket>();
+
+  // Periodic cleanup to prevent memory leaks from high IP churn
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, bucket] of buckets) {
+      if (bucket.expiresAt < now) {
+        buckets.delete(key);
+      }
+    }
+  }, CLEANUP_INTERVAL_MS).unref(); // unref() allows process to exit cleanly
 
   return (req: Request, res: Response, next: NextFunction) => {
     const key = req.ip || 'global';
