@@ -1,10 +1,39 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { register } from '../metrics/metricsRegistry';
 
 const router = Router();
 
-// GET /metrics - Prometheus metrics endpoint
-router.get('/', async (_req: Request, res: Response) => {
+// Allowed IP patterns for metrics access (localhost, Docker networks)
+const ALLOWED_IP_PATTERNS = [
+  /^127\.0\.0\.1$/,
+  /^::1$/,
+  /^::ffff:127\.0\.0\.1$/,
+  /^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/,      // Docker default bridge
+  /^172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}$/, // Docker bridge networks
+  /^192\.168\.\d{1,3}\.\d{1,3}$/,         // Private networks
+];
+
+// Middleware: restrict metrics to internal IPs or secret token
+const metricsGuard = (req: Request, res: Response, next: NextFunction) => {
+  // Option 1: Check for metrics secret (for external Prometheus)
+  const metricsSecret = process.env.METRICS_SECRET;
+  if (metricsSecret && req.header('x-metrics-secret') === metricsSecret) {
+    return next();
+  }
+
+  // Option 2: Check for allowed internal IPs
+  const clientIp = req.ip || '';
+  const isAllowed = ALLOWED_IP_PATTERNS.some((pattern) => pattern.test(clientIp));
+
+  if (isAllowed) {
+    return next();
+  }
+
+  return res.status(403).json({ error: 'Metrics access denied' });
+};
+
+// GET /metrics - Prometheus metrics endpoint (internal only)
+router.get('/', metricsGuard, async (_req: Request, res: Response) => {
   try {
     res.set('Content-Type', register.contentType);
     const metrics = await register.metrics();
