@@ -1,6 +1,8 @@
 services:
   mongodb:
     command: ["mongod", "--verbose"]
+    ports:
+      - "127.0.0.1:27017:27017"
 
   # Development backend (single instance, no blue-green)
   backend:

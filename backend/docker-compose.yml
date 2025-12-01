@@ -6,10 +6,6 @@ services:
     profiles:
       - db
 
-    ports:
-      # Bind to localhost only for security
-      - "127.0.0.1:27017:27017"
-
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
