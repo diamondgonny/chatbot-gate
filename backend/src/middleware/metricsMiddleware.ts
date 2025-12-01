@@ -32,17 +32,33 @@ export const metricsMiddleware = (req: Request, res: Response, next: NextFunctio
 
   httpRequestsInProgress.labels(req.method, routePrefix, deploymentEnv).inc();
 
-  res.on('finish', () => {
+  // Track if we've already recorded metrics to avoid double-counting
+  let metricsRecorded = false;
+
+  const recordMetrics = (completed: boolean) => {
+    if (metricsRecorded) return;
+    metricsRecorded = true;
+
     const endTime = process.hrtime.bigint();
     const durationSeconds = Number(endTime - startTime) / 1e9;
 
-    const normalizedRoute = normalizeRoute(req);
-    const statusCode = res.statusCode.toString();
+    // Only record request/duration metrics if response completed normally
+    if (completed) {
+      const normalizedRoute = normalizeRoute(req);
+      const statusCode = res.statusCode.toString();
 
-    httpRequestsTotal.labels(req.method, normalizedRoute, statusCode, deploymentEnv).inc();
-    httpRequestDuration.labels(req.method, normalizedRoute, statusCode, deploymentEnv).observe(durationSeconds);
+      httpRequestsTotal.labels(req.method, normalizedRoute, statusCode, deploymentEnv).inc();
+      httpRequestDuration.labels(req.method, normalizedRoute, statusCode, deploymentEnv).observe(durationSeconds);
+    }
+
     httpRequestsInProgress.labels(req.method, routePrefix, deploymentEnv).dec();
-  });
+  };
+
+  // 'finish' fires when response sent successfully
+  res.on('finish', () => recordMetrics(true));
+
+  // 'close' fires if connection terminated before finish (client disconnect)
+  res.on('close', () => recordMetrics(false));
 
   next();
 };
