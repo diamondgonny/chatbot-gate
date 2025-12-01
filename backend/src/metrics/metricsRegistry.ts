@@ -114,7 +114,7 @@ export const openaiApiCalls = new Counter({
 export const openaiApiDuration = new Histogram({
   name: 'chatbot_gate_openai_api_duration_seconds',
   help: 'OpenAI API call duration in seconds',
-  labelNames: ['deployment_env'],
+  labelNames: ['result', 'deployment_env'], // result: success, error
   buckets: [0.5, 1, 2, 5, 10, 20, 30, 60],
   registers: [register],
 });

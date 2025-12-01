@@ -48,9 +48,10 @@
 #     operation: "create" | "list" | "get" | "delete"
 #
 # OpenAI API Metrics:
-#   - chatbot_gate_openai_api_calls_total{result, deployment_env}
-#     result: "success" | "error"
+#   - chatbot_gate_openai_api_calls_total{status, deployment_env}
+#     status: "success" | "error"
 #   - chatbot_gate_openai_api_duration_seconds{result, deployment_env}
+#     result: "success" | "error"
 #   - chatbot_gate_openai_tokens_total{type, deployment_env}
 #     type: "prompt" | "completion"
 #
