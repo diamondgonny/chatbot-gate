@@ -7,6 +7,7 @@ import { cookieConfig } from './config';
 import morgan from 'morgan';
 import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import path from 'path';
+import { metricsMiddleware } from './middleware/metricsMiddleware';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -33,6 +34,9 @@ if (!process.env.JWT_SECRET) {
 // ------------------------
 // Trust proxy for correct client IP (e.g., when behind Nginx/Heroku)
 app.set('trust proxy', true);
+
+// Metrics collection - must be early to capture all requests
+app.use(metricsMiddleware);
 
 // CORS (Cross-Origin Resource Sharing)
 // Allows our frontend (running on a different port) to communicate with this backend.
@@ -129,6 +133,7 @@ import gateRoutes from './routes/gateRoutes';
 import authRoutes from './routes/authRoutes';
 import chatRoutes from './routes/chatRoutes';
 import sessionRoutes from './routes/sessionRoutes';
+import metricsRoutes from './routes/metricsRoutes';
 
 // ... (previous middleware)
 
@@ -153,6 +158,9 @@ app.get('/health', (req: Request, res: Response) => {
   // Equivalent to returning a Dict/Pydantic model in FastAPI or ResponseEntity in Spring.
   res.json({ status: 'ok', message: 'Chatbot Gate Backend is running' });
 });
+
+// Metrics endpoint for Prometheus (internal only)
+app.use('/metrics', metricsRoutes);
 
 // Basic Error Handling Middleware
 // Express uses a middleware function with 4 arguments (err, req, res, next) to handle errors.

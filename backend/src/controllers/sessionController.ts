@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ChatSession } from '../models/ChatSession';
 import { randomUUID } from 'crypto';
+import { sessionOperations, getDeploymentEnv } from '../metrics/metricsRegistry';
 
 const MAX_SESSIONS_PER_USER = 50;
 const SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -53,6 +54,9 @@ export const createSession = async (req: Request, res: Response) => {
       });
     }
 
+    // Track successful session creation
+    sessionOperations.labels('create', getDeploymentEnv()).inc();
+
     return res.json({
       sessionId: session.sessionId,
       title: session.title,
@@ -98,6 +102,9 @@ export const getUserSessions = async (req: Request, res: Response) => {
       };
     });
 
+    // Track session list retrieval
+    sessionOperations.labels('list', getDeploymentEnv()).inc();
+
     return res.json({ sessions: sessionList });
   } catch (error) {
     console.error('Error fetching user sessions:', error);
@@ -126,6 +133,9 @@ export const getSessionById = async (req: Request, res: Response) => {
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
+
+    // Track session retrieval
+    sessionOperations.labels('get', getDeploymentEnv()).inc();
 
     return res.json({
       sessionId: session.sessionId,
@@ -161,6 +171,9 @@ export const deleteSession = async (req: Request, res: Response) => {
     if (result.deletedCount === 0) {
       return res.status(404).json({ error: 'Session not found' });
     }
+
+    // Track session deletion
+    sessionOperations.labels('delete', getDeploymentEnv()).inc();
 
     return res.json({ message: 'Session deleted successfully' });
   } catch (error) {

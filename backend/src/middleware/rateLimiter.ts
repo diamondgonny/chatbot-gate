@@ -1,13 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
+import { rateLimitHits, getDeploymentEnv } from '../metrics/metricsRegistry';
 
 interface RateLimitConfig {
   windowMs: number;
   max: number;
+  routeName?: string; // For metrics tracking
 }
 
 type Bucket = { count: number; expiresAt: number };
 
-export const createRateLimiter = ({ windowMs, max }: RateLimitConfig) => {
+export const createRateLimiter = ({ windowMs, max, routeName = 'unknown' }: RateLimitConfig) => {
   // Per-limiter buckets to avoid cross-talk between different routes
   const buckets = new Map<string, Bucket>();
 
@@ -35,6 +37,9 @@ export const createRateLimiter = ({ windowMs, max }: RateLimitConfig) => {
     res.setHeader('X-RateLimit-Reset', String(Math.ceil(bucket.expiresAt / 1000)));
 
     if (bucket.count > max) {
+      // Track rate limit hit in metrics
+      rateLimitHits.labels(routeName, getDeploymentEnv()).inc();
+
       res.setHeader('Retry-After', String(retryAfterSeconds));
       return res.status(429).json({
         error: 'Too many requests. Please slow down.',

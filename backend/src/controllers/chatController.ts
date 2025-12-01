@@ -2,6 +2,14 @@ import { Request, Response } from 'express';
 import OpenAI from 'openai';
 import { config } from '../config';
 import { ChatSession } from '../models/ChatSession';
+import {
+  chatMessagesTotal,
+  chatMessageDuration,
+  openaiApiCalls,
+  openaiApiDuration,
+  openaiTokensUsed,
+  getDeploymentEnv,
+} from '../metrics/metricsRegistry';
 
 // Initialize OpenAI Client
 const openai = new OpenAI({
@@ -49,10 +57,13 @@ export const chatWithAI = async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Server misconfiguration: API Key missing' });
   }
 
+  const chatStartTime = process.hrtime.bigint();
+  const deploymentEnv = getDeploymentEnv();
+
   try {
     // Find or create chat session
     let session = await ChatSession.findOne({ userId, sessionId });
-    
+
     if (!session) {
       session = new ChatSession({
         userId,
@@ -76,6 +87,9 @@ export const chatWithAI = async (req: Request, res: Response) => {
 
     await session.save();
 
+    // Track user message metric
+    chatMessagesTotal.labels('user', deploymentEnv).inc();
+
     // Build conversation history for OpenAI
     // We'll send the last 10 messages to keep context manageable
     const recentMessages = session.messages.slice(-10).map((msg) => ({
@@ -83,15 +97,36 @@ export const chatWithAI = async (req: Request, res: Response) => {
       content: msg.content,
     }));
 
-    // Get response from OpenAI (NO STREAMING)
-    const completion = await openai.chat.completions.create({
-      model: config.modelName,
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        ...recentMessages,
-      ],
-      // stream: false (default)
-    });
+    // Get response from OpenAI (NO STREAMING) with timing
+    const openaiStartTime = process.hrtime.bigint();
+    let completion;
+    try {
+      completion = await openai.chat.completions.create({
+        model: config.modelName,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          ...recentMessages,
+        ],
+        // stream: false (default)
+      });
+
+      // Track OpenAI API success metrics
+      const openaiDurationMs = Number(process.hrtime.bigint() - openaiStartTime) / 1_000_000;
+      openaiApiCalls.labels('success', deploymentEnv).inc();
+      openaiApiDuration.labels('success', deploymentEnv).observe(openaiDurationMs / 1000);
+
+      // Track token usage if available
+      if (completion.usage) {
+        openaiTokensUsed.labels('prompt', deploymentEnv).inc(completion.usage.prompt_tokens);
+        openaiTokensUsed.labels('completion', deploymentEnv).inc(completion.usage.completion_tokens);
+      }
+    } catch (openaiError) {
+      // Track OpenAI API failure metrics
+      const openaiDurationMs = Number(process.hrtime.bigint() - openaiStartTime) / 1_000_000;
+      openaiApiCalls.labels('error', deploymentEnv).inc();
+      openaiApiDuration.labels('error', deploymentEnv).observe(openaiDurationMs / 1000);
+      throw openaiError;
+    }
 
     const aiResponse = completion.choices[0].message.content || '';
 
@@ -107,8 +142,15 @@ export const chatWithAI = async (req: Request, res: Response) => {
 
     await session.save();
 
+    // Track AI message metric
+    chatMessagesTotal.labels('ai', deploymentEnv).inc();
+
+    // Track total chat duration
+    const chatDurationMs = Number(process.hrtime.bigint() - chatStartTime) / 1_000_000;
+    chatMessageDuration.labels(deploymentEnv).observe(chatDurationMs / 1000);
+
     // Return complete response
-    return res.json({ 
+    return res.json({
       response: aiResponse,
       timestamp: new Date().toISOString()
     });

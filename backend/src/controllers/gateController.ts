@@ -4,6 +4,7 @@ import { signToken } from '../utils/jwtUtils';
 import { appendFileSync } from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { gateAuthAttempts, getDeploymentEnv } from '../metrics/metricsRegistry';
 
 const FAILURE_WINDOW_MS = 5 * 60 * 1000; // 5 minutes window to decay failures
 const BACKOFF_FAILS = 5;
@@ -61,6 +62,7 @@ export const validateGateCode = (req: Request, res: Response) => {
     } catch (e) {
       // fail silently; logging should not break flow
     }
+    gateAuthAttempts.labels('backoff', getDeploymentEnv()).inc();
     res.setHeader('Retry-After', retryAfter.toString());
     return res.status(429).json({
       error: 'Too many invalid attempts. Please wait before retrying.',
@@ -78,12 +80,13 @@ export const validateGateCode = (req: Request, res: Response) => {
 
   if (isValid) {
     clearFailure(key);
+    gateAuthAttempts.labels('success', getDeploymentEnv()).inc();
     // Reuse existing userId or generate new one
     const userId = existingUserId || randomUUID();
-    
+
     // Sign JWT token with userId in payload
     const token = signToken(userId);
-    
+
     // Set JWT as HttpOnly cookie
     res.cookie('jwt', token, {
       httpOnly: true, // Security: prevent JavaScript access
@@ -93,14 +96,15 @@ export const validateGateCode = (req: Request, res: Response) => {
       path: '/',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     });
-    
-    return res.json({ 
-      valid: true, 
+
+    return res.json({
+      valid: true,
       message: 'Access granted',
       userId,  // Send userId for client storage
     });
   } else {
     const updated = recordFailure(key);
+    gateAuthAttempts.labels('failure', getDeploymentEnv()).inc();
     const inBackoff = updated.count >= BACKOFF_FAILS;
     const retryAfter = inBackoff ? BACKOFF_SECONDS : undefined;
     if (inBackoff && retryAfter) {

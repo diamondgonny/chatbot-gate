@@ -1,0 +1,73 @@
+# Chatbot Gate Backend - Prometheus Scrape Job Configuration
+#
+# This configuration snippet should be appended to your existing prometheus.yml
+# under the `scrape_configs:` section.
+#
+# Prerequisites:
+#   - Both Prometheus and chatbot-gate-backend must be on the same Docker network (caddy_upstream)
+#   - The backend must expose port 4000 (default)
+#
+# Usage:
+#   1. Copy the scrape job below
+#   2. Append it to ~/lab/monitoring/prometheus.yml under scrape_configs:
+#   3. Restart Prometheus: docker compose restart prometheus
+#
+# Verify:
+#   - Check Prometheus targets: http://prometheus:9090/targets
+#   - Query metrics: http://prometheus:9090/graph?g0.expr=chatbot_gate_http_requests_total
+
+# ========== COPY BELOW THIS LINE ==========
+
+  - job_name: 'chatbot-gate-backend'
+    static_configs:
+      - targets: ['chatbot-gate-backend:4000']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    scrape_timeout: 10s
+
+# ========== COPY ABOVE THIS LINE ==========
+
+# Available Metrics:
+#
+# HTTP Metrics:
+#   - chatbot_gate_http_requests_total{method, route, status_code, deployment_env}
+#   - chatbot_gate_http_request_duration_seconds{method, route, status_code, deployment_env}
+#   - chatbot_gate_http_requests_in_progress{method, route, deployment_env}
+#
+# Gate Authentication Metrics:
+#   - chatbot_gate_auth_attempts_total{result, deployment_env}
+#     result: "success" | "failure" | "backoff"
+#
+# Chat Metrics:
+#   - chatbot_gate_chat_messages_total{direction, deployment_env}
+#     direction: "user" | "ai"
+#   - chatbot_gate_chat_message_duration_seconds{deployment_env}
+#
+# Session Metrics:
+#   - chatbot_gate_session_operations_total{operation, deployment_env}
+#     operation: "create" | "list" | "get" | "delete"
+#
+# OpenAI API Metrics:
+#   - chatbot_gate_openai_api_calls_total{result, deployment_env}
+#     result: "success" | "error"
+#   - chatbot_gate_openai_api_duration_seconds{result, deployment_env}
+#   - chatbot_gate_openai_tokens_total{type, deployment_env}
+#     type: "prompt" | "completion"
+#
+# Rate Limit Metrics:
+#   - chatbot_gate_rate_limit_hits_total{route, deployment_env}
+#
+# MongoDB Metrics:
+#   - chatbot_gate_mongo_connection_state{deployment_env}
+#     values: 0=disconnected, 1=connected, 2=connecting, 3=disconnecting
+#
+# Node.js Runtime Metrics (auto-collected):
+#   - chatbot_gate_nodejs_eventloop_lag_seconds
+#   - chatbot_gate_nodejs_active_handles_total
+#   - chatbot_gate_nodejs_active_requests_total
+#   - chatbot_gate_nodejs_heap_size_total_bytes
+#   - chatbot_gate_nodejs_heap_size_used_bytes
+#   - chatbot_gate_nodejs_external_memory_bytes
+#   - chatbot_gate_nodejs_gc_duration_seconds
+#   - chatbot_gate_process_cpu_seconds_total
+#   - chatbot_gate_process_resident_memory_bytes

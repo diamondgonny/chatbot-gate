@@ -10,6 +10,6 @@ const router = Router();
 
 // POST /api/gate/validate
 // Receives a JSON body: { "code": "..." }
-router.post('/validate', createRateLimiter({ windowMs: 60_000, max: 10 }), validateGateCode);
+router.post('/validate', createRateLimiter({ windowMs: 60_000, max: 10, routeName: 'gate_validate' }), validateGateCode);
 
 export default router;

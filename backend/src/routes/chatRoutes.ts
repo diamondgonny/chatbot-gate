@@ -12,11 +12,11 @@ router.use(authMiddleware);
 // Receives: { "message": "Hello" }
 // JWT token expected in Authorization header
 // Returns: { "response": "...", "timestamp": "..." }
-router.post('/message', createRateLimiter({ windowMs: 60_000, max: 30 }), chatWithAI);
+router.post('/message', createRateLimiter({ windowMs: 60_000, max: 30, routeName: 'chat_message' }), chatWithAI);
 
 // GET /api/chat/history
 // JWT token expected in Authorization header
 // Returns: { "messages": [...] }
-router.get('/history', createRateLimiter({ windowMs: 60_000, max: 60 }), getChatHistory);
+router.get('/history', createRateLimiter({ windowMs: 60_000, max: 60, routeName: 'chat_history' }), getChatHistory);
 
 export default router;
