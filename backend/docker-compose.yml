@@ -21,6 +21,10 @@ services:
       # Backup volume
       - ./backups/mongodb:/backups
 
+    # Resource limits
+    mem_limit: 2g
+    cpus: "1"
+
     # Health check for MongoDB
     healthcheck:
       test: |
@@ -29,8 +33,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-
-    # Resource limits
 
     # Logging configuration
     logging:
@@ -61,6 +63,10 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       FRONTEND_URLS: ${FRONTEND_URLS}
 
+    # Resource limits
+    mem_limit: 2g
+    cpus: "2"
+
     depends_on:
       mongodb:
         condition: service_healthy
@@ -72,8 +78,6 @@ services:
       timeout: 3s
       retries: 3
       start_period: 40s
-
-    # Resource limits
 
     # Logging configuration
     logging:
@@ -115,6 +119,10 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       FRONTEND_URLS: ${FRONTEND_URLS}
 
+    # Resource limits
+    mem_limit: 2g
+    cpus: "2"
+
     depends_on:
       mongodb:
         condition: service_healthy
@@ -126,8 +134,6 @@ services:
       timeout: 3s
       retries: 3
       start_period: 40s
-
-    # Resource limits
 
     # Logging configuration
     logging:
