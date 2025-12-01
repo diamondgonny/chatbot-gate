@@ -64,6 +64,7 @@ export const chatWithAI = async (req: Request, res: Response) => {
   try {
     // Find or create chat session
     let session = await ChatSession.findOne({ userId, sessionId });
+    let isNewSession = false;
 
     if (!session) {
       // Check session limit before creating new session
@@ -83,6 +84,7 @@ export const chatWithAI = async (req: Request, res: Response) => {
         messages: [],
         title: 'New Chat', // Will be updated with first user message
       });
+      isNewSession = true;
     }
 
     // Add user message to session
@@ -98,6 +100,22 @@ export const chatWithAI = async (req: Request, res: Response) => {
     }
 
     await session.save();
+
+    // Double-check session limit after save to prevent race condition
+    // Two concurrent requests could both pass the pre-save check
+    if (isNewSession) {
+      const finalCount = await ChatSession.countDocuments({ userId });
+      if (finalCount > MAX_SESSIONS_PER_USER) {
+        // Rollback: delete the session we just created
+        await ChatSession.deleteOne({ sessionId });
+        return res.status(429).json({
+          error: 'Session limit reached. Delete old sessions to continue.',
+          code: 'SESSION_LIMIT_REACHED',
+          limit: MAX_SESSIONS_PER_USER,
+          count: finalCount - 1,
+        });
+      }
+    }
 
     // Track user message metric
     chatMessagesTotal.labels('user', deploymentEnv).inc();
