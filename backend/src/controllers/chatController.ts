@@ -17,6 +17,7 @@ const openai = new OpenAI({
 });
 
 const MAX_MESSAGE_LENGTH = 4000;
+const MAX_SESSIONS_PER_USER = 50;
 const SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 // System Prompt: Defines the persona of the AI.
@@ -65,6 +66,17 @@ export const chatWithAI = async (req: Request, res: Response) => {
     let session = await ChatSession.findOne({ userId, sessionId });
 
     if (!session) {
+      // Check session limit before creating new session
+      const sessionCount = await ChatSession.countDocuments({ userId });
+      if (sessionCount >= MAX_SESSIONS_PER_USER) {
+        return res.status(429).json({
+          error: 'Session limit reached. Delete old sessions to continue.',
+          code: 'SESSION_LIMIT_REACHED',
+          limit: MAX_SESSIONS_PER_USER,
+          count: sessionCount,
+        });
+      }
+
       session = new ChatSession({
         userId,
         sessionId,
