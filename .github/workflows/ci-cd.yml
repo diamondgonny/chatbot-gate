@@ -265,7 +265,7 @@ jobs:
           tags: tag:ci
           version: latest
 
-      - name: Debug Tailscale network
+      - name: Tailscale network info
         run: |
           echo "=== Runner netcheck ==="
           tailscale netcheck
