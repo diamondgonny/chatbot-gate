@@ -265,6 +265,18 @@ jobs:
           tags: tag:ci
           version: latest
 
+      - name: Debug Tailscale network
+        run: |
+          echo "=== Runner netcheck ==="
+          tailscale netcheck
+
+          echo "=== Runner IPs ==="
+          tailscale ip -4
+          tailscale ip -6
+
+          echo "=== Ping verbose ==="
+          tailscale ping --verbose --c 1 ${{ secrets.PRODUCTION_TAILSCALE_HOST }} || true
+
       - name: Wait for Tailscale & SSH port
         run: |
           HOST=${{ secrets.PRODUCTION_TAILSCALE_HOST }}
