@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { ChatSession } from '../models/ChatSession';
 import { randomUUID } from 'crypto';
-import { sessionOperations, getDeploymentEnv } from '../metrics/metricsRegistry';
+import { sessionOperations, activeSessions, getDeploymentEnv } from '../metrics/metricsRegistry';
 
 const MAX_SESSIONS_PER_USER = 50;
 const SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -56,6 +56,7 @@ export const createSession = async (req: Request, res: Response) => {
 
     // Track successful session creation
     sessionOperations.labels('create', getDeploymentEnv()).inc();
+    activeSessions.labels(getDeploymentEnv()).inc();
 
     return res.json({
       sessionId: session.sessionId,
@@ -174,6 +175,7 @@ export const deleteSession = async (req: Request, res: Response) => {
 
     // Track session deletion
     sessionOperations.labels('delete', getDeploymentEnv()).inc();
+    activeSessions.labels(getDeploymentEnv()).dec();
 
     return res.json({ message: 'Session deleted successfully' });
   } catch (error) {

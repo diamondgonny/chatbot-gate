@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { config } from './config';
-import { mongoConnectionState, getDeploymentEnv } from './metrics/metricsRegistry';
+import { mongoConnectionState, activeSessions, getDeploymentEnv } from './metrics/metricsRegistry';
+import { ChatSession } from './models/ChatSession';
 
 // Connect to MongoDB
 // Mongoose handles connection pooling automatically
@@ -34,6 +35,11 @@ export const connectDB = async () => {
 
     // Set initial state
     mongoConnectionState.labels(deploymentEnv).set(mongoose.connection.readyState);
+
+    // Initialize active sessions count from database
+    const sessionCount = await ChatSession.countDocuments();
+    activeSessions.labels(deploymentEnv).set(sessionCount);
+    console.log(`[Metrics] Active sessions initialized: ${sessionCount}`);
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);
     process.exit(1);

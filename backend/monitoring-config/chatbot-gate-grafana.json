@@ -222,7 +222,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Current number of in-flight HTTP requests",
+      "description": "Total number of active chat sessions",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "fixed" },
@@ -248,13 +248,13 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(chatbot_gate_http_requests_in_progress{deployment_env=~\"$deployment_env\"})",
+          "expr": "sum(chatbot_gate_active_sessions{deployment_env=~\"$deployment_env\"})",
           "instant": true,
           "legendFormat": "__auto",
           "refId": "A"
         }
       ],
-      "title": "Requests in Flight",
+      "title": "Active Sessions",
       "type": "stat"
     },
     {
@@ -1507,9 +1507,9 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, sum(rate(chatbot_gate_nodejs_eventloop_lag_seconds_bucket{deployment_env=~\"$deployment_env\"}[$interval])) by (le, deployment_env))",
+          "expr": "histogram_quantile(0.99, sum(rate(chatbot_gate_nodejs_eventloop_lag_seconds_bucket[$interval])) by (le))",
           "instant": false,
-          "legendFormat": "{{deployment_env}}",
+          "legendFormat": "p99",
           "range": true,
           "refId": "A"
         }
