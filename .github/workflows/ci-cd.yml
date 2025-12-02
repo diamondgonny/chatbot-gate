@@ -265,6 +265,22 @@ jobs:
           tags: tag:ci
           version: latest
 
+      - name: Wait for Tailscale & SSH port
+        run: |
+          HOST=${{ secrets.PRODUCTION_TAILSCALE_HOST }}
+          for i in {1..12}; do
+            echo "=== Attempt $i/12 ==="
+            tailscale status --peers
+            if tailscale ping --timeout=5s "$HOST" && nc -z "$HOST" 22; then
+              echo "✅ Tailscale and SSH port ready"
+              exit 0
+            fi
+            echo "Not ready yet, waiting 5s..."
+            sleep 5
+          done
+          echo "❌ Tailscale or SSH port not reachable after 60s" >&2
+          exit 1
+
       - name: Deploy via SSH (Blue-Green)
         uses: appleboy/ssh-action@v1.0.0
         env:
