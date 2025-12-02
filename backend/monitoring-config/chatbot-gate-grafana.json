@@ -285,7 +285,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(increase(chatbot_gate_http_requests_total{deployment_env=~\"$deployment_env\"}[$__range]))",
+          "expr": "round(sum(increase(chatbot_gate_http_requests_total{deployment_env=~\"$deployment_env\"}[$__range])))",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -324,7 +324,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(rate(chatbot_gate_http_requests_total{deployment_env=~\"$deployment_env\"}[$__range]))",
+          "expr": "sum(rate(chatbot_gate_http_requests_total{deployment_env=~\"$deployment_env\"}[$interval]))",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -363,7 +363,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.5, sum(rate(chatbot_gate_http_request_duration_seconds_bucket{deployment_env=~\"$deployment_env\"}[$__range])) by (le))",
+          "expr": "histogram_quantile(0.5, sum(rate(chatbot_gate_http_request_duration_seconds_bucket{deployment_env=~\"$deployment_env\"}[$interval])) by (le))",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -401,7 +401,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(increase(chatbot_gate_chat_messages_total{deployment_env=~\"$deployment_env\"}[$__range]))",
+          "expr": "round(sum(increase(chatbot_gate_chat_messages_total{deployment_env=~\"$deployment_env\"}[$__range])))",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -439,7 +439,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(increase(chatbot_gate_openai_tokens_total{deployment_env=~\"$deployment_env\"}[$__range]))",
+          "expr": "round(sum(increase(chatbot_gate_openai_tokens_total{deployment_env=~\"$deployment_env\"}[$__range])))",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -451,69 +451,52 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Percentage of failed authentication attempts",
+      "description": "Total failed authentication attempts in the selected time range",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": { "mode": "fixed" },
           "mappings": [],
-          "max": 1,
-          "min": 0,
-          "noValue": "0%",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.05 },
-              { "color": "red", "value": 0.15 }
-            ]
-          },
-          "unit": "percentunit"
+          "noValue": "0",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
         },
         "overrides": []
       },
       "gridPos": { "h": 5, "w": 4, "x": 12, "y": 6 },
       "id": 11,
       "options": {
-        "minVizHeight": 75,
-        "minVizWidth": 75,
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true,
-        "sizing": "auto"
+        "showPercentChange": false,
+        "textMode": "auto",
+        "wideLayout": true
       },
       "pluginVersion": "11.5.1",
       "targets": [
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(rate(chatbot_gate_auth_attempts_total{result=\"failure\", deployment_env=~\"$deployment_env\"}[$__range])) / sum(rate(chatbot_gate_auth_attempts_total{deployment_env=~\"$deployment_env\"}[$__range]))",
+          "expr": "round(sum(increase(chatbot_gate_auth_attempts_total{result=\"failure\", deployment_env=~\"$deployment_env\"}[$__range])))",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Auth Failure Rate",
-      "type": "gauge"
+      "title": "Auth Failures",
+      "type": "stat"
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Percentage of 4xx responses",
+      "description": "Total 4xx responses in the selected time range",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": { "mode": "fixed" },
           "mappings": [],
-          "noValue": "0%",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.05 },
-              { "color": "orange", "value": 0.1 }
-            ]
-          },
-          "unit": "percentunit"
+          "noValue": "0",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
         },
         "overrides": []
       },
@@ -534,33 +517,25 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(rate(chatbot_gate_http_requests_total{status_code=~\"4..\", deployment_env=~\"$deployment_env\"}[$__range])) / sum(rate(chatbot_gate_http_requests_total{deployment_env=~\"$deployment_env\"}[$__range]))",
+          "expr": "round(sum(increase(chatbot_gate_http_requests_total{status_code=~\"4..\", deployment_env=~\"$deployment_env\"}[$__range])))",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "4xx Rate",
+      "title": "4xx Errors",
       "type": "stat"
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Percentage of 5xx responses",
+      "description": "Total 5xx responses in the selected time range",
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "thresholds" },
+          "color": { "mode": "fixed" },
           "mappings": [],
-          "noValue": "0%",
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 0.01 },
-              { "color": "red", "value": 0.05 }
-            ]
-          },
-          "unit": "percentunit"
+          "noValue": "0",
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
         },
         "overrides": []
       },
@@ -581,14 +556,14 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(rate(chatbot_gate_http_requests_total{status_code=~\"5..\", deployment_env=~\"$deployment_env\"}[$__range])) / sum(rate(chatbot_gate_http_requests_total{deployment_env=~\"$deployment_env\"}[$__range]))",
+          "expr": "round(sum(increase(chatbot_gate_http_requests_total{status_code=~\"5..\", deployment_env=~\"$deployment_env\"}[$__range])))",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "5xx Rate",
+      "title": "5xx Errors",
       "type": "stat"
     },
     {
@@ -684,7 +659,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(increase(chatbot_gate_http_requests_total{deployment_env=~\"$deployment_env\"}[$__range])) by (status_code)",
+          "expr": "round(sum(increase(chatbot_gate_http_requests_total{deployment_env=~\"$deployment_env\"}[$__range])) by (status_code))",
           "instant": false,
           "legendFormat": "{{status_code}}",
           "range": true,
@@ -719,7 +694,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(increase(chatbot_gate_http_requests_total{deployment_env=~\"$deployment_env\"}[$__range])) by (method)",
+          "expr": "round(sum(increase(chatbot_gate_http_requests_total{deployment_env=~\"$deployment_env\"}[$__range])) by (method))",
           "instant": false,
           "legendFormat": "{{method}}",
           "range": true,
@@ -956,7 +931,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(increase(chatbot_gate_auth_attempts_total{deployment_env=~\"$deployment_env\"}[$__range])) by (result)",
+          "expr": "round(sum(increase(chatbot_gate_auth_attempts_total{deployment_env=~\"$deployment_env\"}[$__range])) by (result))",
           "instant": false,
           "legendFormat": "{{result}}",
           "range": true,
@@ -1359,7 +1334,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(increase(chatbot_gate_session_operations_total{deployment_env=~\"$deployment_env\"}[$__range])) by (operation)",
+          "expr": "round(sum(increase(chatbot_gate_session_operations_total{deployment_env=~\"$deployment_env\"}[$__range])) by (operation))",
           "instant": false,
           "legendFormat": "{{operation}}",
           "range": true,
