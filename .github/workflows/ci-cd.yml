@@ -283,10 +283,30 @@ jobs:
           for i in {1..12}; do
             echo "=== Attempt $i/12 ==="
             tailscale status --peers
-            if tailscale ping --timeout=5s "$HOST" && nc -z "$HOST" 22; then
-              echo "✅ Tailscale and SSH port ready"
-              exit 0
+
+            # Check Tailscale ping (allow DERP relay)
+            PING_OUTPUT=$(tailscale ping --timeout=5s --c=1 "$HOST" 2>&1) || true
+            echo "$PING_OUTPUT"
+
+            if echo "$PING_OUTPUT" | grep -q "pong"; then
+              # Log connection type
+              if echo "$PING_OUTPUT" | grep -q "via DERP"; then
+                echo "🟡 Connected via DERP relay"
+              else
+                echo "🟢 Direct connection established"
+              fi
+
+              # Check SSH port
+              if nc -z "$HOST" 22; then
+                echo "✅ Tailscale and SSH port ready"
+                exit 0
+              else
+                echo "Tailscale OK but SSH port not ready yet..."
+              fi
+            else
+              echo "Tailscale ping failed..."
             fi
+
             echo "Not ready yet, waiting 5s..."
             sleep 5
           done
