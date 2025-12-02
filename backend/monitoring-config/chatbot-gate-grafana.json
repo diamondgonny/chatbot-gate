@@ -222,7 +222,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Total number of active chat sessions",
+      "description": "Chat sessions with activity in the last 5 minutes",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "fixed" },

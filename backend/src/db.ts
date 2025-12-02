@@ -36,10 +36,26 @@ export const connectDB = async () => {
     // Set initial state
     mongoConnectionState.labels(deploymentEnv).set(mongoose.connection.readyState);
 
-    // Initialize active sessions count from database
-    const sessionCount = await ChatSession.countDocuments();
-    activeSessions.labels(deploymentEnv).set(sessionCount);
-    console.log(`[Metrics] Active sessions initialized: ${sessionCount}`);
+    // Start periodic active sessions tracking (sessions with activity in last 5 minutes)
+    const ACTIVE_SESSION_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+    const UPDATE_INTERVAL_MS = 30 * 1000; // Update every 30 seconds
+
+    const updateActiveSessions = async () => {
+      try {
+        const cutoff = new Date(Date.now() - ACTIVE_SESSION_WINDOW_MS);
+        const count = await ChatSession.countDocuments({ updatedAt: { $gte: cutoff } });
+        activeSessions.labels(deploymentEnv).set(count);
+      } catch (err) {
+        console.error('[Metrics] Failed to update active sessions:', err);
+      }
+    };
+
+    // Initial update
+    await updateActiveSessions();
+    console.log('[Metrics] Active sessions tracking started (5-minute window, 30s interval)');
+
+    // Periodic updates
+    setInterval(updateActiveSessions, UPDATE_INTERVAL_MS).unref();
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);
     process.exit(1);
