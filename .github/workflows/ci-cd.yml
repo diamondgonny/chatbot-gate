@@ -263,6 +263,7 @@ jobs:
           oauth-client-id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TAILSCALE_OAUTH_SECRET }}
           tags: tag:ci
+          version: latest
 
       - name: Deploy via SSH (Blue-Green)
         uses: appleboy/ssh-action@v1.0.0
