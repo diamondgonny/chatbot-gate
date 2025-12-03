@@ -280,8 +280,8 @@ jobs:
       - name: Wait for Tailscale & SSH port
         run: |
           HOST=${{ secrets.PRODUCTION_TAILSCALE_HOST }}
-          for i in {1..5}; do
-            echo "=== Attempt $i/5 ==="
+          for i in {1..15}; do
+            echo "=== Attempt $i/15 ==="
             tailscale status --peers
 
             # Check Tailscale ping (allow DERP relay)
@@ -310,7 +310,7 @@ jobs:
             echo "Not ready yet, waiting 5s..."
             sleep 5
           done
-          echo "❌ Tailscale or SSH port not reachable after 40s" >&2
+          echo "❌ Tailscale or SSH port not reachable after 120s" >&2
           exit 1
 
       - name: Deploy via SSH (Blue-Green)
