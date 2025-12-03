@@ -577,7 +577,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Request rate by route over time",
+      "description": "Request count by route over time (excludes health checks)",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -605,7 +605,7 @@
           },
           "mappings": [],
           "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
-          "unit": "reqps"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -620,14 +620,14 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(rate(chatbot_gate_http_requests_total{deployment_env=~\"$deployment_env\"}[$interval])) by (route)",
+          "expr": "sum(increase(chatbot_gate_http_requests_total{deployment_env=~\"$deployment_env\", route!~\"/health|/|/validate|/status\"}[$interval])) by (route)",
           "instant": false,
           "legendFormat": "{{route}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Request Rate by Route",
+      "title": "Requests by Route",
       "type": "timeseries"
     },
     {
