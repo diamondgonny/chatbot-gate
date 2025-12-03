@@ -943,7 +943,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Rate limit hits (429 responses) by route",
+      "description": "Rate limit hit count by route",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -985,14 +985,14 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(rate(chatbot_gate_rate_limit_hits_total{deployment_env=~\"$deployment_env\"}[$interval])) by (route)",
+          "expr": "sum(increase(chatbot_gate_rate_limit_hits_total{deployment_env=~\"$deployment_env\"}[$interval])) by (route)",
           "instant": false,
           "legendFormat": "{{route}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Rate Limit Hits",
+      "title": "Rate Limit Count",
       "type": "timeseries"
     },
     {
@@ -1643,7 +1643,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "5xx error rate comparison between blue and green deployments",
+      "description": "5xx error count comparison between blue and green deployments",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
@@ -1670,8 +1670,7 @@
             "thresholdsStyle": { "mode": "off" }
           },
           "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
-          "unit": "percentunit"
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
         },
         "overrides": [
           { "matcher": { "id": "byName", "options": "blue" }, "properties": [{ "id": "color", "value": { "fixedColor": "#3274D9", "mode": "fixed" } }] },
@@ -1689,14 +1688,14 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(rate(chatbot_gate_http_requests_total{status_code=~\"5..\"}[$interval])) by (deployment_env) / sum(rate(chatbot_gate_http_requests_total[$interval])) by (deployment_env)",
+          "expr": "sum(increase(chatbot_gate_http_requests_total{status_code=~\"5..\"}[$interval])) by (deployment_env)",
           "instant": false,
           "legendFormat": "{{deployment_env}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Error Rate by Deployment",
+      "title": "5xx Errors by Deployment",
       "type": "timeseries"
     }
   ],
