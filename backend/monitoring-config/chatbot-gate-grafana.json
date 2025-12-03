@@ -882,7 +882,7 @@
           { "matcher": { "id": "byName", "options": "backoff" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] }
         ]
       },
-      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 34 },
+      "gridPos": { "h": 10, "w": 9, "x": 9, "y": 34 },
       "id": 22,
       "options": {
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -918,7 +918,7 @@
           { "matcher": { "id": "byName", "options": "backoff" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] }
         ]
       },
-      "gridPos": { "h": 10, "w": 6, "x": 12, "y": 34 },
+      "gridPos": { "h": 10, "w": 6, "x": 18, "y": 34 },
       "id": 23,
       "options": {
         "displayLabels": [],
@@ -975,7 +975,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 10, "w": 6, "x": 18, "y": 34 },
+      "gridPos": { "h": 10, "w": 9, "x": 0, "y": 34 },
       "id": 24,
       "options": {
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1297,7 +1297,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 10, "w": 8, "x": 0, "y": 67 },
+      "gridPos": { "h": 10, "w": 9, "x": 9, "y": 67 },
       "id": 31,
       "options": {
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1329,7 +1329,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 10, "w": 8, "x": 8, "y": 67 },
+      "gridPos": { "h": 10, "w": 6, "x": 18, "y": 67 },
       "id": 32,
       "options": {
         "displayLabels": [],
@@ -1389,7 +1389,7 @@
           { "matcher": { "id": "byName", "options": "green" }, "properties": [{ "id": "color", "value": { "fixedColor": "#56A64B", "mode": "fixed" } }] }
         ]
       },
-      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 67 },
+      "gridPos": { "h": 10, "w": 9, "x": 0, "y": 67 },
       "id": 41,
       "options": {
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
