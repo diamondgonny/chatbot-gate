@@ -47,6 +47,9 @@ RUN npm run build && \
 # ============================================
 FROM node:20.18.1-alpine AS production
 
+# Security updates
+RUN apk upgrade --no-cache
+
 # Install dumb-init for proper signal handling
 RUN apk add --no-cache dumb-init
 
