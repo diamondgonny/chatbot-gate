@@ -1051,7 +1051,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(rate(chatbot_gate_chat_messages_total{deployment_env=~\"$deployment_env\"}[$interval])) by (direction)",
+          "expr": "sum(increase(chatbot_gate_chat_messages_total{deployment_env=~\"$deployment_env\"}[$interval])) by (direction)",
           "instant": false,
           "legendFormat": "{{direction}}",
           "range": true,
