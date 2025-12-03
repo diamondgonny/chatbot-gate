@@ -92,12 +92,12 @@
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [
-            { "options": { "0": { "color": "#1A237E", "index": 0, "text": "Inactive" }, "1": { "color": "#3274D9", "index": 1, "text": "Active" } }, "type": "value" }
+            { "options": { "0": { "color": "#808080", "index": 0, "text": "Inactive" }, "1": { "color": "#3274D9", "index": 1, "text": "Active" } }, "type": "value" }
           ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "#1A237E", "value": null },
+              { "color": "#808080", "value": null },
               { "color": "#3274D9", "value": 1 }
             ]
           }
@@ -137,12 +137,12 @@
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [
-            { "options": { "0": { "color": "#1B5E20", "index": 0, "text": "Inactive" }, "1": { "color": "#56A64B", "index": 1, "text": "Active" } }, "type": "value" }
+            { "options": { "0": { "color": "#808080", "index": 0, "text": "Inactive" }, "1": { "color": "#56A64B", "index": 1, "text": "Active" } }, "type": "value" }
           ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "#1B5E20", "value": null },
+              { "color": "#808080", "value": null },
               { "color": "#56A64B", "value": 1 }
             ]
           }
