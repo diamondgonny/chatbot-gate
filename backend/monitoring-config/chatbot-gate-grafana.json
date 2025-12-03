@@ -92,7 +92,7 @@
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [
-            { "options": { "0": { "color": "#1A237E", "index": 0, "text": "Standby" }, "1": { "color": "#3274D9", "index": 1, "text": "Active" } }, "type": "value" }
+            { "options": { "0": { "color": "#1A237E", "index": 0, "text": "Inactive" }, "1": { "color": "#3274D9", "index": 1, "text": "Active" } }, "type": "value" }
           ],
           "thresholds": {
             "mode": "absolute",
@@ -137,7 +137,7 @@
         "defaults": {
           "color": { "mode": "thresholds" },
           "mappings": [
-            { "options": { "0": { "color": "#1B5E20", "index": 0, "text": "Standby" }, "1": { "color": "#56A64B", "index": 1, "text": "Active" } }, "type": "value" }
+            { "options": { "0": { "color": "#1B5E20", "index": 0, "text": "Inactive" }, "1": { "color": "#56A64B", "index": 1, "text": "Active" } }, "type": "value" }
           ],
           "thresholds": {
             "mode": "absolute",
