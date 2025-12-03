@@ -1300,7 +1300,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(rate(chatbot_gate_session_operations_total{deployment_env=~\"$deployment_env\"}[$interval])) by (operation)",
+          "expr": "sum(increase(chatbot_gate_session_operations_total{deployment_env=~\"$deployment_env\"}[$interval])) by (operation)",
           "instant": false,
           "legendFormat": "{{operation}}",
           "range": true,
