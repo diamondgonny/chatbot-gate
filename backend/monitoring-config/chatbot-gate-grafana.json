@@ -1001,7 +1001,7 @@
       "gridPos": { "h": 1, "w": 24, "x": 0, "y": 44 },
       "id": 25,
       "panels": [],
-      "title": "Chat & OpenAI",
+      "title": "Chat",
       "type": "row"
     },
     {
@@ -1040,7 +1040,7 @@
           { "matcher": { "id": "byName", "options": "ai" }, "properties": [{ "id": "color", "value": { "fixedColor": "purple", "mode": "fixed" } }] }
         ]
       },
-      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 45 },
+      "gridPos": { "h": 10, "w": 18, "x": 0, "y": 45 },
       "id": 26,
       "options": {
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1095,7 +1095,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 10, "w": 6, "x": 12, "y": 45 },
+      "gridPos": { "h": 10, "w": 6, "x": 18, "y": 45 },
       "id": 27,
       "options": {
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1127,69 +1127,12 @@
       "type": "timeseries"
     },
     {
-      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "OpenAI API call duration percentiles",
-      "fieldConfig": {
-        "defaults": {
-          "color": { "mode": "palette-classic" },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "barWidthFactor": 0.6,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": { "type": "linear" },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": { "group": "A", "mode": "none" },
-            "thresholdsStyle": { "mode": "off" }
-          },
-          "mappings": [],
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": { "h": 10, "w": 6, "x": 18, "y": 45 },
-      "id": 28,
-      "options": {
-        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
-        "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
-      },
-      "pluginVersion": "11.5.1",
-      "targets": [
-        {
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(chatbot_gate_openai_api_duration_seconds_bucket{deployment_env=~\"$deployment_env\"}[$interval])) by (le))",
-          "instant": false,
-          "legendFormat": "p95",
-          "range": true,
-          "refId": "A"
-        },
-        {
-          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-          "editorMode": "code",
-          "expr": "histogram_quantile(0.5, sum(rate(chatbot_gate_openai_api_duration_seconds_bucket{deployment_env=~\"$deployment_env\"}[$interval])) by (le))",
-          "hide": false,
-          "instant": false,
-          "legendFormat": "p50",
-          "range": true,
-          "refId": "B"
-        }
-      ],
-      "title": "OpenAI API Performance",
-      "type": "timeseries"
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 55 },
+      "id": 42,
+      "panels": [],
+      "title": "OpenAI",
+      "type": "row"
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
@@ -1227,7 +1170,7 @@
           { "matcher": { "id": "byName", "options": "completion" }, "properties": [{ "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } }] }
         ]
       },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 55 },
+      "gridPos": { "h": 10, "w": 18, "x": 0, "y": 56 },
       "id": 29,
       "options": {
         "legend": { "calcs": ["sum"], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1249,8 +1192,73 @@
       "type": "timeseries"
     },
     {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "description": "OpenAI API call duration percentiles",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 6, "x": 18, "y": 56 },
+      "id": 28,
+      "options": {
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
+      },
+      "pluginVersion": "11.5.1",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.95, sum(rate(chatbot_gate_openai_api_duration_seconds_bucket{deployment_env=~\"$deployment_env\"}[$interval])) by (le))",
+          "instant": false,
+          "legendFormat": "p95",
+          "range": true,
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "editorMode": "code",
+          "expr": "histogram_quantile(0.5, sum(rate(chatbot_gate_openai_api_duration_seconds_bucket{deployment_env=~\"$deployment_env\"}[$interval])) by (le))",
+          "hide": false,
+          "instant": false,
+          "legendFormat": "p50",
+          "range": true,
+          "refId": "B"
+        }
+      ],
+      "title": "OpenAI API Performance",
+      "type": "timeseries"
+    },
+    {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 65 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 66 },
       "id": 30,
       "panels": [],
       "title": "Sessions",
@@ -1289,7 +1297,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 66 },
+      "gridPos": { "h": 10, "w": 8, "x": 0, "y": 67 },
       "id": 31,
       "options": {
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1321,7 +1329,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 66 },
+      "gridPos": { "h": 10, "w": 8, "x": 8, "y": 67 },
       "id": 32,
       "options": {
         "displayLabels": [],
@@ -1381,7 +1389,7 @@
           { "matcher": { "id": "byName", "options": "green" }, "properties": [{ "id": "color", "value": { "fixedColor": "#56A64B", "mode": "fixed" } }] }
         ]
       },
-      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 76 },
+      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 67 },
       "id": 41,
       "options": {
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1404,7 +1412,7 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 87 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 77 },
       "id": 33,
       "panels": [],
       "title": "Node.js Runtime",
@@ -1447,7 +1455,7 @@
           { "matcher": { "id": "byName", "options": "green" }, "properties": [{ "id": "color", "value": { "fixedColor": "#56A64B", "mode": "fixed" } }] }
         ]
       },
-      "gridPos": { "h": 10, "w": 8, "x": 0, "y": 88 },
+      "gridPos": { "h": 10, "w": 8, "x": 0, "y": 78 },
       "id": 34,
       "options": {
         "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1505,7 +1513,7 @@
           { "matcher": { "id": "byName", "options": "green" }, "properties": [{ "id": "color", "value": { "fixedColor": "#56A64B", "mode": "fixed" } }] }
         ]
       },
-      "gridPos": { "h": 10, "w": 8, "x": 8, "y": 88 },
+      "gridPos": { "h": 10, "w": 8, "x": 8, "y": 78 },
       "id": 35,
       "options": {
         "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1563,7 +1571,7 @@
           { "matcher": { "id": "byName", "options": "green" }, "properties": [{ "id": "color", "value": { "fixedColor": "#56A64B", "mode": "fixed" } }] }
         ]
       },
-      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 88 },
+      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 78 },
       "id": 36,
       "options": {
         "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1586,7 +1594,7 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 98 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 88 },
       "id": 37,
       "panels": [],
       "title": "Blue-Green Deployment Comparison",
@@ -1629,7 +1637,7 @@
           { "matcher": { "id": "byName", "options": "green" }, "properties": [{ "id": "color", "value": { "fixedColor": "#56A64B", "mode": "fixed" } }] }
         ]
       },
-      "gridPos": { "h": 10, "w": 8, "x": 0, "y": 99 },
+      "gridPos": { "h": 10, "w": 8, "x": 0, "y": 89 },
       "id": 38,
       "options": {
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1687,7 +1695,7 @@
           { "matcher": { "id": "byName", "options": "green" }, "properties": [{ "id": "color", "value": { "fixedColor": "#56A64B", "mode": "fixed" } }] }
         ]
       },
-      "gridPos": { "h": 10, "w": 8, "x": 8, "y": 99 },
+      "gridPos": { "h": 10, "w": 8, "x": 8, "y": 89 },
       "id": 39,
       "options": {
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1744,7 +1752,7 @@
           { "matcher": { "id": "byName", "options": "green" }, "properties": [{ "id": "color", "value": { "fixedColor": "#56A64B", "mode": "fixed" } }] }
         ]
       },
-      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 99 },
+      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 89 },
       "id": 40,
       "options": {
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
