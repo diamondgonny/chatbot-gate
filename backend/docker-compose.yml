@@ -14,8 +14,6 @@ services:
     volumes:
       - ./volumes/data/db:/data/db
       - ./volumes/data/configdb:/data/configdb
-      # Backup volume
-      - ./backups/mongodb:/backups
 
     # Resource limits
     mem_limit: 2g

@@ -5,7 +5,6 @@
 /dist
 /coverage
 /logs
-/backups
 
 # Env files
 .env

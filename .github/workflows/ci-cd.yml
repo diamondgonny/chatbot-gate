@@ -344,10 +344,6 @@ jobs:
               exit 1
             fi
 
-            # Backup MongoDB before deployment
-            echo "Creating MongoDB backup..."
-            ./scripts/backup-mongodb.sh
-
             # Run blue-green deployment (now pulls from GHCR)
             ./scripts/deploy-blue-green.sh
 

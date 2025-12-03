@@ -156,12 +156,10 @@ main() {
   local failed=0
   # Create parent directories first
   create_and_secure_directory "${REPO_ROOT}/logs" "Logs directory" || failed=1
-  create_and_secure_directory "${REPO_ROOT}/backups" "Backups directory" || failed=1
 
   # Create subdirectories
   create_and_secure_directory "${REPO_ROOT}/logs/blue" "Blue environment logs" || failed=1
   create_and_secure_directory "${REPO_ROOT}/logs/green" "Green environment logs" || failed=1
-  create_and_secure_directory "${REPO_ROOT}/backups/mongodb" "MongoDB backup storage" || failed=1
   create_and_secure_directory "${REPO_ROOT}/volumes" "Volume storage root" || failed=1
   create_and_secure_directory "${REPO_ROOT}/volumes/data" "Volume data root" || failed=1
   create_and_secure_directory "${REPO_ROOT}/volumes/data/db" "MongoDB data directory" 999 770 || failed=1
@@ -201,7 +199,7 @@ EOF
   log "Step 4/5: Verifying setup..."
   local all_exist=0
 
-  for dir in "logs" "logs/blue" "logs/green" "backups" "backups/mongodb"; do
+  for dir in "logs" "logs/blue" "logs/green"; do
     if [[ ! -d "${REPO_ROOT}/$dir" ]]; then
       error "Missing directory: $dir"
       all_exist=1
@@ -230,8 +228,6 @@ EOF
   echo "  📁 ./logs/"
   echo "  📁 ./logs/blue"
   echo "  📁 ./logs/green"
-  echo "  📁 ./backups/"
-  echo "  📁 ./backups/mongodb"
   echo "  📁 ./volumes/"
   echo "  📁 ./volumes/data/"
   echo "  📁 ./volumes/data/db"
