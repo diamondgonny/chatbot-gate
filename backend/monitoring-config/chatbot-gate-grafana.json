@@ -222,7 +222,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Chat sessions with activity in the last 5 minutes",
+      "description": "Peak concurrent active sessions in the selected time range",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "fixed" },
@@ -248,13 +248,14 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(chatbot_gate_active_sessions{deployment_env=~\"$deployment_env\"})",
-          "instant": true,
-          "legendFormat": "__auto",
+          "expr": "max(max_over_time(chatbot_gate_active_sessions{deployment_env=~\"$deployment_env\"}[$__range]))",
+          "instant": false,
+          "legendFormat": "",
+          "range": true,
           "refId": "A"
         }
       ],
-      "title": "Active Sessions",
+      "title": "Peak Active Sessions",
       "type": "stat"
     },
     {
@@ -1345,8 +1346,62 @@
       "type": "piechart"
     },
     {
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "description": "Concurrent active sessions over time",
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "barWidthFactor": 0.6,
+            "drawStyle": "line",
+            "fillOpacity": 20,
+            "gradientMode": "none",
+            "hideFrom": { "legend": false, "tooltip": false, "viz": false },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": { "type": "linear" },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": { "group": "A", "mode": "none" },
+            "thresholdsStyle": { "mode": "off" }
+          },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 76 },
+      "id": 41,
+      "options": {
+        "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "hideZeros": false, "mode": "multi", "sort": "desc" }
+      },
+      "pluginVersion": "11.5.1",
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+          "editorMode": "code",
+          "expr": "chatbot_gate_active_sessions{deployment_env=~\"$deployment_env\"}",
+          "instant": false,
+          "legendFormat": "{{deployment_env}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Active Sessions",
+      "type": "timeseries"
+    },
+    {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 76 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 87 },
       "id": 33,
       "panels": [],
       "title": "Node.js Runtime",
@@ -1386,7 +1441,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 10, "w": 8, "x": 0, "y": 77 },
+      "gridPos": { "h": 10, "w": 8, "x": 0, "y": 88 },
       "id": 34,
       "options": {
         "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1441,7 +1496,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 10, "w": 8, "x": 8, "y": 77 },
+      "gridPos": { "h": 10, "w": 8, "x": 8, "y": 88 },
       "id": 35,
       "options": {
         "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1496,7 +1551,7 @@
         },
         "overrides": []
       },
-      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 77 },
+      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 88 },
       "id": 36,
       "options": {
         "legend": { "calcs": ["lastNotNull", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1519,7 +1574,7 @@
     },
     {
       "collapsed": false,
-      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 87 },
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 98 },
       "id": 37,
       "panels": [],
       "title": "Blue-Green Deployment Comparison",
@@ -1562,7 +1617,7 @@
           { "matcher": { "id": "byName", "options": "green" }, "properties": [{ "id": "color", "value": { "fixedColor": "#56A64B", "mode": "fixed" } }] }
         ]
       },
-      "gridPos": { "h": 10, "w": 8, "x": 0, "y": 88 },
+      "gridPos": { "h": 10, "w": 8, "x": 0, "y": 99 },
       "id": 38,
       "options": {
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1620,7 +1675,7 @@
           { "matcher": { "id": "byName", "options": "green" }, "properties": [{ "id": "color", "value": { "fixedColor": "#56A64B", "mode": "fixed" } }] }
         ]
       },
-      "gridPos": { "h": 10, "w": 8, "x": 8, "y": 88 },
+      "gridPos": { "h": 10, "w": 8, "x": 8, "y": 99 },
       "id": 39,
       "options": {
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
@@ -1677,7 +1732,7 @@
           { "matcher": { "id": "byName", "options": "green" }, "properties": [{ "id": "color", "value": { "fixedColor": "#56A64B", "mode": "fixed" } }] }
         ]
       },
-      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 88 },
+      "gridPos": { "h": 10, "w": 8, "x": 16, "y": 99 },
       "id": 40,
       "options": {
         "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": true },
