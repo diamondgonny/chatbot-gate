@@ -1701,7 +1701,7 @@
   ],
   "refresh": "1m",
   "schemaVersion": 40,
-  "tags": ["chatbot-gate", "nodejs", "express", "openai"],
+  "tags": ["chatbot-gate"],
   "templating": {
     "list": [
       {
