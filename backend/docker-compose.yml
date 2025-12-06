@@ -85,6 +85,9 @@ services:
       - internal
       - caddy_upstream
 
+    expose:
+      - "4000"
+
     # Security: Read-only root filesystem (except /app/logs)
     read_only: true
     tmpfs:
@@ -140,6 +143,9 @@ services:
     networks:
       - internal
       - caddy_upstream
+
+    expose:
+      - "4000"
 
     # Security: Read-only root filesystem (except /app/logs)
     read_only: true
