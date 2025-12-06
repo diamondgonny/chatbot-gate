@@ -57,7 +57,7 @@ HEALTH_CHECK_MAX_WAIT=90
 HEALTH_CHECK_INTERVAL=3
 VALIDATION_PERIOD=10
 CADDY_CONTAINER="caddy"  # Caddy container name
-CADDY_ADMIN_API="http://localhost:2019"  # Internal to Caddy container
+CADDY_ADMIN_API="http://127.0.0.1:2019"  # Internal to Caddy container (IPv4 only)
 CADDY_UPSTREAM_PATH="${CADDY_UPSTREAM_PATH:-}"  # Auto-detect or set via env var
 
 # Logging functions
@@ -405,12 +405,12 @@ switch_traffic() {
 
   response=$(docker exec "${CADDY_CONTAINER}" sh -c "
     printf 'PATCH ${CADDY_UPSTREAM_PATH} HTTP/1.1\r\n'
-    printf 'Host: localhost:2019\r\n'
+    printf 'Host: 127.0.0.1:2019\r\n'
     printf 'Content-Type: application/json\r\n'
     printf 'Content-Length: ${content_length}\r\n'
     printf '\r\n'
     printf '${json_data}'
-  " | docker exec -i "${CADDY_CONTAINER}" nc localhost 2019 2>&1) || {
+  " | docker exec -i "${CADDY_CONTAINER}" nc 127.0.0.1 2019 2>&1) || {
       error "Failed to update Caddy upstream"
       error "Response: ${response}"
       error "Current path: ${CADDY_UPSTREAM_PATH}"
@@ -469,15 +469,15 @@ rollback() {
 
   response=$(docker exec "${CADDY_CONTAINER}" sh -c "
     printf 'PATCH ${CADDY_UPSTREAM_PATH} HTTP/1.1\r\n'
-    printf 'Host: localhost:2019\r\n'
+    printf 'Host: 127.0.0.1:2019\r\n'
     printf 'Content-Type: application/json\r\n'
     printf 'Content-Length: ${content_length}\r\n'
     printf '\r\n'
     printf '${json_data}'
-  " | docker exec -i "${CADDY_CONTAINER}" nc localhost 2019 2>&1) || {
+  " | docker exec -i "${CADDY_CONTAINER}" nc 127.0.0.1 2019 2>&1) || {
       error "⚠️  CRITICAL: Rollback failed - manual intervention required!"
       error "Manual command:"
-      error "docker exec ${CADDY_CONTAINER} sh -c \"printf 'PATCH ${CADDY_UPSTREAM_PATH} HTTP/1.1\\r\\n'; printf 'Host: localhost:2019\\r\\n'; printf 'Content-Type: application/json\\r\\n'; printf 'Content-Length: ${content_length}\\r\\n'; printf '\\r\\n'; printf '${json_data}'\" | docker exec -i ${CADDY_CONTAINER} nc localhost 2019"
+      error "docker exec ${CADDY_CONTAINER} sh -c \"printf 'PATCH ${CADDY_UPSTREAM_PATH} HTTP/1.1\\r\\n'; printf 'Host: 127.0.0.1:2019\\r\\n'; printf 'Content-Type: application/json\\r\\n'; printf 'Content-Length: ${content_length}\\r\\n'; printf '\\r\\n'; printf '${json_data}'\" | docker exec -i ${CADDY_CONTAINER} nc 127.0.0.1 2019"
       exit 2
     }
 
