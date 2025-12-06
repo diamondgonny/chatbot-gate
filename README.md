@@ -1,10 +1,9 @@
 # Chatbot Gate Project
 
-
 ## 프로젝트 개요
 
-접속 코드를 통해 이용할 수 있는 프라이빗 AI 챗봇 서비스입니다.
-간단한 인프라 구축, 배포, 모니터링을 연습하고자 토이 프로젝트로 만든 풀스택 애플리케이션입니다.
+- 접속 코드를 통해 이용할 수 있는 프라이빗 AI 챗봇 서비스입니다.
+- 간단한 인프라 구축, 배포, 모니터링을 연습하고자 토이 프로젝트로 만든 풀스택 애플리케이션입니다.
 
 ## 사용 방법
 
@@ -14,11 +13,13 @@
 
 ## 스크린샷
 
-<!-- Gate 페이지 -->
+<img width="1701" height="1226" alt="Screenshot 2025-12-06 at 11 44 30" src="https://github.com/user-attachments/assets/93a26ab9-787c-4f37-b4ec-0afb1e9f32dd" />
+<img width="1701" height="1224" alt="Screenshot 2025-12-06 at 11 44 43" src="https://github.com/user-attachments/assets/9f3cbbed-03d6-4d9a-8d34-bf9615494f51" />
+<img width="1701" height="1235" alt="Screenshot 2025-12-06 at 11 50 31" src="https://github.com/user-attachments/assets/826d0dcc-9ffd-4dfd-b602-3b50a1125c32" />
 
-<!-- Hub 페이지 -->
+## 모니터링 대시보드
 
-<!-- Chat 페이지 -->
+<img width="1701" height="1233" alt="Screenshot 2025-12-06 at 11 57 16" src="https://github.com/user-attachments/assets/0ac55157-7c55-415d-b398-43bf99ff68ec" />
 
 ## 기술 스택
 
@@ -26,10 +27,6 @@
 - **Backend**: Express.js 5, TypeScript, MongoDB (Mongoose 9), OpenAI API
 - **Infrastructure**: Vercel, Docker + GHCR, GitHub Actions CI/CD, Blue-Green Deployment
 - **Monitoring**: Prometheus, Grafana
-
-## 모니터링 대시보드
-
-<!-- Grafana 대시보드 -->
 
 ## 프로젝트 구조
 
