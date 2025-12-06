@@ -1,0 +1,66 @@
+# Chatbot Gate Project
+
+
+## 프로젝트 개요
+
+접속 코드를 통해 이용할 수 있는 프라이빗 AI 챗봇 서비스입니다.
+간단한 인프라 구축, 배포, 모니터링을 연습하고자 토이 프로젝트로 만든 풀스택 애플리케이션입니다.
+
+## 사용 방법
+
+1. **코드 입력**: 메인 화면에서 전달받은 코드를 입력하세요.
+2. **입장**: 코드가 확인되면 채팅 로비로 이동합니다.
+3. **대화 시작**: '새 채팅'을 눌러 대화를 시작하거나, 왼쪽 목록에서 이전 대화를 선택하세요.
+
+## 스크린샷
+
+<!-- Gate 페이지 -->
+
+<!-- Hub 페이지 -->
+
+<!-- Chat 페이지 -->
+
+## 기술 스택
+
+- **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS, Framer Motion
+- **Backend**: Express.js 5, TypeScript, MongoDB (Mongoose 9), OpenAI API
+- **Infrastructure**: Vercel, Docker + GHCR, GitHub Actions CI/CD, Blue-Green Deployment
+- **Monitoring**: Prometheus, Grafana
+
+## 모니터링 대시보드
+
+<!-- Grafana 대시보드 -->
+
+## 프로젝트 구조
+
+```
+chatbot-gate/
+├── backend/
+│   ├── src/
+│   │   ├── controllers/     # 비즈니스 로직 (gate, chat, session)
+│   │   ├── middleware/      # auth, rateLimiter, metrics
+│   │   ├── models/          # Mongoose 스키마
+│   │   ├── routes/          # API 엔드포인트
+│   │   ├── metrics/         # Prometheus 메트릭
+│   │   └── utils/           # JWT 유틸리티
+│   ├── monitoring-config/   # Prometheus, Grafana 설정
+│   └── docker-compose.yml
+├── frontend/
+│   ├── app/                 # Next.js App Router (/, /hub, /chat)
+│   ├── components/          # React 컴포넌트 (withAuth, SessionSidebar)
+│   └── lib/                 # 유틸리티 (axiosClient, authUtils)
+├── .github/workflows/       # CI/CD 파이프라인
+└── README.md
+```
+
+## API 문서
+
+| 엔드포인트 | 메서드 | 설명 | 인증 |
+|-----------|--------|------|:----:|
+| `/api/gate/validate` | POST | 접근 코드 검증, JWT 발급 | - |
+| `/api/auth/status` | GET | 인증 상태 확인 | - |
+| `/api/chat/message` | POST | AI에게 메시지 전송 | O |
+| `/api/chat/history` | GET | 세션 대화 내역 조회 | O |
+| `/api/sessions` | GET | 세션 목록 조회 | O |
+| `/api/sessions/:id` | DELETE | 세션 삭제 | O |
+| `/metrics` | GET | Prometheus 메트릭 | - |
