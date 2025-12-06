@@ -34,10 +34,13 @@
 chatbot-gate/
 ├── backend/
 │   ├── src/
-│   │   ├── controllers/     # 비즈니스 로직 (gate, chat, session)
+│   │   ├── controllers/     # HTTP 요청/응답 처리
+│   │   ├── services/        # 비즈니스 로직 (gate, session, chat)
 │   │   ├── middleware/      # auth, rateLimiter, metrics
 │   │   ├── models/          # Mongoose 스키마
 │   │   ├── routes/          # API 엔드포인트
+│   │   ├── types/           # 요청/응답 타입 정의
+│   │   ├── constants/       # 공유 상수
 │   │   ├── metrics/         # Prometheus 메트릭
 │   │   └── utils/           # JWT 유틸리티
 │   ├── monitoring-config/   # Prometheus, Grafana 설정
