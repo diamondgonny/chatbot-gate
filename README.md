@@ -19,7 +19,7 @@
 
 ## 모니터링 대시보드
 
-<img width="1701" height="1233" alt="Screenshot 2025-12-06 at 11 57 16" src="https://github.com/user-attachments/assets/0ac55157-7c55-415d-b398-43bf99ff68ec" />
+<img width="1701" height="1271" alt="Screenshot 2025-12-07 at 07 46 31" src="https://github.com/user-attachments/assets/54fd24dd-54a0-4b98-a786-e94aee1efdc4" />
 
 ## 기술 스택
 
