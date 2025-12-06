@@ -94,6 +94,7 @@
           "mappings": [
             { "options": { "0": { "color": "#808080", "index": 0, "text": "Inactive" }, "1": { "color": "#3274D9", "index": 1, "text": "Active" } }, "type": "value" }
           ],
+          "noValue": "Inactive",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -139,6 +140,7 @@
           "mappings": [
             { "options": { "0": { "color": "#808080", "index": 0, "text": "Inactive" }, "1": { "color": "#56A64B", "index": 1, "text": "Active" } }, "type": "value" }
           ],
+          "noValue": "Inactive",
           "thresholds": {
             "mode": "absolute",
             "steps": [
