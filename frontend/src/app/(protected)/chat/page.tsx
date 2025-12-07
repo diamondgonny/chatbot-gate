@@ -7,25 +7,7 @@ import { twMerge } from 'tailwind-merge';
 import api from "@/lib/axiosClient";
 import SessionSidebar from "@/components/SessionSidebar";
 import AlertModal from "@/components/AlertModal";
-
-interface Message {
-  id: string;
-  role: "user" | "ai";
-  content: string;
-  timestamp: string;
-}
-
-interface Session {
-  sessionId: string;
-  title: string;
-  lastMessage: {
-    content: string;
-    role: string;
-    timestamp: string;
-  } | null;
-  updatedAt: string;
-  createdAt: string;
-}
+import type { Message, Session } from "@/types";
 
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);

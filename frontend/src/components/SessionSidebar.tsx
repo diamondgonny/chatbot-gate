@@ -2,18 +2,7 @@
 
 import { formatTimeAgo } from "@/lib/timeUtils";
 import { motion } from "framer-motion";
-
-interface Session {
-  sessionId: string;
-  title: string;
-  lastMessage: {
-    content: string;
-    role: string;
-    timestamp: string;
-  } | null;
-  createdAt: string;
-  updatedAt: string;
-}
+import type { Session } from "@/types";
 
 interface SessionSidebarProps {
   sessions?: Session[];
