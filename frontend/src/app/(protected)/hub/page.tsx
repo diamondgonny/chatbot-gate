@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { withAuth } from "@/components/withAuth";
 
-function Hub() {
+export default function Hub() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gap-8 p-4">
       <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-slate-200 to-slate-400">
@@ -34,5 +33,3 @@ function Hub() {
     </div>
   );
 }
-
-export default withAuth(Hub);

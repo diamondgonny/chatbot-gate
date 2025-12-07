@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import api from "@/lib/axiosClient";
-import { withAuth } from "@/components/withAuth";
 import SessionSidebar from "@/components/SessionSidebar";
 import AlertModal from "@/components/AlertModal";
 
@@ -28,7 +27,7 @@ interface Session {
   createdAt: string;
 }
 
-function ChatInterface() {
+export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -465,5 +464,3 @@ function ChatInterface() {
     </div>
   );
 }
-
-export default withAuth(ChatInterface);
