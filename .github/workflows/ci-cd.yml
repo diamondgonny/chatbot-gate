@@ -313,17 +313,33 @@ jobs:
           echo "❌ Tailscale or SSH port not reachable after 180s" >&2
           exit 1
 
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          cat >> ~/.ssh/config << EOF
+          Host ${{ secrets.PRODUCTION_TAILSCALE_HOST }}
+            StrictHostKeyChecking no
+            UserKnownHostsFile /dev/null
+            IdentityFile ~/.ssh/deploy_key
+          EOF
+
       - name: Deploy via SSH (Blue-Green)
-        uses: appleboy/ssh-action@v1.0.0
         env:
+          DEPLOY_HOST: ${{ secrets.PRODUCTION_TAILSCALE_HOST }}
+          DEPLOY_USER: ${{ secrets.PRODUCTION_USER }}
           GHCR_DEPLOY_TOKEN: ${{ secrets.GHCR_DEPLOY_TOKEN }}
           GHCR_DEPLOY_USER: ${{ secrets.GHCR_DEPLOY_USER }}
-        with:
-          host: ${{ secrets.PRODUCTION_TAILSCALE_HOST }}
-          username: ${{ secrets.PRODUCTION_USER }}
-          key: ${{ secrets.PRODUCTION_SSH_KEY }}
-          envs: GHCR_DEPLOY_TOKEN,GHCR_DEPLOY_USER
-          script: |
+          PRIMARY_TAG: ${{ needs.build-and-push.outputs.primary-tag }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          # Pre-calculate version from primary tag
+          VERSION=$(echo "$PRIMARY_TAG" | awk -F: '{print $NF}')
+
+          ssh ${DEPLOY_USER}@${DEPLOY_HOST} bash -s << DEPLOY_EOF
+            set -e
+
             # Set working directory
             cd /home/user/lab/apps/chatbot-gate-backend
 
@@ -331,11 +347,10 @@ jobs:
             echo "${GHCR_DEPLOY_TOKEN}" | docker login ghcr.io -u "${GHCR_DEPLOY_USER}" --password-stdin
 
             # Set environment variables for deployment
-            PRIMARY_TAG="${{ needs.build-and-push.outputs.primary-tag }}"
-            export VERSION=$(echo "$PRIMARY_TAG" | awk -F: '{print $NF}')
-            export GITHUB_REPO="${{ github.repository }}"
+            export VERSION="${VERSION}"
+            export GITHUB_REPO="${GITHUB_REPO}"
 
-            echo "Deploying VERSION=$VERSION from GITHUB_REPO=$GITHUB_REPO"
+            echo "Deploying VERSION=\$VERSION from GITHUB_REPO=\$GITHUB_REPO"
 
             # Verify deployment state exists
             if [[ ! -f .deployment-state ]]; then
@@ -350,18 +365,25 @@ jobs:
             # Verify deployment
             sleep 5
             source .deployment-state
-            echo "Active environment: ${ACTIVE_ENV}"
-            ACTIVE_CONTAINER="chatbot-gate-backend-${ACTIVE_ENV}"
-            docker exec "${ACTIVE_CONTAINER}" wget -qO- http://localhost:4000/health || exit 1
+            echo "Active environment: \${ACTIVE_ENV}"
+            ACTIVE_CONTAINER="chatbot-gate-backend-\${ACTIVE_ENV}"
+            docker exec "\${ACTIVE_CONTAINER}" wget -qO- http://localhost:4000/health || exit 1
 
             # Cleanup old images (keep current version and last 2 versions)
             docker image prune -f
-            docker images --filter "reference=ghcr.io/${{ github.repository }}/chatbot-gate-backend:*" \
+            docker images --filter "reference=ghcr.io/${GITHUB_REPO}/chatbot-gate-backend:*" \
               --format "{{.ID}} {{.Tag}}" | \
               grep -v "${VERSION}" | \
               sort -r | \
               tail -n +3 | \
-              awk '{print $1}' | \
+              awk '{print \$1}' | \
               xargs -r docker rmi || true
 
             docker compose ps
+          DEPLOY_EOF
+
+      - name: Cleanup SSH key
+        if: always()
+        run: |
+          rm -f ~/.ssh/deploy_key
+          rm -f ~/.ssh/config
