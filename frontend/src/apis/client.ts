@@ -2,13 +2,13 @@
 
 import axios from "axios";
 
-const api = axios.create({
+const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000",
   withCredentials: true,
 });
 
 // Attach CSRF token from cookie to every state-changing request
-api.interceptors.request.use((config) => {
+apiClient.interceptors.request.use((config) => {
   if (typeof document !== "undefined") {
     const match = document.cookie.match(/(?:^|;\s*)csrfToken=([^;]+)/);
     if (match) {
@@ -19,4 +19,4 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-export default api;
+export default apiClient;

@@ -4,7 +4,13 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import api from "@/lib/axiosClient";
+import {
+  getSessions,
+  createSession,
+  deleteSession,
+  getChatHistory,
+  sendChatMessage,
+} from "@/apis";
 import SessionSidebar from "@/components/SessionSidebar";
 import AlertModal from "@/components/AlertModal";
 import type { Message, Session } from "@/types";
@@ -90,8 +96,7 @@ export default function ChatInterface() {
   // Load sessions from API
   const loadSessions = async (): Promise<Session[]> => {
     try {
-      const response = await api.get("/api/sessions");
-      const fetchedSessions: Session[] = response.data.sessions || [];
+      const { sessions: fetchedSessions } = await getSessions();
       setSessions(fetchedSessions);
       return fetchedSessions;
     } catch (error) {
@@ -102,11 +107,10 @@ export default function ChatInterface() {
 
   // Load chat history on mount - create first session if none exists
   useEffect(() => {
-    const loadChatHistory = async () => {
+    const loadChatHistoryOnMount = async () => {
       try {
         // Get user's sessions first
-        const sessionsResponse = await api.get("/api/sessions");
-        const fetchedSessions: Session[] = sessionsResponse.data.sessions || [];
+        const { sessions: fetchedSessions } = await getSessions();
         setSessions(fetchedSessions);
 
         if (fetchedSessions.length > 0) {
@@ -116,16 +120,13 @@ export default function ChatInterface() {
           setCurrentSessionId(latestSession.sessionId);
 
           // Load history for this session
-          const historyResponse = await api.get("/api/chat/history", {
-            params: { sessionId: latestSession.sessionId },
-          });
+          const { messages: historyMessages } = await getChatHistory(
+            latestSession.sessionId
+          );
 
-          if (
-            historyResponse.data.messages &&
-            historyResponse.data.messages.length > 0
-          ) {
-            const loadedMessages = historyResponse.data.messages.map(
-              (msg: any, idx: number) => ({
+          if (historyMessages && historyMessages.length > 0) {
+            const loadedMessages: Message[] = historyMessages.map(
+              (msg, idx) => ({
                 id: `loaded_${idx}`,
                 role: msg.role === "ai" ? "ai" : "user",
                 content: msg.content,
@@ -148,10 +149,10 @@ export default function ChatInterface() {
       }
     };
 
-    loadChatHistory();
+    loadChatHistoryOnMount();
   }, []);
 
-  const sendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
 
@@ -159,19 +160,17 @@ export default function ChatInterface() {
     let sessionId = currentSessionId;
     if (!sessionId) {
       try {
-        const newSessionResponse = await api.post("/api/sessions", {});
-        sessionId = newSessionResponse.data.sessionId;
+        const newSession = await createSession();
+        sessionId = newSession.sessionId;
         intendedSessionRef.current = sessionId;
         setCurrentSessionId(sessionId);
         setSessions((prev) => [
           {
             sessionId: sessionId!,
-            title: newSessionResponse.data.title || "New Chat",
+            title: newSession.title || "New Chat",
             lastMessage: null,
-            updatedAt: newSessionResponse.data.updatedAt,
-            createdAt:
-              newSessionResponse.data.createdAt ||
-              newSessionResponse.data.updatedAt,
+            updatedAt: newSession.updatedAt,
+            createdAt: newSession.createdAt || newSession.updatedAt,
           },
           ...prev,
         ]);
@@ -193,8 +192,7 @@ export default function ChatInterface() {
     setIsTyping(true);
 
     try {
-      // Standard POST request with JWT authentication via cookies
-      const response = await api.post("/api/chat/message", {
+      const { response, timestamp } = await sendChatMessage({
         message: userMessage.content,
         sessionId,
       });
@@ -202,8 +200,8 @@ export default function ChatInterface() {
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "ai",
-        content: response.data.response,
-        timestamp: response.data.timestamp,
+        content: response,
+        timestamp,
       };
 
       setMessages((prev) => [...prev, aiMessage]);
@@ -223,30 +221,30 @@ export default function ChatInterface() {
 
   const handleNewChat = async () => {
     try {
-      // Create new session via API
-      const response = await api.post("/api/sessions", {});
+      const newSession = await createSession();
 
-      intendedSessionRef.current = response.data.sessionId;
-      setCurrentSessionId(response.data.sessionId);
+      intendedSessionRef.current = newSession.sessionId;
+      setCurrentSessionId(newSession.sessionId);
       setMessages([]); // Start with empty messages
 
       // Reload sessions to update sidebar
       await loadSessions();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Error creating new session:", error);
-      if (
-        (error as any)?.isAxiosError &&
-        (error as any).response?.status === 429
-      ) {
-        const data = (error as any).response?.data || {};
-        const limit = (data as any)?.limit;
-        const count = (data as any)?.count;
-        const msg =
-          (data as any)?.error ||
-          "Too many sessions. Please delete an existing session.";
-        setSessionError(limit ? `${msg} (${count || limit}/${limit})` : msg);
-        return;
+
+      // Handle rate limit
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosErr = error as { response?: { status?: number; data?: { error?: string; limit?: number; count?: number } } };
+        if (axiosErr.response?.status === 429) {
+          const data = axiosErr.response.data;
+          const limit = data?.limit;
+          const count = data?.count;
+          const msg = data?.error || "Too many sessions. Please delete an existing session.";
+          setSessionError(limit ? `${msg} (${count || limit}/${limit})` : msg);
+          return;
+        }
       }
+
       setSessionError("Failed to create a new session. Please try again.");
     }
   };
@@ -263,19 +261,15 @@ export default function ChatInterface() {
       setCurrentSessionId(sessionId);
 
       // Load history for selected session
-      const response = await api.get("/api/chat/history", {
-        params: { sessionId },
-      });
+      const { messages: historyMessages } = await getChatHistory(sessionId);
 
-      if (response.data.messages && response.data.messages.length > 0) {
-        const loadedMessages = response.data.messages.map(
-          (msg: any, idx: number) => ({
-            id: `loaded_${idx}`,
-            role: msg.role === "ai" ? "ai" : "user",
-            content: msg.content,
-            timestamp: msg.timestamp,
-          })
-        );
+      if (historyMessages && historyMessages.length > 0) {
+        const loadedMessages: Message[] = historyMessages.map((msg, idx) => ({
+          id: `loaded_${idx}`,
+          role: msg.role === "ai" ? "ai" : "user",
+          content: msg.content,
+          timestamp: msg.timestamp,
+        }));
         setMessages(loadedMessages);
       } else {
         setMessages([]);
@@ -295,7 +289,7 @@ export default function ChatInterface() {
     if (!sessionToDelete) return;
 
     try {
-      await api.delete(`/api/sessions/${sessionToDelete}`);
+      await deleteSession(sessionToDelete);
 
       // Reload sessions to update sidebar
       const updatedSessions = await loadSessions();
@@ -403,7 +397,7 @@ export default function ChatInterface() {
 
         {/* Input Area */}
         <form
-          onSubmit={sendMessage}
+          onSubmit={handleSendMessage}
           className="p-4 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md"
         >
           <div className="relative flex items-center">

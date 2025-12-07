@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
-import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { saveUserId, getUserId } from "@/lib/authUtils";
-import api from "@/lib/axiosClient";
+import { checkAuthStatus, validateGateCode } from "@/apis";
 
 export default function Gate() {
   const [code, setCode] = useState("");
@@ -21,8 +20,7 @@ export default function Gate() {
 
     const checkAuth = async () => {
       try {
-        const response = await api.get("/api/auth/status");
-        const { authenticated, userId: userIdFromServer } = response.data ?? {};
+        const { authenticated, userId: userIdFromServer } = await checkAuthStatus();
 
         if (authenticated) {
           if (userIdFromServer) {
@@ -33,7 +31,7 @@ export default function Gate() {
             router.replace("/hub");
           }
         }
-      } catch (error) {
+      } catch {
         // Unauthenticated: stay on gate
       }
     };
@@ -78,37 +76,34 @@ export default function Gate() {
       // Get existing userId if available
       const existingUserId = getUserId();
 
-      // Call the backend API
-      // Note: In a real prod app, use an env var for the API URL
-      const response = await api.post(
-        "/api/gate/validate",
-        {
-          code,
-          userId: existingUserId, // Send existing userId to reuse
-        }
-      );
+      const { valid, userId } = await validateGateCode({
+        code,
+        userId: existingUserId ?? undefined,
+      });
 
-      if (response.data.valid) {
+      if (valid) {
         // Success! Store userId only (JWT is in HttpOnly cookie)
-        const { userId } = response.data;
         saveUserId(userId);
-
-        // Redirect to hub
         router.push("/hub");
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
       setError(true);
-      if (
-        (err as any)?.isAxiosError &&
-        (err as any).response?.status === 429 &&
-        (err as any).response?.data?.code === "GATE_BACKOFF"
-      ) {
-        const retryAfter = (err as any).response?.data?.retryAfter;
-        if (retryAfter) {
-          setCooldownUntil(Date.now() + retryAfter * 1000);
+
+      // Handle rate limit / backoff
+      if (err && typeof err === "object" && "response" in err) {
+        const axiosErr = err as { response?: { status?: number; data?: { code?: string; retryAfter?: number } } };
+        if (
+          axiosErr.response?.status === 429 &&
+          axiosErr.response?.data?.code === "GATE_BACKOFF"
+        ) {
+          const retryAfter = axiosErr.response.data.retryAfter;
+          if (retryAfter) {
+            setCooldownUntil(Date.now() + retryAfter * 1000);
+          }
         }
       }
+
       // Shake animation trigger
       setTimeout(() => setError(false), 500);
     } finally {
