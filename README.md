@@ -73,5 +73,7 @@ chatbot-gate/
 | `/api/chat/message` | POST | AI에게 메시지 전송 | O |
 | `/api/chat/history` | GET | 세션 대화 내역 조회 | O |
 | `/api/sessions` | GET | 세션 목록 조회 | O |
-| `/api/sessions/:id` | DELETE | 세션 삭제 | O |
+| `/api/sessions` | POST | 세션 생성 | O |
+| `/api/sessions/:id` | GET | 단일 세션 조회 | O |
+| `/api/sessions/:id` | DELETE | 단일 세션 삭제 | O |
 | `/metrics` | GET | Prometheus 메트릭 | - |
