@@ -1,6 +1,6 @@
 "use client";
 
-import { formatTimeAgo } from "@/lib/timeUtils";
+import { formatTimeAgo } from "@/utils/timeUtils";
 import { motion } from "framer-motion";
 import type { Session } from "@/types";
 

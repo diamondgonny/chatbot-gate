@@ -11,8 +11,8 @@ import {
   getChatHistory,
   sendChatMessage,
 } from "@/apis";
-import SessionSidebar from "@/components/SessionSidebar";
-import AlertModal from "@/components/AlertModal";
+import SessionSidebar from "@/components/chat/SessionSidebar";
+import AlertModal from "@/components/common/AlertModal";
 import type { Message, Session } from "@/types";
 
 export default function ChatInterface() {
