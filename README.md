@@ -50,9 +50,7 @@ chatbot-gate/
 │   └── src/
 │       ├── app/
 │       │   ├── (public)/       # 인증 불필요 라우트 (/)
-│       │   ├── (protected)/    # 인증 필요 라우트 (/hub, /chat)
-│       │   ├── layout.tsx
-│       │   └── globals.css
+│       │   └── (protected)/    # 인증 필요 라우트 (/hub, /chat)
 │       ├── apis/               # API 클라이언트 및 엔드포인트
 │       ├── components/
 │       │   ├── common/         # AlertModal
