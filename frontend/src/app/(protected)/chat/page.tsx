@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useSessions, useChat } from "@/hooks";
-import { getSessions, createSession, getChatHistory } from "@/apis";
 import SessionSidebar from "@/components/chat/SessionSidebar";
 import AlertModal from "@/components/common/AlertModal";
 import type { Message, Session } from "@/types";
@@ -87,10 +86,8 @@ export default function ChatInterface() {
   useEffect(() => {
     const loadOnMount = async () => {
       try {
-        const { sessions: fetchedSessions } = await getSessions();
-        // Sort sessions by updatedAt to ensure consistent order
-        const sortedSessions = sortSessionsByUpdatedAt(fetchedSessions);
-        setSessions(sortedSessions);
+        // loadSessions now returns sorted sessions
+        const sortedSessions = await loadSessions();
 
         if (sortedSessions.length > 0) {
           const latestSession = sortedSessions[0];
@@ -112,7 +109,7 @@ export default function ChatInterface() {
     };
 
     loadOnMount();
-  }, [setSessions, setCurrentSessionId, setMessages, setIsLoading, loadChatHistory, intendedSessionRef, sortSessionsByUpdatedAt]);
+  }, [loadSessions, setCurrentSessionId, setMessages, setIsLoading, loadChatHistory, intendedSessionRef]);
 
   const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();

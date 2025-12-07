@@ -40,13 +40,15 @@ export function useSessions(): UseSessionsReturn {
   const loadSessions = useCallback(async (): Promise<Session[]> => {
     try {
       const { sessions: fetchedSessions } = await getSessions();
-      setSessions(fetchedSessions);
-      return fetchedSessions;
+      // Sort sessions to ensure consistent order
+      const sortedSessions = sortSessionsByUpdatedAt(fetchedSessions);
+      setSessions(sortedSessions);
+      return sortedSessions;
     } catch (error) {
       console.error("Error loading sessions:", error);
       return [];
     }
-  }, []);
+  }, [sortSessionsByUpdatedAt]);
 
   const handleCreateSession = useCallback(async (): Promise<Session | null> => {
     try {

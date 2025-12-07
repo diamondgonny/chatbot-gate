@@ -46,9 +46,20 @@ chatbot-gate/
 │   ├── monitoring-config/   # Prometheus, Grafana 설정
 │   └── docker-compose.yml
 ├── frontend/
-│   ├── app/                 # Next.js App Router (/, /hub, /chat)
-│   ├── components/          # React 컴포넌트 (withAuth, SessionSidebar)
-│   └── lib/                 # 유틸리티 (axiosClient, authUtils)
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── (public)/        # 인증 불필요 라우트 (/)
+│   │   │   ├── (protected)/     # 인증 필요 라우트 (/hub, /chat)
+│   │   │   ├── layout.tsx
+│   │   │   └── globals.css
+│   │   ├── apis/                # API 클라이언트 및 엔드포인트
+│   │   ├── components/
+│   │   │   ├── common/          # AlertModal
+│   │   │   └── chat/            # SessionSidebar
+│   │   ├── hooks/               # useChat, useSessions
+│   │   ├── types/               # 공유 타입 정의
+│   │   └── utils/               # authUtils, timeUtils
+│   └── proxy.ts                 # SSR 인증 가드 (JWT 검증)
 ├── .github/workflows/       # CI/CD 파이프라인
 └── README.md
 ```
