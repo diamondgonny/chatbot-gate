@@ -520,7 +520,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "round(sum(increase(chatbot_gate_http_requests_total{status_code=~\"4..\", deployment_env=~\"$deployment_env\", route!~\"/health|/|/validate|/metrics.*\"}[$__range])))",
+          "expr": "round(sum(increase(chatbot_gate_http_requests_total{status_code=~\"4..\", deployment_env=~\"$deployment_env\", route!~\"/health|/|/validate|/metrics.*\", method!=\"OPTIONS\"}[$__range])))",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -559,7 +559,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "round(sum(increase(chatbot_gate_http_requests_total{status_code=~\"5..\", deployment_env=~\"$deployment_env\", route!~\"/health|/|/validate|/metrics.*\"}[$__range])))",
+          "expr": "round(sum(increase(chatbot_gate_http_requests_total{status_code=~\"5..\", deployment_env=~\"$deployment_env\", route!~\"/health|/|/validate|/metrics.*\", method!=\"OPTIONS\"}[$__range])))",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
