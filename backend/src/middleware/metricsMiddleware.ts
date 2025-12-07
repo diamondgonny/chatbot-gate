@@ -8,10 +8,12 @@ import {
 
 // Route normalization to avoid high cardinality
 const normalizeRoute = (req: Request): string => {
-  const route = req.route?.path || req.path;
+  // Always use baseUrl + route path for consistent full path labels
+  // This ensures OPTIONS (preflight) and actual requests get the same route label
+  const fullPath = req.baseUrl + (req.route?.path || req.path);
 
   // Replace UUID patterns with :id placeholder
-  return route.replace(
+  return fullPath.replace(
     /[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi,
     ':id'
   );
