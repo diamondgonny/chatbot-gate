@@ -58,8 +58,8 @@ chatbot-gate/
 │   │   │   └── chat/            # SessionSidebar
 │   │   ├── hooks/               # useChat, useSessions
 │   │   ├── types/               # 공유 타입 정의
-│   │   └── utils/               # authUtils, timeUtils
-│   └── proxy.ts                 # SSR 인증 가드 (JWT 검증)
+│   │   ├── utils/               # authUtils, timeUtils
+│   │   └── proxy.ts             # SSR 인증 가드 (JWT 검증)
 ├── .github/workflows/       # CI/CD 파이프라인
 └── README.md
 ```

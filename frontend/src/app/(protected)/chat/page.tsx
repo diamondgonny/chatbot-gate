@@ -7,7 +7,7 @@ import { twMerge } from 'tailwind-merge';
 import { useSessions, useChat } from "@/hooks";
 import SessionSidebar from "@/components/chat/SessionSidebar";
 import AlertModal from "@/components/common/AlertModal";
-import type { Message, Session } from "@/types";
+import type { Message } from "@/types";
 import { useState } from 'react';
 
 export default function ChatInterface() {
