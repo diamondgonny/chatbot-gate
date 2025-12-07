@@ -88,10 +88,12 @@ export default function ChatInterface() {
     const loadOnMount = async () => {
       try {
         const { sessions: fetchedSessions } = await getSessions();
-        setSessions(fetchedSessions);
+        // Sort sessions by updatedAt to ensure consistent order
+        const sortedSessions = sortSessionsByUpdatedAt(fetchedSessions);
+        setSessions(sortedSessions);
 
-        if (fetchedSessions.length > 0) {
-          const latestSession = fetchedSessions[0];
+        if (sortedSessions.length > 0) {
+          const latestSession = sortedSessions[0];
           intendedSessionRef.current = latestSession.sessionId;
           setCurrentSessionId(latestSession.sessionId);
 
@@ -110,7 +112,7 @@ export default function ChatInterface() {
     };
 
     loadOnMount();
-  }, [setSessions, setCurrentSessionId, setMessages, setIsLoading, loadChatHistory, intendedSessionRef]);
+  }, [setSessions, setCurrentSessionId, setMessages, setIsLoading, loadChatHistory, intendedSessionRef, sortSessionsByUpdatedAt]);
 
   const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();

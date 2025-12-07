@@ -1,11 +1,15 @@
 "use client";
 
 import axios from "axios";
+import { clearAuth } from "@/utils/authUtils";
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000",
   withCredentials: true,
 });
+
+// Flag to prevent multiple redirects
+let isRedirecting = false;
 
 // Attach CSRF token from cookie to every state-changing request
 apiClient.interceptors.request.use((config) => {
@@ -18,5 +22,30 @@ apiClient.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Handle 401/403 responses globally
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (typeof window !== "undefined" && !isRedirecting) {
+      const status = error.response?.status;
+
+      if (status === 401 || status === 403) {
+        isRedirecting = true;
+
+        // Clear local auth data
+        clearAuth();
+
+        // Redirect to gate page
+        window.location.href = "/";
+
+        // Return a never-resolving promise to prevent further error handling
+        return new Promise(() => {});
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export default apiClient;
