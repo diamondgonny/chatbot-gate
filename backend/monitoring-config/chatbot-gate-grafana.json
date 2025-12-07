@@ -1650,7 +1650,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(rate(chatbot_gate_http_requests_total[$interval])) by (deployment_env)",
+          "expr": "sum(rate(chatbot_gate_http_requests_total{deployment_env=~\"$deployment_env\", route!~\"/health|/|/validate|/metrics.*\", method!~\"OPTIONS|HEAD\"}[$interval])) by (deployment_env)",
           "instant": false,
           "legendFormat": "{{deployment_env}}",
           "range": true,
@@ -1708,7 +1708,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(chatbot_gate_http_request_duration_seconds_bucket[$interval])) by (le, deployment_env))",
+          "expr": "histogram_quantile(0.95, sum(rate(chatbot_gate_http_request_duration_seconds_bucket{deployment_env=~\"$deployment_env\", route!~\"/health|/|/validate|/metrics.*\", method!~\"OPTIONS|HEAD\"}[$interval])) by (le, deployment_env))",
           "instant": false,
           "legendFormat": "{{deployment_env}}",
           "range": true,
@@ -1765,7 +1765,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(increase(chatbot_gate_http_requests_total{status_code=~\"5..\"}[$interval])) by (deployment_env)",
+          "expr": "sum(increase(chatbot_gate_http_requests_total{status_code=~\"5..\", deployment_env=~\"$deployment_env\", route!~\"/health|/|/validate|/metrics.*\", method!~\"OPTIONS|HEAD\"}[$interval])) by (deployment_env)",
           "instant": false,
           "legendFormat": "{{deployment_env}}",
           "range": true,
