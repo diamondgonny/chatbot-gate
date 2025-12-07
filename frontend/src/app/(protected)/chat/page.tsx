@@ -1,68 +1,60 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import {
-  getSessions,
-  createSession,
-  deleteSession,
-  getChatHistory,
-  sendChatMessage,
-} from "@/apis";
+import { useSessions, useChat } from "@/hooks";
+import { getSessions, createSession, getChatHistory } from "@/apis";
 import SessionSidebar from "@/components/chat/SessionSidebar";
 import AlertModal from "@/components/common/AlertModal";
 import type { Message, Session } from "@/types";
+import { useState } from 'react';
 
 export default function ChatInterface() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [sessions, setSessions] = useState<Session[]>([]);
+  // Use custom hooks for state management
+  const {
+    sessions,
+    setSessions,
+    currentSessionId,
+    setCurrentSessionId,
+    loadingSessionId,
+    setLoadingSessionId,
+    sessionError,
+    setSessionError,
+    loadSessions,
+    handleCreateSession,
+    handleDeleteSession,
+    sortSessionsByUpdatedAt,
+  } = useSessions();
+
+  const {
+    messages,
+    setMessages,
+    input,
+    setInput,
+    isTyping,
+    isLoading,
+    setIsLoading,
+    messagesEndRef,
+    intendedSessionRef,
+    loadChatHistory,
+    sendMessage,
+  } = useChat();
+
+  // Local state for delete modal
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
-  const [sessionError, setSessionError] = useState<string | null>(null);
-  const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const intendedSessionRef = useRef<string | null>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  // Maintain sessions in descending updatedAt order (most recent first)
-  const sortSessionsByUpdatedAt = (sessionList: Session[]) => {
-    return [...sessionList].sort((a, b) => {
-      const timeA = new Date(a.updatedAt).getTime();
-      const timeB = new Date(b.updatedAt).getTime();
-      if (timeA === timeB) {
-        // Secondary sort for stability
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      }
-      return timeB - timeA; // Most recent first
-    });
-  };
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping]);
 
   // Keep sidebar titles in sync with latest message content
-  // IMPORTANT: Only depend on messages, NOT currentSessionId
-  // This prevents the effect from running during session switches
   useEffect(() => {
     if (messages.length === 0) return;
 
-    // Get the intended session at the time messages were loaded
     const targetSessionId = intendedSessionRef.current;
     if (!targetSessionId) return;
 
     const latestMessage = messages[messages.length - 1];
 
     setSessions((prev) => {
-      // Update metadata for the intended session only
       const updated = prev.map((session) =>
         session.sessionId === targetSessionId
           ? {
@@ -77,11 +69,9 @@ export default function ChatInterface() {
             }
           : session
       );
-
-      // Re-sort after update
       return sortSessionsByUpdatedAt(updated);
     });
-  }, [messages]);
+  }, [messages, setSessions, sortSessionsByUpdatedAt, intendedSessionRef]);
 
   // Auto-dismiss session error after 10 seconds
   useEffect(() => {
@@ -91,93 +81,52 @@ export default function ChatInterface() {
       }, 10000);
       return () => clearTimeout(timer);
     }
-  }, [sessionError]);
+  }, [sessionError, setSessionError]);
 
-  // Load sessions from API
-  const loadSessions = async (): Promise<Session[]> => {
-    try {
-      const { sessions: fetchedSessions } = await getSessions();
-      setSessions(fetchedSessions);
-      return fetchedSessions;
-    } catch (error) {
-      console.error("Error loading sessions:", error);
-      return [];
-    }
-  };
-
-  // Load chat history on mount - create first session if none exists
+  // Load chat history on mount
   useEffect(() => {
-    const loadChatHistoryOnMount = async () => {
+    const loadOnMount = async () => {
       try {
-        // Get user's sessions first
         const { sessions: fetchedSessions } = await getSessions();
         setSessions(fetchedSessions);
 
         if (fetchedSessions.length > 0) {
-          // Use the most recent session
           const latestSession = fetchedSessions[0];
           intendedSessionRef.current = latestSession.sessionId;
           setCurrentSessionId(latestSession.sessionId);
 
-          // Load history for this session
-          const { messages: historyMessages } = await getChatHistory(
-            latestSession.sessionId
-          );
-
-          if (historyMessages && historyMessages.length > 0) {
-            const loadedMessages: Message[] = historyMessages.map(
-              (msg, idx) => ({
-                id: `loaded_${idx}`,
-                role: msg.role === "ai" ? "ai" : "user",
-                content: msg.content,
-                timestamp: msg.timestamp,
-              })
-            );
-            setMessages(loadedMessages);
-          }
+          const loadedMessages = await loadChatHistory(latestSession.sessionId);
+          setMessages(loadedMessages);
         } else {
-          // No sessions exist; wait until user sends a message to create one
           setCurrentSessionId(null);
           setMessages([]);
         }
       } catch (error) {
         console.error("Error loading chat history:", error);
-        // Keep empty state on error; user can start chatting
         setMessages([]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadChatHistoryOnMount();
-  }, []);
+    loadOnMount();
+  }, [setSessions, setCurrentSessionId, setMessages, setIsLoading, loadChatHistory, intendedSessionRef]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
 
-    // Lazily create a session if none exists yet
     let sessionId = currentSessionId;
+
+    // Lazily create a session if none exists
     if (!sessionId) {
-      try {
-        const newSession = await createSession();
-        sessionId = newSession.sessionId;
-        intendedSessionRef.current = sessionId;
-        setCurrentSessionId(sessionId);
-        setSessions((prev) => [
-          {
-            sessionId: sessionId!,
-            title: newSession.title || "New Chat",
-            lastMessage: null,
-            updatedAt: newSession.updatedAt,
-            createdAt: newSession.createdAt || newSession.updatedAt,
-          },
-          ...prev,
-        ]);
-      } catch (error) {
-        console.error("Error creating session:", error);
-        return;
-      }
+      const newSession = await handleCreateSession();
+      if (!newSession) return;
+
+      sessionId = newSession.sessionId;
+      intendedSessionRef.current = sessionId;
+      setCurrentSessionId(sessionId);
+      setSessions((prev) => [newSession, ...prev]);
     }
 
     const userMessage: Message = {
@@ -189,121 +138,75 @@ export default function ChatInterface() {
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
-    setIsTyping(true);
 
-    try {
-      const { response, timestamp } = await sendChatMessage({
-        message: userMessage.content,
-        sessionId,
-      });
-
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "ai",
-        content: response,
-        timestamp,
-      };
-
+    const aiMessage = await sendMessage(input, sessionId);
+    if (aiMessage) {
       setMessages((prev) => [...prev, aiMessage]);
-    } catch (error) {
-      console.error("Error sending message:", error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "ai",
-        content: "Sorry, something went wrong.",
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsTyping(false);
     }
-  };
+  }, [
+    input,
+    currentSessionId,
+    handleCreateSession,
+    setCurrentSessionId,
+    setSessions,
+    setMessages,
+    setInput,
+    sendMessage,
+    intendedSessionRef,
+  ]);
 
-  const handleNewChat = async () => {
-    try {
-      const newSession = await createSession();
+  const handleNewChat = useCallback(async () => {
+    const newSession = await handleCreateSession();
+    if (!newSession) return;
 
-      intendedSessionRef.current = newSession.sessionId;
-      setCurrentSessionId(newSession.sessionId);
-      setMessages([]); // Start with empty messages
+    intendedSessionRef.current = newSession.sessionId;
+    setCurrentSessionId(newSession.sessionId);
+    setMessages([]);
+    await loadSessions();
+  }, [handleCreateSession, setCurrentSessionId, setMessages, loadSessions, intendedSessionRef]);
 
-      // Reload sessions to update sidebar
-      await loadSessions();
-    } catch (error: unknown) {
-      console.error("Error creating new session:", error);
-
-      // Handle rate limit
-      if (error && typeof error === "object" && "response" in error) {
-        const axiosErr = error as { response?: { status?: number; data?: { error?: string; limit?: number; count?: number } } };
-        if (axiosErr.response?.status === 429) {
-          const data = axiosErr.response.data;
-          const limit = data?.limit;
-          const count = data?.count;
-          const msg = data?.error || "Too many sessions. Please delete an existing session.";
-          setSessionError(limit ? `${msg} (${count || limit}/${limit})` : msg);
-          return;
-        }
-      }
-
-      setSessionError("Failed to create a new session. Please try again.");
-    }
-  };
-
-  const handleSessionSelect = async (sessionId: string) => {
-    // Prevent unnecessary work if clicking current session
+  const handleSessionSelect = useCallback(async (sessionId: string) => {
     if (sessionId === currentSessionId) return;
 
     try {
-      setLoadingSessionId(sessionId); // Immediate feedback
-
-      // Set ref FIRST (synchronous) before state (asynchronous)
+      setLoadingSessionId(sessionId);
       intendedSessionRef.current = sessionId;
       setCurrentSessionId(sessionId);
 
-      // Load history for selected session
-      const { messages: historyMessages } = await getChatHistory(sessionId);
-
-      if (historyMessages && historyMessages.length > 0) {
-        const loadedMessages: Message[] = historyMessages.map((msg, idx) => ({
-          id: `loaded_${idx}`,
-          role: msg.role === "ai" ? "ai" : "user",
-          content: msg.content,
-          timestamp: msg.timestamp,
-        }));
-        setMessages(loadedMessages);
-      } else {
-        setMessages([]);
-      }
+      const loadedMessages = await loadChatHistory(sessionId);
+      setMessages(loadedMessages);
     } catch (error) {
       console.error("Error loading session:", error);
     } finally {
-      setLoadingSessionId(null); // Always clear
+      setLoadingSessionId(null);
     }
-  };
+  }, [
+    currentSessionId,
+    setLoadingSessionId,
+    setCurrentSessionId,
+    loadChatHistory,
+    setMessages,
+    intendedSessionRef,
+  ]);
 
-  const handleDeleteClick = (sessionId: string) => {
+  const handleDeleteClick = useCallback((sessionId: string) => {
     setSessionToDelete(sessionId);
-  };
+  }, []);
 
-  const confirmDeleteSession = async () => {
+  const confirmDeleteSession = useCallback(async () => {
     if (!sessionToDelete) return;
 
     try {
-      await deleteSession(sessionToDelete);
-
-      // Reload sessions to update sidebar
+      await handleDeleteSession(sessionToDelete);
       const updatedSessions = await loadSessions();
 
-      // If deleted session was the current one, switch using fresh data
       if (currentSessionId === sessionToDelete) {
         const remainingSessions = updatedSessions.filter(
           (s) => s.sessionId !== sessionToDelete
         );
         if (remainingSessions.length > 0) {
-          // Switch to the first remaining session
           await handleSessionSelect(remainingSessions[0].sessionId);
         } else {
-          // No sessions left, create a new one
           await handleNewChat();
         }
       }
@@ -312,7 +215,14 @@ export default function ChatInterface() {
     } finally {
       setSessionToDelete(null);
     }
-  };
+  }, [
+    sessionToDelete,
+    handleDeleteSession,
+    loadSessions,
+    currentSessionId,
+    handleSessionSelect,
+    handleNewChat,
+  ]);
 
   if (isLoading) {
     return (
