@@ -35,11 +35,11 @@ export const COUNCIL = {
   MAX_SESSIONS_PER_USER: 20,
   /** Council member models (via OpenRouter) */
   MODELS: [
-    'anthropic/claude-sonnet-4',
+    'anthropic/claude-sonnet-4.5',
     'openai/gpt-4.1',
     'google/gemini-2.5-flash',
-    'x-ai/grok-3',
-    'deepseek/deepseek-chat-v3',
+    'x-ai/grok-4.1-fast',
+    'moonshotai/kimi-k2-thinking',
   ] as const,
   /** Chairman model for final synthesis */
   CHAIRMAN_MODEL: 'google/gemini-2.5-pro',
