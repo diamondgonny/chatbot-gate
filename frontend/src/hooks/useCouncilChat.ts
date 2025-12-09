@@ -56,8 +56,23 @@ export function useCouncilChat(): UseCouncilChatReturn {
   }, []);
 
   const loadSession = useCallback(async (sessionId: string) => {
-    setIsLoading(true);
+    // Close any in-flight SSE connection to prevent cross-session bleed
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+
+    // Reset all streaming state when switching sessions
+    setCurrentStage("idle");
+    setStage1Responses([]);
+    setStage2Reviews([]);
+    setStage3Synthesis(null);
+    setLabelToModel({});
+    setAggregateRankings([]);
+    setIsProcessing(false);
     setError(null);
+
+    setIsLoading(true);
     try {
       const session = await getCouncilSession(sessionId);
       setMessages(session.messages);

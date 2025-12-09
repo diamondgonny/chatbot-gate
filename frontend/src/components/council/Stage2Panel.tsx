@@ -145,7 +145,8 @@ export function Stage2Panel({
             </div>
 
             {/* Parsed ranking */}
-            {reviews[activeTab].parsedRanking.length > 0 && (
+            {Array.isArray(reviews[activeTab].parsedRanking) &&
+              reviews[activeTab].parsedRanking.length > 0 && (
               <div className="mt-4 pt-4 border-t border-slate-700">
                 <h4 className="text-xs font-medium text-slate-400 mb-2">
                   Extracted Ranking:

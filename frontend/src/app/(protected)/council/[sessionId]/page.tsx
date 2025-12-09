@@ -61,9 +61,10 @@ function calculateAggregateRankings(
   const modelPositions: Record<string, number[]> = {};
 
   for (const review of stage2) {
-    const parsedRanking = review.parsedRanking.length > 0
+    // Guard against missing/invalid parsedRanking (older records or failed extraction)
+    const parsedRanking = Array.isArray(review.parsedRanking) && review.parsedRanking.length > 0
       ? review.parsedRanking
-      : parseRankingFromText(review.ranking);
+      : parseRankingFromText(review.ranking || "");
 
     parsedRanking.forEach((label, index) => {
       const position = index + 1;
