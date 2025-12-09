@@ -55,6 +55,7 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
       VALID_CODES: ${VALID_CODES:-sample-code-1,sample-code-2}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       FRONTEND_URLS: ${FRONTEND_URLS}
 
     # Resource limits
@@ -114,6 +115,7 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
       VALID_CODES: ${VALID_CODES:-sample-code-1,sample-code-2}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       FRONTEND_URLS: ${FRONTEND_URLS}
 
     # Resource limits
