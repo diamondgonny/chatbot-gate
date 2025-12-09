@@ -12,6 +12,8 @@ export const config = {
   // JWT Configuration
   jwtSecret: process.env.JWT_SECRET || '',
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
+  // OpenRouter API for Council feature
+  openRouterApiKey: process.env.OPENROUTER_API_KEY || '',
 };
 
 // Environment detection

@@ -28,3 +28,25 @@ export const BACKOFF = {
   /** Backoff duration in seconds */
   SECONDS: 30,
 } as const;
+
+/** Council-related constants */
+export const COUNCIL = {
+  /** Maximum number of council sessions allowed per user */
+  MAX_SESSIONS_PER_USER: 20,
+  /** Council member models (via OpenRouter) */
+  MODELS: [
+    'anthropic/claude-sonnet-4',
+    'openai/gpt-4.1',
+    'google/gemini-2.5-flash',
+    'x-ai/grok-3',
+    'deepseek/deepseek-chat-v3',
+  ] as const,
+  /** Chairman model for final synthesis */
+  CHAIRMAN_MODEL: 'google/gemini-2.5-pro',
+  /** Maximum allowed message length in characters */
+  MAX_MESSAGE_LENGTH: 4000,
+  /** Number of recent messages to include in context */
+  RECENT_MESSAGES_LIMIT: 5,
+  /** API request timeout in milliseconds */
+  API_TIMEOUT_MS: 60000,
+} as const;

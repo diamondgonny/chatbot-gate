@@ -144,6 +144,7 @@ import authRoutes from './routes/authRoutes';
 import chatRoutes from './routes/chatRoutes';
 import sessionRoutes from './routes/sessionRoutes';
 import metricsRoutes from './routes/metricsRoutes';
+import councilRoutes from './routes/councilRoutes';
 
 // ... (previous middleware)
 
@@ -161,6 +162,9 @@ app.use('/api/chat', chatRoutes);
 
 // Mount the Session routes under /api/sessions
 app.use('/api/sessions', sessionRoutes);
+
+// Mount the Council routes under /api/council
+app.use('/api/council', councilRoutes);
 
 // Health Check Endpoint
 app.get('/health', (req: Request, res: Response) => {
