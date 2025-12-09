@@ -465,12 +465,9 @@ export async function* processCouncilMessage(
       yield event;
       if (event.type === 'stage2_response') {
         stage2Results.push(event.data);
+      } else if (event.type === 'stage2_complete' && event.data) {
+        labelToModel = event.data.labelToModel;
       }
-    }
-    // Get the final result from the generator
-    const stage2Final = await stage2Gen.next();
-    if (stage2Final.value) {
-      labelToModel = stage2Final.value.labelToModel;
     }
 
     // Stage 3: Chairman synthesis
