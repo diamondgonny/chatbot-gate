@@ -23,10 +23,10 @@ export default function Hub() {
 
         <div className="p-8 bg-slate-800/20 border border-slate-800 rounded-2xl opacity-50 cursor-not-allowed">
           <h2 className="text-2xl font-semibold text-slate-500 mb-2">
-            Human Chat
+            AI Council
           </h2>
           <p className="text-slate-600">
-            Connect with other travelers. (Coming Soon)
+            AI Council works together to answer your questions (Coming Soon)
           </p>
         </div>
       </div>
