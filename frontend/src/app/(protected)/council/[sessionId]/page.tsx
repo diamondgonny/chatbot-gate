@@ -11,7 +11,87 @@ import {
   Stage2Panel,
   Stage3Panel,
 } from "@/components/council";
-import type { CouncilMessage, CouncilAssistantMessage } from "@/types";
+import type { CouncilMessage, CouncilAssistantMessage, Stage1Response, Stage2Review, AggregateRanking } from "@/types";
+
+/**
+ * Reconstruct labelToModel mapping from stage1 responses
+ * Maps "Response A" -> model name, "Response B" -> model name, etc.
+ */
+function buildLabelToModel(stage1: Stage1Response[]): Record<string, string> {
+  const mapping: Record<string, string> = {};
+  stage1.forEach((response, index) => {
+    const label = `Response ${String.fromCharCode(65 + index)}`; // A, B, C...
+    mapping[label] = response.model;
+  });
+  return mapping;
+}
+
+/**
+ * Parse ranking labels from review text
+ */
+function parseRankingFromText(rankingText: string): string[] {
+  if (rankingText.includes("FINAL RANKING:")) {
+    const parts = rankingText.split("FINAL RANKING:");
+    if (parts.length >= 2) {
+      const rankingSection = parts[1];
+      const numberedMatches = rankingSection.match(/\d+\.\s*Response [A-Z]/g);
+      if (numberedMatches) {
+        return numberedMatches
+          .map((m) => {
+            const match = m.match(/Response [A-Z]/);
+            return match ? match[0] : "";
+          })
+          .filter(Boolean);
+      }
+      const matches = rankingSection.match(/Response [A-Z]/g);
+      return matches || [];
+    }
+  }
+  const matches = rankingText.match(/Response [A-Z]/g);
+  return matches || [];
+}
+
+/**
+ * Calculate aggregate rankings from stage2 reviews
+ */
+function calculateAggregateRankings(
+  stage2: Stage2Review[],
+  labelToModel: Record<string, string>
+): AggregateRanking[] {
+  const modelPositions: Record<string, number[]> = {};
+
+  for (const review of stage2) {
+    const parsedRanking = review.parsedRanking.length > 0
+      ? review.parsedRanking
+      : parseRankingFromText(review.ranking);
+
+    parsedRanking.forEach((label, index) => {
+      const position = index + 1;
+      if (labelToModel[label]) {
+        const modelName = labelToModel[label];
+        if (!modelPositions[modelName]) {
+          modelPositions[modelName] = [];
+        }
+        modelPositions[modelName].push(position);
+      }
+    });
+  }
+
+  const aggregate: AggregateRanking[] = [];
+  for (const [model, positions] of Object.entries(modelPositions)) {
+    if (positions.length > 0) {
+      const avgRank = positions.reduce((a, b) => a + b, 0) / positions.length;
+      aggregate.push({
+        model,
+        averageRank: Math.round(avgRank * 100) / 100,
+        rankingsCount: positions.length,
+      });
+    }
+  }
+
+  aggregate.sort((a, b) => a.averageRank - b.averageRank);
+  return aggregate;
+}
 
 export default function CouncilSessionPage() {
   const router = useRouter();
@@ -158,15 +238,25 @@ export default function CouncilSessionPage() {
                       </div>
                     </div>
                   ) : isAssistantMessage(message) ? (
-                    <div className="space-y-4">
-                      <Stage1Panel responses={message.stage1} />
-                      <Stage2Panel
-                        reviews={message.stage2}
-                        labelToModel={{}}
-                        aggregateRankings={[]}
-                      />
-                      <Stage3Panel synthesis={message.stage3} />
-                    </div>
+                    (() => {
+                      // Reconstruct mapping and rankings from stored stage1/stage2 data
+                      const msgLabelToModel = buildLabelToModel(message.stage1);
+                      const msgAggregateRankings = calculateAggregateRankings(
+                        message.stage2,
+                        msgLabelToModel
+                      );
+                      return (
+                        <div className="space-y-4">
+                          <Stage1Panel responses={message.stage1} />
+                          <Stage2Panel
+                            reviews={message.stage2}
+                            labelToModel={msgLabelToModel}
+                            aggregateRankings={msgAggregateRankings}
+                          />
+                          <Stage3Panel synthesis={message.stage3} />
+                        </div>
+                      );
+                    })()
                   ) : null}
                 </motion.div>
               ))}
