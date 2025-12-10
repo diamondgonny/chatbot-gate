@@ -213,7 +213,7 @@ export default function CouncilSessionPage() {
       {/* Main chat area */}
       <div className="flex-1 flex flex-col bg-slate-900">
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4 scrollbar-custom">
           {chatLoading ? (
             <div className="flex items-center justify-center h-full text-slate-400">
               <span className="animate-spin mr-2">⏳</span> Loading session...

@@ -54,7 +54,7 @@ Answer fully and directly.`,
   /** API request timeout in milliseconds */
   API_TIMEOUT_MS: 60000,
   /** Max tokens for council member responses */
-  MAX_TOKENS: 4096,
+  MAX_TOKENS: 8192,
   /** Max tokens for chairman synthesis (higher for comprehensive answer) */
   CHAIRMAN_MAX_TOKENS: 16384,
 } as const;

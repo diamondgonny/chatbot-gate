@@ -62,7 +62,7 @@ export function CouncilSidebar({
       </div>
 
       {/* Session list */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto p-2 scrollbar-custom">
         {isLoading ? (
           <div className="flex items-center justify-center py-8 text-slate-500">
             <span className="animate-spin mr-2">⏳</span> Loading...
