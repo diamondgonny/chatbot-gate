@@ -178,7 +178,7 @@ export default function CouncilSessionPage() {
     e.preventDefault();
     if (!input.trim() || isProcessing) return;
 
-    sendMessage(sessionId, input.trim());
+    sendMessage(sessionId, input.trim(), loadSessions);
     setInput("");
   };
 

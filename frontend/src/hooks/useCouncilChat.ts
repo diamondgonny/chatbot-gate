@@ -26,7 +26,7 @@ interface UseCouncilChatReturn {
   isLoading: boolean;
   error: string | null;
   loadSession: (sessionId: string) => Promise<void>;
-  sendMessage: (sessionId: string, content: string) => void;
+  sendMessage: (sessionId: string, content: string, onComplete?: () => void) => void;
   clearError: () => void;
 }
 
@@ -88,7 +88,7 @@ export function useCouncilChat(): UseCouncilChatReturn {
     }
   }, []);
 
-  const sendMessage = useCallback((sessionId: string, content: string) => {
+  const sendMessage = useCallback((sessionId: string, content: string, onComplete?: () => void) => {
     // Abort any existing request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -195,6 +195,9 @@ export function useCouncilChat(): UseCouncilChatReturn {
                 };
                 setMessages((prev) => [...prev, assistantMessage]);
               }
+
+              // Notify caller that processing is complete (e.g., to refresh sidebar)
+              onComplete?.();
               break;
 
             case "error":
