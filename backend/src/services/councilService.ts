@@ -364,8 +364,7 @@ Now provide your evaluation and ranking:`;
 async function* stage3Synthesize(
   userMessage: string,
   stage1Results: IStage1Response[],
-  stage2Results: IStage2Review[],
-  labelToModel: Record<string, string>
+  stage2Results: IStage2Review[]
 ): AsyncGenerator<SSEEvent, IStage3Synthesis> {
   yield { type: 'stage3_start' };
 
@@ -378,17 +377,9 @@ async function* stage3Synthesize(
     .map((r) => `Model: ${r.model}\nRanking: ${r.ranking}`)
     .join('\n\n');
 
-  // Build label mapping text for chairman to understand peer rankings
-  const labelMappingText = Object.entries(labelToModel)
-    .map(([label, model]) => `- ${label} = ${model}`)
-    .join('\n');
-
   const chairmanPrompt = `You are the Chairman of an LLM Council. Multiple AI models have provided responses to a user's question, and then ranked each other's responses.
 
 Original Question: ${userMessage}
-
-LABEL MAPPING (for understanding peer rankings):
-${labelMappingText}
 
 STAGE 1 - Individual Responses:
 ${stage1Text}
@@ -398,7 +389,7 @@ ${stage2Text}
 
 Your task as Chairman is to synthesize all of this information into a single, comprehensive, accurate answer to the user's original question. Consider:
 - The individual responses and their insights
-- The peer rankings and what they reveal about response quality (use the label mapping above to understand which model each "Response X" refers to)
+- The peer rankings and what they reveal about response quality
 - Any patterns of agreement or disagreement
 
 Provide a clear, well-reasoned final answer that represents the council's collective wisdom:`;
@@ -468,20 +459,17 @@ export async function* processCouncilMessage(
 
     // Stage 2: Collect rankings
     let stage2Results: IStage2Review[] = [];
-    let labelToModel: Record<string, string> = {};
     const stage2Gen = stage2CollectRankings(userMessage, stage1Results);
     for await (const event of stage2Gen) {
       yield event;
       if (event.type === 'stage2_response') {
         stage2Results.push(event.data);
-      } else if (event.type === 'stage2_complete' && event.data) {
-        labelToModel = event.data.labelToModel;
       }
     }
 
-    // Stage 3: Chairman synthesis (with label mapping for context)
+    // Stage 3: Chairman synthesis
     let stage3Result: IStage3Synthesis | null = null;
-    const stage3Gen = stage3Synthesize(userMessage, stage1Results, stage2Results, labelToModel);
+    const stage3Gen = stage3Synthesize(userMessage, stage1Results, stage2Results);
     for await (const event of stage3Gen) {
       yield event;
       if (event.type === 'stage3_response') {
