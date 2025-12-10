@@ -214,7 +214,7 @@ export default function CouncilSessionPage() {
             <div className="flex items-center justify-center h-full text-slate-400">
               <span className="animate-spin mr-2">⏳</span> Loading session...
             </div>
-          ) : messages.length === 0 && !isProcessing && !pendingMessage ? (
+          ) : messages.length === 0 && !pendingMessage && !isProcessing ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center text-slate-400">
                 <p className="mb-2">Start by asking a question.</p>
