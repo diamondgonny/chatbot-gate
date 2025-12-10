@@ -198,6 +198,7 @@ export function Stage2Panel({
               {/* De-anonymized review text with Markdown */}
               <MarkdownRenderer
                 content={deAnonymizeForMarkdown(review.ranking, labelToModel)}
+                className="stage2-review"
               />
 
               {/* Parsed ranking */}
