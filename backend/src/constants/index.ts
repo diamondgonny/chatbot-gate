@@ -49,4 +49,8 @@ export const COUNCIL = {
   RECENT_MESSAGES_LIMIT: 5,
   /** API request timeout in milliseconds */
   API_TIMEOUT_MS: 60000,
+  /** Max tokens for council member responses */
+  MAX_TOKENS: 4096,
+  /** Max tokens for chairman synthesis (higher for comprehensive answer) */
+  CHAIRMAN_MAX_TOKENS: 8192,
 } as const;

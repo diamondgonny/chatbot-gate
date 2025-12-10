@@ -45,7 +45,8 @@ export const isOpenRouterConfigured = (): boolean => {
  */
 export const chatCompletion = async (
   model: string,
-  messages: OpenRouterMessage[]
+  messages: OpenRouterMessage[],
+  maxTokens: number = COUNCIL.MAX_TOKENS
 ): Promise<{ content: string; responseTimeMs: number }> => {
   const startTime = Date.now();
 
@@ -64,7 +65,7 @@ export const chatCompletion = async (
       body: JSON.stringify({
         model,
         messages,
-        max_tokens: 2048,
+        max_tokens: maxTokens,
         temperature: 0.7,
       }),
       signal: controller.signal,
@@ -132,7 +133,11 @@ export const queryCouncilModels = async (
 export const queryChairman = async (
   messages: OpenRouterMessage[]
 ): Promise<ModelResponse> => {
-  const result = await chatCompletion(COUNCIL.CHAIRMAN_MODEL, messages);
+  const result = await chatCompletion(
+    COUNCIL.CHAIRMAN_MODEL,
+    messages,
+    COUNCIL.CHAIRMAN_MAX_TOKENS
+  );
   return {
     model: COUNCIL.CHAIRMAN_MODEL,
     content: result.content,
