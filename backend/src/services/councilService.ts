@@ -17,6 +17,7 @@ import {
   queryCouncilModelsStreaming,
   queryChairman,
   chatCompletion,
+  chatCompletionStream,
   OpenRouterMessage,
   ModelResponse,
   ModelStreamEvent,
@@ -31,9 +32,12 @@ export type SSEEvent =
   | { type: 'stage1_response'; data: IStage1Response }
   | { type: 'stage1_complete' }
   | { type: 'stage2_start' }
+  | { type: 'stage2_chunk'; model: string; delta: string }
+  | { type: 'stage2_model_complete'; model: string; responseTimeMs: number; promptTokens?: number; completionTokens?: number }
   | { type: 'stage2_response'; data: IStage2Review }
   | { type: 'stage2_complete'; data: { labelToModel: Record<string, string>; aggregateRankings: AggregateRanking[] } }
   | { type: 'stage3_start' }
+  | { type: 'stage3_chunk'; delta: string }
   | { type: 'stage3_response'; data: IStage3Synthesis }
   | { type: 'complete' }
   | { type: 'error'; error: string };
@@ -382,18 +386,50 @@ Now provide your evaluation and ranking:`;
 
   const messages: OpenRouterMessage[] = [{ role: 'user', content: rankingPrompt }];
 
-  const responses = await queryCouncilModels(messages, signal);
+  // Track accumulated content and metadata per model
+  const modelContents: Record<string, string> = {};
+  const modelMeta: Record<string, { responseTimeMs: number; promptTokens?: number; completionTokens?: number }> = {};
 
+  // Stream responses from all models
+  for await (const event of queryCouncilModelsStreaming(messages, signal)) {
+    if (signal?.aborted) return { reviews: [], labelToModel };
+
+    if ('done' in event && event.done === true) {
+      // Model complete event
+      modelMeta[event.model] = {
+        responseTimeMs: event.responseTimeMs,
+        promptTokens: event.promptTokens,
+        completionTokens: event.completionTokens,
+      };
+      yield {
+        type: 'stage2_model_complete',
+        model: event.model,
+        responseTimeMs: event.responseTimeMs,
+        promptTokens: event.promptTokens,
+        completionTokens: event.completionTokens,
+      };
+    } else if ('delta' in event) {
+      // Chunk event - accumulate and forward
+      if (!modelContents[event.model]) {
+        modelContents[event.model] = '';
+      }
+      modelContents[event.model] += event.delta;
+      yield { type: 'stage2_chunk', model: event.model, delta: event.delta };
+    }
+  }
+
+  // Build final results
   const stage2Results: IStage2Review[] = [];
-  for (const response of responses) {
-    const parsedRanking = parseRankingFromText(response.content);
+  for (const [model, content] of Object.entries(modelContents)) {
+    const meta = modelMeta[model] || { responseTimeMs: 0 };
+    const parsedRanking = parseRankingFromText(content);
     const review: IStage2Review = {
-      model: response.model,
-      ranking: response.content,
+      model,
+      ranking: content,
       parsedRanking,
-      responseTimeMs: response.responseTimeMs,
-      promptTokens: response.promptTokens,
-      completionTokens: response.completionTokens,
+      responseTimeMs: meta.responseTimeMs,
+      promptTokens: meta.promptTokens,
+      completionTokens: meta.completionTokens,
     };
     stage2Results.push(review);
     yield { type: 'stage2_response', data: review };
@@ -453,14 +489,41 @@ Provide a clear, well-reasoned final answer that represents the council's collec
 
   const messages: OpenRouterMessage[] = [{ role: 'user', content: chairmanPrompt }];
 
-  const response = await queryChairman(messages, signal);
+  // Stream chairman response
+  const startTime = Date.now();
+  let content = '';
+  let promptTokens: number | undefined;
+  let completionTokens: number | undefined;
+
+  for await (const event of chatCompletionStream(
+    COUNCIL.CHAIRMAN_MODEL,
+    messages,
+    COUNCIL.CHAIRMAN_MAX_TOKENS,
+    signal
+  )) {
+    if (signal?.aborted) {
+      return {
+        model: COUNCIL.CHAIRMAN_MODEL,
+        response: content,
+        responseTimeMs: Date.now() - startTime,
+      };
+    }
+
+    if ('delta' in event) {
+      content += event.delta;
+      yield { type: 'stage3_chunk', delta: event.delta };
+    } else if ('done' in event) {
+      promptTokens = event.promptTokens;
+      completionTokens = event.completionTokens;
+    }
+  }
 
   const stage3Result: IStage3Synthesis = {
-    model: response.model,
-    response: response.content,
-    responseTimeMs: response.responseTimeMs,
-    promptTokens: response.promptTokens,
-    completionTokens: response.completionTokens,
+    model: COUNCIL.CHAIRMAN_MODEL,
+    response: content,
+    responseTimeMs: Date.now() - startTime,
+    promptTokens,
+    completionTokens,
   };
 
   yield { type: 'stage3_response', data: stage3Result };

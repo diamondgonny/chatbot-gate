@@ -6,6 +6,7 @@ import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface Stage3PanelProps {
   synthesis: Stage3Synthesis | null;
+  streamingContent?: string;
   isLoading?: boolean;
 }
 
@@ -18,8 +19,11 @@ function formatModelName(model: string): string {
     .join(" ");
 }
 
-export function Stage3Panel({ synthesis, isLoading }: Stage3PanelProps) {
-  if (!synthesis && !isLoading) {
+export function Stage3Panel({ synthesis, streamingContent = "", isLoading }: Stage3PanelProps) {
+  const isStreaming = !synthesis && !!streamingContent;
+  const displayContent = synthesis?.response || streamingContent;
+
+  if (!synthesis && !streamingContent && !isLoading) {
     return null;
   }
 
@@ -45,29 +49,39 @@ export function Stage3Panel({ synthesis, isLoading }: Stage3PanelProps) {
             />
           </svg>
           Stage 3: Council&apos;s Final Answer
+          {isStreaming && (
+            <span className="ml-2 text-xs text-green-500/70">● Streaming...</span>
+          )}
         </h3>
       </div>
 
       <div className="p-4">
-        {isLoading ? (
+        {isLoading && !displayContent ? (
           <div className="flex items-center gap-3 text-slate-400">
             <span className="animate-spin">⏳</span>
             <span>Chairman is synthesizing the final answer...</span>
           </div>
-        ) : synthesis ? (
+        ) : displayContent ? (
           <>
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs text-green-500/70">
-                Chairman: {formatModelName(synthesis.model)}
+                Chairman: {synthesis ? formatModelName(synthesis.model) : "GPT 5.1"}
               </span>
-              <span className="text-xs text-slate-600">
-                {synthesis.responseTimeMs}ms
-                {synthesis.promptTokens !== undefined && (
-                  <> | {synthesis.promptTokens}+{synthesis.completionTokens} tokens</>
-                )}
-              </span>
+              {synthesis && (
+                <span className="text-xs text-slate-600">
+                  {synthesis.responseTimeMs}ms
+                  {synthesis.promptTokens !== undefined && (
+                    <> | {synthesis.promptTokens}+{synthesis.completionTokens} tokens</>
+                  )}
+                </span>
+              )}
             </div>
-            <MarkdownRenderer content={synthesis.response} />
+            <div>
+              <MarkdownRenderer content={displayContent} />
+              {isStreaming && (
+                <span className="inline-block w-2 h-4 bg-green-400 animate-pulse ml-0.5" />
+              )}
+            </div>
           </>
         ) : null}
       </div>
