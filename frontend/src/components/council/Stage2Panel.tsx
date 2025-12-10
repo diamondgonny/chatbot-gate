@@ -75,11 +75,14 @@ export function Stage2Panel({
   aggregateRankings,
   isLoading,
 }: Stage2PanelProps) {
+  // Tab index: 0 = Results, 1+ = individual reviews
   const [activeTab, setActiveTab] = useState(0);
 
   if (reviews.length === 0 && !isLoading) {
     return null;
   }
+
+  const hasResults = aggregateRankings.length > 0;
 
   return (
     <div className="bg-slate-800/50 rounded-xl border border-slate-700 overflow-hidden">
@@ -96,12 +99,25 @@ export function Stage2Panel({
 
       {/* Tab buttons */}
       <div className="flex overflow-x-auto border-b border-slate-700 bg-slate-800/30">
+        {/* Results tab (first) */}
+        {hasResults && (
+          <button
+            onClick={() => setActiveTab(0)}
+            className={`px-4 py-2 text-sm whitespace-nowrap transition-colors ${
+              activeTab === 0
+                ? "text-green-400 border-b-2 border-green-400 bg-slate-800/50"
+                : "text-slate-400 hover:text-slate-300"
+            }`}
+          >
+            Results
+          </button>
+        )}
         {reviews.map((review, index) => (
           <button
             key={index}
-            onClick={() => setActiveTab(index)}
+            onClick={() => setActiveTab(hasResults ? index + 1 : index)}
             className={`px-4 py-2 text-sm whitespace-nowrap transition-colors ${
-              activeTab === index
+              activeTab === (hasResults ? index + 1 : index)
                 ? "text-blue-400 border-b-2 border-blue-400 bg-slate-800/50"
                 : "text-slate-400 hover:text-slate-300"
             }`}
@@ -109,19 +125,6 @@ export function Stage2Panel({
             {formatModelName(review.model)}
           </button>
         ))}
-        {/* Aggregate tab */}
-        {aggregateRankings.length > 0 && (
-          <button
-            onClick={() => setActiveTab(reviews.length)}
-            className={`px-4 py-2 text-sm whitespace-nowrap transition-colors ${
-              activeTab === reviews.length
-                ? "text-green-400 border-b-2 border-green-400 bg-slate-800/50"
-                : "text-slate-400 hover:text-slate-300"
-            }`}
-          >
-            Aggregate
-          </button>
-        )}
         {isLoading && (
           <div className="px-4 py-2 text-sm text-slate-500 flex items-center gap-2">
             <span className="animate-spin">⏳</span> Loading...
@@ -131,55 +134,10 @@ export function Stage2Panel({
 
       {/* Tab content */}
       <AnimatePresence mode="wait">
-        {activeTab < reviews.length && reviews[activeTab] && (
+        {/* Results tab content */}
+        {activeTab === 0 && hasResults && (
           <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="p-4"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-slate-500">
-                Reviewed by: {formatModelName(reviews[activeTab].model)}
-              </span>
-              <span className="text-xs text-slate-600">
-                {reviews[activeTab].responseTimeMs}ms
-              </span>
-            </div>
-
-            {/* De-anonymized review text */}
-            <div className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed mb-4">
-              {deAnonymizeText(reviews[activeTab].ranking, labelToModel)}
-            </div>
-
-            {/* Parsed ranking */}
-            {Array.isArray(reviews[activeTab].parsedRanking) &&
-              reviews[activeTab].parsedRanking.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-slate-700">
-                <h4 className="text-xs font-medium text-slate-400 mb-2">
-                  Extracted Ranking:
-                </h4>
-                <ol className="list-decimal list-inside text-sm text-slate-400">
-                  {reviews[activeTab].parsedRanking.map((label, idx) => (
-                    <li key={idx}>
-                      <span className="text-blue-400 font-semibold">
-                        {labelToModel[label]
-                          ? formatModelName(labelToModel[label])
-                          : label}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {/* Aggregate rankings tab */}
-        {activeTab === reviews.length && aggregateRankings.length > 0 && (
-          <motion.div
-            key="aggregate"
+            key="results"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -225,6 +183,60 @@ export function Stage2Panel({
             </div>
           </motion.div>
         )}
+
+        {/* Individual review tab content */}
+        {(() => {
+          const reviewIndex = hasResults ? activeTab - 1 : activeTab;
+          const isReviewTab = hasResults ? activeTab > 0 : activeTab >= 0;
+          const review = reviews[reviewIndex];
+
+          if (!isReviewTab || !review) return null;
+
+          return (
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="p-4"
+            >
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs text-slate-500">
+                  Reviewed by: {formatModelName(review.model)}
+                </span>
+                <span className="text-xs text-slate-600">
+                  {review.responseTimeMs}ms
+                </span>
+              </div>
+
+              {/* De-anonymized review text */}
+              <div className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed mb-4">
+                {deAnonymizeText(review.ranking, labelToModel)}
+              </div>
+
+              {/* Parsed ranking */}
+              {Array.isArray(review.parsedRanking) &&
+                review.parsedRanking.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-slate-700">
+                  <h4 className="text-xs font-medium text-slate-400 mb-2">
+                    Extracted Ranking:
+                  </h4>
+                  <ol className="list-decimal list-inside text-sm text-slate-400">
+                    {review.parsedRanking.map((label, idx) => (
+                      <li key={idx}>
+                        <span className="text-blue-400 font-semibold">
+                          {labelToModel[label]
+                            ? formatModelName(labelToModel[label])
+                            : label}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
     </div>
   );
