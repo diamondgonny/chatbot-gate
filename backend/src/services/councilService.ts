@@ -447,19 +447,14 @@ export async function* processCouncilMessage(
     return;
   }
 
-  // Add user message
+  // Add user message to in-memory session (for history building)
+  // Note: We don't save here - both user and assistant messages are saved atomically
+  // at the end to avoid orphan user messages if processing is aborted
   session.messages.push({
     role: 'user',
     content: userMessage,
     timestamp: new Date(),
   });
-
-  // Auto-generate title from first message
-  if (session.messages.length === 1) {
-    session.title = truncateTitle(userMessage);
-  }
-
-  await session.save();
 
   // Build conversation history
   const history = buildConversationHistory(session.messages);
@@ -547,11 +542,12 @@ export async function* processCouncilMessage(
       timestamp: new Date(),
     });
 
-    // Update title with a portion of the chairman's response
+    // Auto-generate title from first user message (messages[0] is user, messages[1] is assistant)
     if (session.messages.length === 2) {
-      session.title = truncateTitle(stage3Result.response);
+      session.title = truncateTitle(userMessage);
     }
 
+    // Save both user and assistant messages atomically
     await session.save();
 
     yield { type: 'complete' };
