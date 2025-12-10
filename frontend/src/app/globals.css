@@ -19,8 +19,8 @@ body {
 /* Markdown Content Styling */
 .markdown-content {
   color: #cbd5e1; /* slate-300 */
-  font-size: 0.875rem;
-  line-height: 1.625;
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
 .markdown-content p {
@@ -31,14 +31,33 @@ body {
   margin-bottom: 0;
 }
 
-.markdown-content h1,
-.markdown-content h2,
-.markdown-content h3,
+.markdown-content h1 {
+  font-size: 1.75em;
+  color: #e2e8f0;
+  margin: 20px 0 12px 0;
+  font-weight: 600;
+}
+
+.markdown-content h2 {
+  font-size: 1.5em;
+  color: #e2e8f0;
+  margin: 18px 0 10px 0;
+  font-weight: 600;
+}
+
+.markdown-content h3 {
+  font-size: 1.25em;
+  color: #e2e8f0;
+  margin: 16px 0 8px 0;
+  font-weight: 600;
+}
+
 .markdown-content h4,
 .markdown-content h5,
 .markdown-content h6 {
-  color: #e2e8f0; /* slate-200 */
-  margin: 16px 0 8px 0;
+  font-size: 1.1em;
+  color: #e2e8f0;
+  margin: 14px 0 6px 0;
   font-weight: 600;
 }
 
