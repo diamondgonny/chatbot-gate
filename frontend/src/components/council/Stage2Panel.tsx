@@ -200,27 +200,6 @@ export function Stage2Panel({
                 content={deAnonymizeForMarkdown(review.ranking, labelToModel)}
                 className="stage2-review"
               />
-
-              {/* Parsed ranking */}
-              {Array.isArray(review.parsedRanking) &&
-                review.parsedRanking.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-slate-700">
-                  <h4 className="text-xs font-medium text-slate-400 mb-2">
-                    Extracted Ranking:
-                  </h4>
-                  <ol className="list-decimal list-inside text-sm text-slate-400">
-                    {review.parsedRanking.map((label, idx) => (
-                      <li key={idx}>
-                        <span className="text-blue-400 font-semibold">
-                          {labelToModel[label]
-                            ? formatModelName(labelToModel[label])
-                            : label}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-              )}
             </motion.div>
           );
         })()}
