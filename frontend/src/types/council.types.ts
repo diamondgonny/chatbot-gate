@@ -3,6 +3,8 @@ export interface Stage1Response {
   model: string;
   response: string;
   responseTimeMs: number;
+  promptTokens?: number;
+  completionTokens?: number;
 }
 
 // Stage 2: Peer review with ranking
@@ -11,6 +13,8 @@ export interface Stage2Review {
   ranking: string;
   parsedRanking: string[];
   responseTimeMs: number;
+  promptTokens?: number;
+  completionTokens?: number;
 }
 
 // Stage 3: Chairman synthesis
@@ -18,6 +22,8 @@ export interface Stage3Synthesis {
   model: string;
   response: string;
   responseTimeMs: number;
+  promptTokens?: number;
+  completionTokens?: number;
 }
 
 // User message

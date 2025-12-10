@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import type { Stage3Synthesis } from "@/types";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface Stage3PanelProps {
   synthesis: Stage3Synthesis | null;
@@ -61,11 +62,12 @@ export function Stage3Panel({ synthesis, isLoading }: Stage3PanelProps) {
               </span>
               <span className="text-xs text-slate-600">
                 {synthesis.responseTimeMs}ms
+                {synthesis.promptTokens !== undefined && (
+                  <> | {synthesis.promptTokens}+{synthesis.completionTokens} tokens</>
+                )}
               </span>
             </div>
-            <div className="text-slate-200 text-sm whitespace-pre-wrap leading-relaxed">
-              {synthesis.response}
-            </div>
+            <MarkdownRenderer content={synthesis.response} />
           </>
         ) : null}
       </div>

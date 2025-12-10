@@ -5,6 +5,8 @@ export interface IStage1Response {
   model: string;
   response: string;
   responseTimeMs: number;
+  promptTokens?: number;
+  completionTokens?: number;
 }
 
 const Stage1ResponseSchema = new Schema<IStage1Response>(
@@ -12,6 +14,8 @@ const Stage1ResponseSchema = new Schema<IStage1Response>(
     model: { type: String, required: true },
     response: { type: String, required: true },
     responseTimeMs: { type: Number, required: true },
+    promptTokens: { type: Number },
+    completionTokens: { type: Number },
   },
   { _id: false }
 );
@@ -22,6 +26,8 @@ export interface IStage2Review {
   ranking: string;
   parsedRanking: string[];
   responseTimeMs: number;
+  promptTokens?: number;
+  completionTokens?: number;
 }
 
 const Stage2ReviewSchema = new Schema<IStage2Review>(
@@ -30,6 +36,8 @@ const Stage2ReviewSchema = new Schema<IStage2Review>(
     ranking: { type: String, required: true },
     parsedRanking: [{ type: String }],
     responseTimeMs: { type: Number, required: true },
+    promptTokens: { type: Number },
+    completionTokens: { type: Number },
   },
   { _id: false }
 );
@@ -39,6 +47,8 @@ export interface IStage3Synthesis {
   model: string;
   response: string;
   responseTimeMs: number;
+  promptTokens?: number;
+  completionTokens?: number;
 }
 
 const Stage3SynthesisSchema = new Schema<IStage3Synthesis>(
@@ -46,6 +56,8 @@ const Stage3SynthesisSchema = new Schema<IStage3Synthesis>(
     model: { type: String, required: true },
     response: { type: String, required: true },
     responseTimeMs: { type: Number, required: true },
+    promptTokens: { type: Number },
+    completionTokens: { type: Number },
   },
   { _id: false }
 );

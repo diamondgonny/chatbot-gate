@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Stage2Review, AggregateRanking } from "@/types";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface Stage2PanelProps {
   reviews: Stage2Review[];
@@ -20,53 +21,20 @@ function formatModelName(model: string): string {
     .join(" ");
 }
 
-function deAnonymizeText(
+/**
+ * Replace "Response X" labels with actual model names for markdown rendering
+ */
+function deAnonymizeForMarkdown(
   text: string,
   labelToModel: Record<string, string>
-): React.ReactNode {
-  // Replace "Response X" with the actual model name in bold
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  const regex = /Response [A-Z]/g;
-  let match;
-  let partIndex = 0;
-
-  while ((match = regex.exec(text)) !== null) {
-    // Add text before the match
-    if (match.index > lastIndex) {
-      parts.push(
-        <span key={`text-${partIndex++}`}>
-          {text.slice(lastIndex, match.index)}
-        </span>
-      );
-    }
-
-    const label = match[0];
-    const modelName = labelToModel[label];
-
+): string {
+  return text.replace(/Response [A-Z]/g, (match) => {
+    const modelName = labelToModel[match];
     if (modelName) {
-      parts.push(
-        <span key={`model-${partIndex++}`} className="font-semibold text-blue-400">
-          {formatModelName(modelName)}
-        </span>
-      );
-    } else {
-      parts.push(
-        <span key={`label-${partIndex++}`}>{label}</span>
-      );
+      return `**${formatModelName(modelName)}**`;
     }
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Add remaining text
-  if (lastIndex < text.length) {
-    parts.push(
-      <span key={`text-${partIndex}`}>{text.slice(lastIndex)}</span>
-    );
-  }
-
-  return parts;
+    return match;
+  });
 }
 
 export function Stage2Panel({
@@ -221,13 +189,16 @@ export function Stage2Panel({
                 </span>
                 <span className="text-xs text-slate-600">
                   {review.responseTimeMs}ms
+                  {review.promptTokens !== undefined && (
+                    <> | {review.promptTokens}+{review.completionTokens} tokens</>
+                  )}
                 </span>
               </div>
 
-              {/* De-anonymized review text */}
-              <div className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed mb-4">
-                {deAnonymizeText(review.ranking, labelToModel)}
-              </div>
+              {/* De-anonymized review text with Markdown */}
+              <MarkdownRenderer
+                content={deAnonymizeForMarkdown(review.ranking, labelToModel)}
+              />
 
               {/* Parsed ranking */}
               {Array.isArray(review.parsedRanking) &&

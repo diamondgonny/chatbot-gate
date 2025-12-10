@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Stage1Response } from "@/types";
+import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface Stage1PanelProps {
   responses: Stage1Response[];
@@ -73,11 +74,12 @@ export function Stage1Panel({ responses, isLoading }: Stage1PanelProps) {
               </span>
               <span className="text-xs text-slate-600">
                 {responses[activeTab].responseTimeMs}ms
+                {responses[activeTab].promptTokens !== undefined && (
+                  <> | {responses[activeTab].promptTokens}+{responses[activeTab].completionTokens} tokens</>
+                )}
               </span>
             </div>
-            <div className="text-slate-300 text-sm whitespace-pre-wrap leading-relaxed">
-              {responses[activeTab].response}
-            </div>
+            <MarkdownRenderer content={responses[activeTab].response} />
           </motion.div>
         )}
       </AnimatePresence>

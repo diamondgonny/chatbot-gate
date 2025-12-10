@@ -275,6 +275,8 @@ async function* stage1CollectResponses(
       model: response.model,
       response: response.content,
       responseTimeMs: response.responseTimeMs,
+      promptTokens: response.promptTokens,
+      completionTokens: response.completionTokens,
     };
     stage1Results.push(result);
     yield { type: 'stage1_response', data: result };
@@ -351,6 +353,8 @@ Now provide your evaluation and ranking:`;
       ranking: response.content,
       parsedRanking,
       responseTimeMs: response.responseTimeMs,
+      promptTokens: response.promptTokens,
+      completionTokens: response.completionTokens,
     };
     stage2Results.push(review);
     yield { type: 'stage2_response', data: review };
@@ -415,6 +419,8 @@ Provide a clear, well-reasoned final answer that represents the council's collec
     model: response.model,
     response: response.content,
     responseTimeMs: response.responseTimeMs,
+    promptTokens: response.promptTokens,
+    completionTokens: response.completionTokens,
   };
 
   yield { type: 'stage3_response', data: stage3Result };

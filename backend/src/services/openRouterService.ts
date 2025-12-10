@@ -31,6 +31,8 @@ export interface ModelResponse {
   model: string;
   content: string;
   responseTimeMs: number;
+  promptTokens?: number;
+  completionTokens?: number;
 }
 
 /**
@@ -47,7 +49,7 @@ export const chatCompletion = async (
   model: string,
   messages: OpenRouterMessage[],
   maxTokens: number = COUNCIL.MAX_TOKENS
-): Promise<{ content: string; responseTimeMs: number }> => {
+): Promise<{ content: string; responseTimeMs: number; promptTokens?: number; completionTokens?: number }> => {
   const startTime = Date.now();
 
   const controller = new AbortController();
@@ -84,6 +86,8 @@ export const chatCompletion = async (
     return {
       content: data.choices[0]?.message?.content || '',
       responseTimeMs,
+      promptTokens: data.usage?.prompt_tokens,
+      completionTokens: data.usage?.completion_tokens,
     };
   } catch (error) {
     clearTimeout(timeoutId);
@@ -104,7 +108,13 @@ export const queryCouncilModels = async (
   const results = await Promise.allSettled(
     COUNCIL.MODELS.map(async (model) => {
       const result = await chatCompletion(model, messages);
-      return { model, content: result.content, responseTimeMs: result.responseTimeMs };
+      return {
+        model,
+        content: result.content,
+        responseTimeMs: result.responseTimeMs,
+        promptTokens: result.promptTokens,
+        completionTokens: result.completionTokens,
+      };
     })
   );
 
@@ -142,5 +152,7 @@ export const queryChairman = async (
     model: COUNCIL.CHAIRMAN_MODEL,
     content: result.content,
     responseTimeMs: result.responseTimeMs,
+    promptTokens: result.promptTokens,
+    completionTokens: result.completionTokens,
   };
 };
