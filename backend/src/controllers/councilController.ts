@@ -170,8 +170,8 @@ export const sendMessage = async (req: Request, res: Response) => {
   // Create abort controller for client disconnect handling
   const abortController = new AbortController();
 
-  // Detect client disconnect and abort processing
-  req.on('close', () => {
+  // Detect client disconnect via response stream close (more reliable for SSE than req.on('close'))
+  res.on('close', () => {
     if (!res.writableEnded) {
       console.log(`[Council] Client disconnected for session ${sessionId}, aborting processing`);
       abortController.abort();
