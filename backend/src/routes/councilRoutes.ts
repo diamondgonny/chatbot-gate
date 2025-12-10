@@ -42,9 +42,9 @@ router.delete(
   deleteSession
 );
 
-// GET /api/council/sessions/:sessionId/message - Send message with SSE streaming
-// Message content is passed as query parameter: ?content=...
-router.get(
+// POST /api/council/sessions/:sessionId/message - Send message with SSE streaming
+// Message content is passed in request body: { content: string }
+router.post(
   '/sessions/:sessionId/message',
   createRateLimiter({ windowMs: 60_000, max: 10, routeName: 'council_send_message' }),
   sendMessage

@@ -133,11 +133,12 @@ export const deleteSession = async (req: Request, res: Response) => {
 
 /**
  * Send a message to the council (SSE streaming response)
+ * Accepts POST with JSON body: { content: string }
  */
 export const sendMessage = async (req: Request, res: Response) => {
   const userId = req.userId;
   const { sessionId } = req.params;
-  const content = req.query.content as string;
+  const content = req.body?.content as string;
 
   if (!userId) {
     return res.status(401).json({ error: 'Authentication required' });

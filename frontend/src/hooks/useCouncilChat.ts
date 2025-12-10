@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { getCouncilSession, getCouncilMessageUrl } from "@/apis";
+import { getCouncilSession, streamSSE, getCouncilMessageUrl, StreamError } from "@/apis";
 import type {
   CouncilMessage,
   CouncilAssistantMessage,
@@ -15,6 +15,7 @@ type CurrentStage = "idle" | "stage1" | "stage2" | "stage3";
 
 interface UseCouncilChatReturn {
   messages: CouncilMessage[];
+  pendingMessage: string | null;
   currentStage: CurrentStage;
   stage1Responses: Stage1Response[];
   stage2Reviews: Stage2Review[];
@@ -31,6 +32,7 @@ interface UseCouncilChatReturn {
 
 export function useCouncilChat(): UseCouncilChatReturn {
   const [messages, setMessages] = useState<CouncilMessage[]>([]);
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [currentStage, setCurrentStage] = useState<CurrentStage>("idle");
   const [stage1Responses, setStage1Responses] = useState<Stage1Response[]>([]);
   const [stage2Reviews, setStage2Reviews] = useState<Stage2Review[]>([]);
@@ -44,22 +46,23 @@ export function useCouncilChat(): UseCouncilChatReturn {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const eventSourceRef = useRef<EventSource | null>(null);
+  // AbortController for cancelling fetch requests
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Cleanup EventSource on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, []);
 
   const loadSession = useCallback(async (sessionId: string) => {
-    // Close any in-flight SSE connection to prevent cross-session bleed
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
+    // Abort any in-flight request to prevent cross-session bleed
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
 
     // Reset all streaming state when switching sessions
@@ -70,6 +73,7 @@ export function useCouncilChat(): UseCouncilChatReturn {
     setLabelToModel({});
     setAggregateRankings([]);
     setIsProcessing(false);
+    setPendingMessage(null);
     setError(null);
 
     setIsLoading(true);
@@ -85,10 +89,14 @@ export function useCouncilChat(): UseCouncilChatReturn {
   }, []);
 
   const sendMessage = useCallback((sessionId: string, content: string) => {
-    // Close any existing connection
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
+    // Abort any existing request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
+
+    // Create new AbortController for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
 
     // Reset state for new message
     setCurrentStage("idle");
@@ -100,103 +108,122 @@ export function useCouncilChat(): UseCouncilChatReturn {
     setIsProcessing(true);
     setError(null);
 
-    // Add user message immediately
-    const userMessage: CouncilMessage = {
-      role: "user",
-      content,
-      timestamp: new Date().toISOString(),
-    };
-    setMessages((prev) => [...prev, userMessage]);
-
-    // Create SSE connection
-    const url = getCouncilMessageUrl(sessionId, content);
-    const eventSource = new EventSource(url, { withCredentials: true });
-    eventSourceRef.current = eventSource;
+    // Store pending message (will be added to messages on stage1_start)
+    setPendingMessage(content);
 
     // Temporary storage for building the assistant message
     let tempStage1: Stage1Response[] = [];
     let tempStage2: Stage2Review[] = [];
     let tempStage3: Stage3Synthesis | null = null;
+    let userMessageAdded = false;
 
-    eventSource.onmessage = (event) => {
+    // Process SSE stream
+    const processStream = async () => {
       try {
-        const data = JSON.parse(event.data);
+        const url = getCouncilMessageUrl(sessionId);
+        const stream = streamSSE(url, { content }, abortController.signal);
 
-        switch (data.type) {
-          case "stage1_start":
-            setCurrentStage("stage1");
-            break;
+        for await (const event of stream) {
+          switch (event.type) {
+            case "stage1_start":
+              setCurrentStage("stage1");
+              // Add user message now that connection is confirmed
+              if (!userMessageAdded) {
+                const userMessage: CouncilMessage = {
+                  role: "user",
+                  content,
+                  timestamp: new Date().toISOString(),
+                };
+                setMessages((prev) => [...prev, userMessage]);
+                setPendingMessage(null);
+                userMessageAdded = true;
+              }
+              break;
 
-          case "stage1_response":
-            tempStage1 = [...tempStage1, data.data];
-            setStage1Responses([...tempStage1]);
-            break;
+            case "stage1_response":
+              if (event.data) {
+                tempStage1 = [...tempStage1, event.data as Stage1Response];
+                setStage1Responses([...tempStage1]);
+              }
+              break;
 
-          case "stage1_complete":
-            // Stage 1 done
-            break;
+            case "stage1_complete":
+              // Stage 1 done
+              break;
 
-          case "stage2_start":
-            setCurrentStage("stage2");
-            break;
+            case "stage2_start":
+              setCurrentStage("stage2");
+              break;
 
-          case "stage2_response":
-            tempStage2 = [...tempStage2, data.data];
-            setStage2Reviews([...tempStage2]);
-            break;
+            case "stage2_response":
+              if (event.data) {
+                tempStage2 = [...tempStage2, event.data as Stage2Review];
+                setStage2Reviews([...tempStage2]);
+              }
+              break;
 
-          case "stage2_complete":
-            if (data.data) {
-              setLabelToModel(data.data.labelToModel || {});
-              setAggregateRankings(data.data.aggregateRankings || []);
-            }
-            break;
+            case "stage2_complete":
+              if (event.data && "labelToModel" in event.data) {
+                setLabelToModel(event.data.labelToModel || {});
+                setAggregateRankings(event.data.aggregateRankings || []);
+              }
+              break;
 
-          case "stage3_start":
-            setCurrentStage("stage3");
-            break;
+            case "stage3_start":
+              setCurrentStage("stage3");
+              break;
 
-          case "stage3_response":
-            tempStage3 = data.data;
-            setStage3Synthesis(data.data);
-            break;
+            case "stage3_response":
+              if (event.data) {
+                tempStage3 = event.data as Stage3Synthesis;
+                setStage3Synthesis(tempStage3);
+              }
+              break;
 
-          case "complete":
-            eventSource.close();
-            setCurrentStage("idle");
-            setIsProcessing(false);
+            case "complete":
+              setCurrentStage("idle");
+              setIsProcessing(false);
 
-            // Add the complete assistant message
-            if (tempStage3) {
-              const assistantMessage: CouncilAssistantMessage = {
-                role: "assistant",
-                stage1: tempStage1,
-                stage2: tempStage2,
-                stage3: tempStage3,
-                timestamp: new Date().toISOString(),
-              };
-              setMessages((prev) => [...prev, assistantMessage]);
-            }
-            break;
+              // Add the complete assistant message
+              if (tempStage3) {
+                const assistantMessage: CouncilAssistantMessage = {
+                  role: "assistant",
+                  stage1: tempStage1,
+                  stage2: tempStage2,
+                  stage3: tempStage3,
+                  timestamp: new Date().toISOString(),
+                };
+                setMessages((prev) => [...prev, assistantMessage]);
+              }
+              break;
 
-          case "error":
-            eventSource.close();
-            setCurrentStage("idle");
-            setIsProcessing(false);
-            setError(data.error || "An error occurred");
-            break;
+            case "error":
+              setCurrentStage("idle");
+              setIsProcessing(false);
+              setPendingMessage(null);
+              setError(event.error || "An error occurred");
+              break;
+          }
         }
       } catch (err) {
-        console.error("Error parsing SSE event:", err);
+        // Handle errors
+        if (err instanceof StreamError) {
+          if (err.isAborted) {
+            // Request was intentionally aborted, no error to show
+            return;
+          }
+          setError(err.message);
+        } else {
+          console.error("Error in council stream:", err);
+          setError("Connection lost");
+        }
+        setCurrentStage("idle");
+        setIsProcessing(false);
+        setPendingMessage(null);
       }
     };
 
-    eventSource.onerror = () => {
-      eventSource.close();
-      setCurrentStage("idle");
-      setIsProcessing(false);
-      setError("Connection lost");
-    };
+    processStream();
   }, []);
 
   const clearError = useCallback(() => {
@@ -205,6 +232,7 @@ export function useCouncilChat(): UseCouncilChatReturn {
 
   return {
     messages,
+    pendingMessage,
     currentStage,
     stage1Responses,
     stage2Reviews,

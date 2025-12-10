@@ -5,6 +5,9 @@ import type {
   GetCouncilSessionResponse,
 } from "@/types";
 
+// Re-export streaming utilities for council message handling
+export { streamSSE, getCouncilMessageUrl, StreamError } from "@/utils/streamUtils";
+
 export async function createCouncilSession(): Promise<CreateCouncilSessionResponse> {
   const response = await apiClient.post<CreateCouncilSessionResponse>(
     "/api/council/sessions"
@@ -30,14 +33,4 @@ export async function getCouncilSession(
 
 export async function deleteCouncilSession(sessionId: string): Promise<void> {
   await apiClient.delete(`/api/council/sessions/${sessionId}`);
-}
-
-/**
- * Get the SSE endpoint URL for sending a message
- * Note: SSE connections are made directly, not through axios
- */
-export function getCouncilMessageUrl(sessionId: string, content: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-  const encodedContent = encodeURIComponent(content);
-  return `${baseUrl}/api/council/sessions/${sessionId}/message?content=${encodedContent}`;
 }

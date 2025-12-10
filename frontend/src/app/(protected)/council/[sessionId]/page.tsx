@@ -112,6 +112,7 @@ export default function CouncilSessionPage() {
 
   const {
     messages,
+    pendingMessage,
     currentStage,
     stage1Responses,
     stage2Reviews,
@@ -140,7 +141,7 @@ export default function CouncilSessionPage() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, stage1Responses, stage2Reviews, stage3Synthesis, scrollToBottom]);
+  }, [messages, pendingMessage, stage1Responses, stage2Reviews, stage3Synthesis, scrollToBottom]);
 
   const handleNewSession = async () => {
     const newSessionId = await createSession();
@@ -262,6 +263,22 @@ export default function CouncilSessionPage() {
                   ) : null}
                 </motion.div>
               ))}
+
+              {/* Pending message (shown while waiting for connection confirmation) */}
+              {pendingMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex justify-end"
+                >
+                  <div className="bg-blue-600/70 text-white px-4 py-3 rounded-2xl rounded-br-md max-w-xl">
+                    <p className="text-sm whitespace-pre-wrap">{pendingMessage}</p>
+                    <p className="text-xs text-blue-200 mt-1 flex items-center gap-1">
+                      <span className="animate-spin">⏳</span> Sending...
+                    </p>
+                  </div>
+                </motion.div>
+              )}
 
               {/* Current processing state */}
               {isProcessing && (

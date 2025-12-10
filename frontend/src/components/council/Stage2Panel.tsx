@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Stage2Review, AggregateRanking } from "@/types";
 
@@ -78,6 +78,11 @@ export function Stage2Panel({
   // Tab index: 0 = Results, 1+ = individual reviews
   const [activeTab, setActiveTab] = useState(0);
 
+  // Reset to Results tab when reviews change (e.g., new question started)
+  useEffect(() => {
+    setActiveTab(0);
+  }, [reviews.length]);
+
   if (reviews.length === 0 && !isLoading) {
     return null;
   }
@@ -94,6 +99,16 @@ export function Stage2Panel({
           Models evaluated each other anonymously. Model names shown in{" "}
           <span className="text-blue-400 font-semibold">blue</span> are for
           readability only.
+          <span className="relative inline-block group ml-2 align-middle">
+            <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-700 text-[10px] font-semibold text-slate-300">
+              i
+            </span>
+            <span className="absolute left-1/2 z-10 mt-2 w-64 -translate-x-1/2 rounded-md bg-slate-900/95 px-3 py-2 text-[11px] text-slate-200 opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+              Responses are relabeled as Response A/B/C so reviewers can&apos;t
+              favor their own model. The mapping is only used here for
+              readability.
+            </span>
+          </span>
         </p>
       </div>
 
