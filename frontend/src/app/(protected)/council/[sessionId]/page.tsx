@@ -248,13 +248,14 @@ export default function CouncilSessionPage() {
                       );
                       return (
                         <div className="space-y-4">
-                          <Stage1Panel responses={message.stage1} />
+                          <Stage1Panel key={`s1-${index}`} responses={message.stage1} />
                           <Stage2Panel
+                            key={`s2-${index}`}
                             reviews={message.stage2}
                             labelToModel={msgLabelToModel}
                             aggregateRankings={msgAggregateRankings}
                           />
-                          <Stage3Panel synthesis={message.stage3} />
+                          <Stage3Panel key={`s3-${index}`} synthesis={message.stage3} />
                         </div>
                       );
                     })()
@@ -279,6 +280,7 @@ export default function CouncilSessionPage() {
                   <AnimatePresence>
                     {stage1Responses.length > 0 && (
                       <Stage1Panel
+                        key="stage1-panel"
                         responses={stage1Responses}
                         isLoading={currentStage === "stage1"}
                       />
@@ -286,6 +288,7 @@ export default function CouncilSessionPage() {
 
                     {stage2Reviews.length > 0 && (
                       <Stage2Panel
+                        key="stage2-panel"
                         reviews={stage2Reviews}
                         labelToModel={labelToModel}
                         aggregateRankings={aggregateRankings}
@@ -295,6 +298,7 @@ export default function CouncilSessionPage() {
 
                     {(stage3Synthesis || currentStage === "stage3") && (
                       <Stage3Panel
+                        key="stage3-panel"
                         synthesis={stage3Synthesis}
                         isLoading={currentStage === "stage3"}
                       />

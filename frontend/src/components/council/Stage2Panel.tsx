@@ -29,11 +29,16 @@ function deAnonymizeText(
   let lastIndex = 0;
   const regex = /Response [A-Z]/g;
   let match;
+  let partIndex = 0;
 
   while ((match = regex.exec(text)) !== null) {
     // Add text before the match
     if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
+      parts.push(
+        <span key={`text-${partIndex++}`}>
+          {text.slice(lastIndex, match.index)}
+        </span>
+      );
     }
 
     const label = match[0];
@@ -41,12 +46,14 @@ function deAnonymizeText(
 
     if (modelName) {
       parts.push(
-        <span key={match.index} className="font-semibold text-blue-400">
+        <span key={`model-${partIndex++}`} className="font-semibold text-blue-400">
           {formatModelName(modelName)}
         </span>
       );
     } else {
-      parts.push(label);
+      parts.push(
+        <span key={`label-${partIndex++}`}>{label}</span>
+      );
     }
 
     lastIndex = match.index + match[0].length;
@@ -54,7 +61,9 @@ function deAnonymizeText(
 
   // Add remaining text
   if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
+    parts.push(
+      <span key={`text-${partIndex}`}>{text.slice(lastIndex)}</span>
+    );
   }
 
   return parts;
