@@ -42,7 +42,7 @@ export const COUNCIL = {
     'moonshotai/kimi-k2-thinking',
   ] as const,
   /** Chairman model for final synthesis */
-  CHAIRMAN_MODEL: 'google/gemini-2.5-pro',
+  CHAIRMAN_MODEL: 'openai/gpt-5.1',
   /** Maximum allowed message length in characters */
   MAX_MESSAGE_LENGTH: 4000,
   /** Number of recent messages to include in context */
@@ -52,5 +52,5 @@ export const COUNCIL = {
   /** Max tokens for council member responses */
   MAX_TOKENS: 4096,
   /** Max tokens for chairman synthesis (higher for comprehensive answer) */
-  CHAIRMAN_MAX_TOKENS: 8192,
+  CHAIRMAN_MAX_TOKENS: 16384,
 } as const;
