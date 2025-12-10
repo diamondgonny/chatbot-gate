@@ -69,9 +69,10 @@ export function useCouncilChat(): UseCouncilChatReturn {
   // AbortController for cancelling fetch requests
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Track stalled stage during reconnection (chunks for this stage are ignored)
+  // Track stalled stages during reconnection (chunks for these stages are ignored)
   // Using ref for synchronous access during event processing
-  const stalledStageRef = useRef<CurrentStage | null>(null);
+  // Set allows multiple stages to be stalled simultaneously during replay
+  const stalledStagesRef = useRef<Set<CurrentStage>>(new Set());
 
   // Cleanup on unmount
   useEffect(() => {
@@ -93,11 +94,13 @@ export function useCouncilChat(): UseCouncilChatReturn {
     switch (event.type) {
       case "stage1_start":
         setCurrentStage("stage1");
+        // Clear stall for stage1 (new stage starting, can stream normally)
+        stalledStagesRef.current.delete("stage1");
         break;
 
       case "stage1_chunk":
-        // Skip chunks if stage1 is stalled (reconnection scenario)
-        if (stalledStageRef.current === "stage1") break;
+        // Skip chunks if stage1 is stalled (reconnection replay scenario)
+        if (stalledStagesRef.current.has("stage1")) break;
         if (event.model && event.delta) {
           setStage1StreamingContent((prev) => ({
             ...prev,
@@ -125,15 +128,13 @@ export function useCouncilChat(): UseCouncilChatReturn {
 
       case "stage2_start":
         setCurrentStage("stage2");
-        // Clear stall if stage1 was stalled (stage2 is new, can stream normally)
-        if (stalledStageRef.current === "stage1") {
-          stalledStageRef.current = null;
-        }
+        // Clear stall for stage2 (new stage starting, can stream normally)
+        stalledStagesRef.current.delete("stage2");
         break;
 
       case "stage2_chunk":
-        // Skip chunks if stage2 is stalled (reconnection scenario)
-        if (stalledStageRef.current === "stage2") break;
+        // Skip chunks if stage2 is stalled (reconnection replay scenario)
+        if (stalledStagesRef.current.has("stage2")) break;
         if (event.model && event.delta) {
           setStage2StreamingContent((prev) => ({
             ...prev,
@@ -165,15 +166,13 @@ export function useCouncilChat(): UseCouncilChatReturn {
 
       case "stage3_start":
         setCurrentStage("stage3");
-        // Clear stall if stage1 or stage2 was stalled (stage3 is new, can stream normally)
-        if (stalledStageRef.current === "stage1" || stalledStageRef.current === "stage2") {
-          stalledStageRef.current = null;
-        }
+        // Clear stall for stage3 (new stage starting, can stream normally)
+        stalledStagesRef.current.delete("stage3");
         break;
 
       case "stage3_chunk":
-        // Skip chunks if stage3 is stalled (reconnection scenario)
-        if (stalledStageRef.current === "stage3") break;
+        // Skip chunks if stage3 is stalled (reconnection replay scenario)
+        if (stalledStagesRef.current.has("stage3")) break;
         if (event.delta) {
           setStage3StreamingContent((prev) => prev + event.delta);
         }
@@ -191,10 +190,8 @@ export function useCouncilChat(): UseCouncilChatReturn {
         // Set current stage from server's tracking
         if (event.stage) {
           setCurrentStage(event.stage as CurrentStage);
-          // Stall the current stage - chunks will be ignored, only final responses accepted
-          if (event.stage !== "idle") {
-            stalledStageRef.current = event.stage as CurrentStage;
-          }
+          // Note: stall is already set at reconnection start, not here
+          // This ensures replay chunks are skipped before this event arrives
         }
         // Set userMessage as pendingMessage to display the user bubble
         if (event.userMessage) {
@@ -223,6 +220,10 @@ export function useCouncilChat(): UseCouncilChatReturn {
     setIsProcessing(true);
     setError(null);
 
+    // Stall all stages at reconnection start
+    // Replay chunks will be skipped; only stage_start events clear the stall
+    stalledStagesRef.current = new Set(["stage1", "stage2", "stage3"]);
+
     let tempStage1: Stage1Response[] = [];
     let tempStage2: Stage2Review[] = [];
     let tempStage3: Stage3Synthesis | null = null;
@@ -241,6 +242,7 @@ export function useCouncilChat(): UseCouncilChatReturn {
           setCurrentStage("idle");
           setIsProcessing(false);
           setIsReconnecting(false);
+          setPendingMessage(null);
 
           // Add the complete assistant message
           if (tempStage3) {
@@ -300,7 +302,7 @@ export function useCouncilChat(): UseCouncilChatReturn {
     setWasAborted(false);
     setPendingMessage(null);
     setError(null);
-    stalledStageRef.current = null;
+    stalledStagesRef.current.clear();
 
     setIsLoading(true);
     try {
@@ -345,7 +347,7 @@ export function useCouncilChat(): UseCouncilChatReturn {
     setIsProcessing(true);
     setWasAborted(false);
     setError(null);
-    stalledStageRef.current = null;
+    stalledStagesRef.current.clear();
 
     // Store pending message (will be added to messages on stage1_start)
     setPendingMessage(content);
