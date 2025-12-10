@@ -174,6 +174,10 @@ export function useCouncilChat(): UseCouncilChatReturn {
         if (event.stage) {
           setCurrentStage(event.stage as CurrentStage);
         }
+        // Set userMessage as pendingMessage to display the user bubble
+        if (event.userMessage) {
+          setPendingMessage(event.userMessage);
+        }
         setIsReconnecting(false);
         break;
 

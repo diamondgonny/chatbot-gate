@@ -316,23 +316,49 @@ export const reconnectToProcessing = async (req: Request, res: Response) => {
   res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
 
-  // Replay accumulated state
-  // 1. Stage 1 results
-  if (processing.stage1Results.length > 0) {
+  // Replay accumulated state based on current stage
+  const hasStage1Data = processing.stage1Results.length > 0 || Object.keys(processing.stage1StreamingContent).length > 0;
+  const hasStage2Data = processing.stage2Results.length > 0 || Object.keys(processing.stage2StreamingContent).length > 0;
+  const hasStage3Data = !!processing.stage3Content;
+
+  // 1. Stage 1 replay
+  if (hasStage1Data || processing.currentStage === 'stage1') {
     res.write(`data: ${JSON.stringify({ type: 'stage1_start' })}\n\n`);
+    // Send completed responses
     for (const result of processing.stage1Results) {
       res.write(`data: ${JSON.stringify({ type: 'stage1_response', data: result })}\n\n`);
     }
-    res.write(`data: ${JSON.stringify({ type: 'stage1_complete' })}\n\n`);
+    // Send streaming content for models still in progress
+    if (processing.currentStage === 'stage1') {
+      for (const [model, content] of Object.entries(processing.stage1StreamingContent)) {
+        if (content) {
+          res.write(`data: ${JSON.stringify({ type: 'stage1_chunk', model, delta: content })}\n\n`);
+        }
+      }
+    }
+    // Only send complete if Stage 1 is actually done
+    if (processing.currentStage !== 'stage1') {
+      res.write(`data: ${JSON.stringify({ type: 'stage1_complete' })}\n\n`);
+    }
   }
 
-  // 2. Stage 2 results
-  if (processing.stage2Results.length > 0) {
+  // 2. Stage 2 replay
+  if (hasStage2Data || processing.currentStage === 'stage2') {
     res.write(`data: ${JSON.stringify({ type: 'stage2_start' })}\n\n`);
+    // Send completed responses
     for (const result of processing.stage2Results) {
       res.write(`data: ${JSON.stringify({ type: 'stage2_response', data: result })}\n\n`);
     }
-    if (Object.keys(processing.labelToModel).length > 0) {
+    // Send streaming content for models still in progress
+    if (processing.currentStage === 'stage2') {
+      for (const [model, content] of Object.entries(processing.stage2StreamingContent)) {
+        if (content) {
+          res.write(`data: ${JSON.stringify({ type: 'stage2_chunk', model, delta: content })}\n\n`);
+        }
+      }
+    }
+    // Only send complete if Stage 2 is actually done (has labelToModel data)
+    if (processing.currentStage !== 'stage2' && Object.keys(processing.labelToModel).length > 0) {
       res.write(`data: ${JSON.stringify({
         type: 'stage2_complete',
         data: {
@@ -343,11 +369,13 @@ export const reconnectToProcessing = async (req: Request, res: Response) => {
     }
   }
 
-  // 3. Stage 3 partial content
-  if (processing.stage3Content) {
+  // 3. Stage 3 replay
+  if (hasStage3Data || processing.currentStage === 'stage3') {
     res.write(`data: ${JSON.stringify({ type: 'stage3_start' })}\n\n`);
     // Send accumulated content as a single chunk
-    res.write(`data: ${JSON.stringify({ type: 'stage3_chunk', delta: processing.stage3Content })}\n\n`);
+    if (processing.stage3Content) {
+      res.write(`data: ${JSON.stringify({ type: 'stage3_chunk', delta: processing.stage3Content })}\n\n`);
+    }
   }
 
   // 4. Send reconnection marker with current stage

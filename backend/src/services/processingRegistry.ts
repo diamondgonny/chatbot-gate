@@ -25,6 +25,9 @@ export interface ActiveProcessing {
   stage3Content: string;
   labelToModel: Record<string, string>;
   aggregateRankings: { model: string; averageRank: number; rankingsCount: number }[];
+  // Streaming content for models currently in progress
+  stage1StreamingContent: Record<string, string>;
+  stage2StreamingContent: Record<string, string>;
   // User message for this processing
   userMessage: string;
 }
@@ -101,6 +104,8 @@ class ProcessingRegistry {
       stage3Content: '',
       labelToModel: {},
       aggregateRankings: [],
+      stage1StreamingContent: {},
+      stage2StreamingContent: {},
     };
 
     this.activeProcessing.set(key, processing);
@@ -182,20 +187,44 @@ class ProcessingRegistry {
       case 'stage1_start':
         processing.currentStage = 'stage1';
         break;
+      case 'stage1_chunk':
+        // Accumulate streaming content for this model
+        if ('model' in event && 'delta' in event && event.model && event.delta) {
+          processing.stage1StreamingContent[event.model] =
+            (processing.stage1StreamingContent[event.model] || '') + event.delta;
+        }
+        break;
       case 'stage1_response':
         if (event.data) {
+          // Clear streaming content for completed model
+          delete processing.stage1StreamingContent[event.data.model];
           processing.stage1Results.push(event.data);
         }
+        break;
+      case 'stage1_complete':
+        // Clear all stage1 streaming content
+        processing.stage1StreamingContent = {};
         break;
       case 'stage2_start':
         processing.currentStage = 'stage2';
         break;
+      case 'stage2_chunk':
+        // Accumulate streaming content for this model
+        if ('model' in event && 'delta' in event && event.model && event.delta) {
+          processing.stage2StreamingContent[event.model] =
+            (processing.stage2StreamingContent[event.model] || '') + event.delta;
+        }
+        break;
       case 'stage2_response':
         if (event.data) {
+          // Clear streaming content for completed model
+          delete processing.stage2StreamingContent[event.data.model];
           processing.stage2Results.push(event.data);
         }
         break;
       case 'stage2_complete':
+        // Clear all stage2 streaming content
+        processing.stage2StreamingContent = {};
         if (event.data && 'labelToModel' in event.data) {
           processing.labelToModel = event.data.labelToModel;
           processing.aggregateRankings = event.data.aggregateRankings;

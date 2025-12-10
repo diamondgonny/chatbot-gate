@@ -123,6 +123,7 @@ export default function CouncilSessionPage() {
     labelToModel,
     aggregateRankings,
     isProcessing,
+    isReconnecting,
     wasAborted,
     isLoading: chatLoading,
     error,
@@ -269,7 +270,7 @@ export default function CouncilSessionPage() {
                 </motion.div>
               ))}
 
-              {/* Pending message (shown while waiting for connection confirmation) */}
+              {/* Pending message (shown while waiting for connection confirmation or reconnecting) */}
               {pendingMessage && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -279,7 +280,8 @@ export default function CouncilSessionPage() {
                   <div className="bg-blue-600/70 text-white px-4 py-3 rounded-2xl rounded-br-md max-w-xl">
                     <p className="text-sm whitespace-pre-wrap">{pendingMessage}</p>
                     <p className="text-xs text-blue-200 mt-1 flex items-center gap-1">
-                      <span className="animate-spin">⏳</span> Sending...
+                      <span className="animate-spin">⏳</span>
+                      {isReconnecting ? "Reconnecting..." : "Sending..."}
                     </p>
                   </div>
                 </motion.div>
