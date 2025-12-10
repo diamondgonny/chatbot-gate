@@ -67,11 +67,11 @@ export function Stage2Panel({
           Models evaluated each other anonymously. Model names shown in{" "}
           <span className="text-blue-400 font-semibold">blue</span> are for
           readability only.
-          <span className="relative inline-block group ml-2 align-middle">
+          <span className="relative inline-flex items-center justify-center w-8 h-8 align-middle group">
             <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-slate-700 text-[10px] font-semibold text-slate-300">
               i
             </span>
-            <span className="absolute left-1/2 z-10 mt-2 w-64 -translate-x-1/2 rounded-md bg-slate-900/95 px-3 py-2 text-[11px] text-slate-200 opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+            <span className="absolute left-1/2 top-full z-10 mt-1 w-64 -translate-x-1/2 rounded-md bg-slate-900/95 px-3 py-2 text-[11px] text-slate-200 opacity-0 shadow-lg transition-opacity pointer-events-none group-hover:opacity-100">
               Responses are relabeled as Response A/B/C so reviewers can&apos;t
               favor their own model. The mapping is only used here for
               readability.
