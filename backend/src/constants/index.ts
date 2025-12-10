@@ -32,14 +32,13 @@ export const BACKOFF = {
 /** Council-related constants */
 export const COUNCIL = {
   /** Maximum number of council sessions allowed per user */
-  MAX_SESSIONS_PER_USER: 20,
+  MAX_SESSIONS_PER_USER: 50,
   /** Council member models (via OpenRouter) */
   MODELS: [
     'anthropic/claude-sonnet-4.5',
     'openai/gpt-4.1',
     'google/gemini-2.5-flash',
     'x-ai/grok-4.1-fast',
-    'moonshotai/kimi-k2-thinking',
   ] as const,
   /** Chairman model for final synthesis */
   CHAIRMAN_MODEL: 'openai/gpt-5.1',
