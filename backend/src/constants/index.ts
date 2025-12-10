@@ -43,6 +43,11 @@ export const COUNCIL = {
   ] as const,
   /** Chairman model for final synthesis */
   CHAIRMAN_MODEL: 'openai/gpt-5.1',
+  /** System prompt for council members */
+  SYSTEM_PROMPT: `You are a helpful AI assistant participating in a council discussion.
+Provide a complete, comprehensive answer in a single response.
+Do not ask follow-up questions or break your response into multiple parts.
+Answer fully and directly.`,
   /** Maximum allowed message length in characters */
   MAX_MESSAGE_LENGTH: 4000,
   /** Number of recent messages to include in context */

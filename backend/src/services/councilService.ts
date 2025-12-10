@@ -261,7 +261,11 @@ async function* stage1CollectResponses(
 ): AsyncGenerator<SSEEvent> {
   yield { type: 'stage1_start' };
 
-  const messages: OpenRouterMessage[] = [...history, { role: 'user', content: userMessage }];
+  const messages: OpenRouterMessage[] = [
+    { role: 'system', content: COUNCIL.SYSTEM_PROMPT },
+    ...history,
+    { role: 'user', content: userMessage },
+  ];
 
   const responses = await queryCouncilModels(messages);
 
