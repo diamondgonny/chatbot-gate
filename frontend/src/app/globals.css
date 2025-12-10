@@ -16,6 +16,101 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Markdown Content Styling */
+.markdown-content {
+  color: #cbd5e1; /* slate-300 */
+  font-size: 0.875rem;
+  line-height: 1.625;
+}
+
+.markdown-content p {
+  margin: 0 0 12px 0;
+}
+
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  color: #e2e8f0; /* slate-200 */
+  margin: 16px 0 8px 0;
+  font-weight: 600;
+}
+
+.markdown-content h1:first-child,
+.markdown-content h2:first-child,
+.markdown-content h3:first-child,
+.markdown-content h4:first-child,
+.markdown-content h5:first-child,
+.markdown-content h6:first-child {
+  margin-top: 0;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin: 0 0 12px 0;
+  padding-left: 24px;
+}
+
+.markdown-content li {
+  margin: 4px 0;
+}
+
+.markdown-content pre {
+  background: #1e293b; /* slate-800 */
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  margin: 0 0 12px 0;
+}
+
+.markdown-content code {
+  background: #1e293b;
+  color: #34d399; /* emerald-400 */
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 0.85em;
+}
+
+.markdown-content pre code {
+  background: none;
+  padding: 0;
+  color: #cbd5e1;
+}
+
+.markdown-content blockquote {
+  margin: 0 0 12px 0;
+  padding-left: 16px;
+  border-left: 4px solid #475569; /* slate-600 */
+  color: #94a3b8; /* slate-400 */
+}
+
+.markdown-content strong {
+  color: #60a5fa; /* blue-400 for de-anonymized model names */
+  font-weight: 600;
+}
+
+.markdown-content a {
+  color: #60a5fa;
+  text-decoration: none;
+}
+
+.markdown-content a:hover {
+  text-decoration: underline;
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid #334155; /* slate-700 */
+  margin: 16px 0;
+}
+
 /* Custom Scrollbar */
 @layer utilities {
   .scrollbar-custom {
