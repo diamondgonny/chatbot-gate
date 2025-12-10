@@ -18,6 +18,7 @@ interface UseCouncilChatReturn {
   pendingMessage: string | null;
   currentStage: CurrentStage;
   stage1Responses: Stage1Response[];
+  stage1StreamingContent: Record<string, string>;
   stage2Reviews: Stage2Review[];
   stage3Synthesis: Stage3Synthesis | null;
   labelToModel: Record<string, string>;
@@ -36,6 +37,7 @@ export function useCouncilChat(): UseCouncilChatReturn {
   const [pendingMessage, setPendingMessage] = useState<string | null>(null);
   const [currentStage, setCurrentStage] = useState<CurrentStage>("idle");
   const [stage1Responses, setStage1Responses] = useState<Stage1Response[]>([]);
+  const [stage1StreamingContent, setStage1StreamingContent] = useState<Record<string, string>>({});
   const [stage2Reviews, setStage2Reviews] = useState<Stage2Review[]>([]);
   const [stage3Synthesis, setStage3Synthesis] =
     useState<Stage3Synthesis | null>(null);
@@ -69,6 +71,7 @@ export function useCouncilChat(): UseCouncilChatReturn {
     // Reset all streaming state when switching sessions
     setCurrentStage("idle");
     setStage1Responses([]);
+    setStage1StreamingContent({});
     setStage2Reviews([]);
     setStage3Synthesis(null);
     setLabelToModel({});
@@ -102,6 +105,7 @@ export function useCouncilChat(): UseCouncilChatReturn {
     // Reset state for new message
     setCurrentStage("idle");
     setStage1Responses([]);
+    setStage1StreamingContent({});
     setStage2Reviews([]);
     setStage3Synthesis(null);
     setLabelToModel({});
@@ -141,15 +145,39 @@ export function useCouncilChat(): UseCouncilChatReturn {
               }
               break;
 
+            case "stage1_chunk":
+              // Streaming chunk - accumulate content per model
+              if (event.model && event.delta) {
+                setStage1StreamingContent((prev) => ({
+                  ...prev,
+                  [event.model!]: (prev[event.model!] || "") + event.delta,
+                }));
+              }
+              break;
+
+            case "stage1_model_complete":
+              // Model finished streaming - metadata available
+              // Content is already accumulated via chunks
+              break;
+
             case "stage1_response":
+              // Final response - clear streaming content for this model
               if (event.data) {
-                tempStage1 = [...tempStage1, event.data as Stage1Response];
+                const response = event.data as Stage1Response;
+                tempStage1 = [...tempStage1, response];
                 setStage1Responses([...tempStage1]);
+                // Remove from streaming content
+                setStage1StreamingContent((prev) => {
+                  const next = { ...prev };
+                  delete next[response.model];
+                  return next;
+                });
               }
               break;
 
             case "stage1_complete":
-              // Stage 1 done
+              // Stage 1 done - clear any remaining streaming content
+              setStage1StreamingContent({});
               break;
 
             case "stage2_start":
@@ -249,6 +277,7 @@ export function useCouncilChat(): UseCouncilChatReturn {
     pendingMessage,
     currentStage,
     stage1Responses,
+    stage1StreamingContent,
     stage2Reviews,
     stage3Synthesis,
     labelToModel,

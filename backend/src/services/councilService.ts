@@ -14,16 +14,20 @@ import {
 } from '../models/CouncilSession';
 import {
   queryCouncilModels,
+  queryCouncilModelsStreaming,
   queryChairman,
   chatCompletion,
   OpenRouterMessage,
   ModelResponse,
+  ModelStreamEvent,
 } from './openRouterService';
 import { COUNCIL, SESSION } from '../constants';
 
 // SSE Event types
 export type SSEEvent =
   | { type: 'stage1_start' }
+  | { type: 'stage1_chunk'; model: string; delta: string }
+  | { type: 'stage1_model_complete'; model: string; responseTimeMs: number; promptTokens?: number; completionTokens?: number }
   | { type: 'stage1_response'; data: IStage1Response }
   | { type: 'stage1_complete' }
   | { type: 'stage2_start' }
@@ -253,7 +257,8 @@ const calculateAggregateRankings = (
 };
 
 /**
- * Stage 1: Collect individual responses from all council models
+ * Stage 1: Collect individual responses from all council models (streaming)
+ * Yields chunk events as responses stream in, then complete events with full responses
  */
 async function* stage1CollectResponses(
   userMessage: string,
@@ -268,16 +273,48 @@ async function* stage1CollectResponses(
     { role: 'user', content: userMessage },
   ];
 
-  const responses = await queryCouncilModels(messages, signal);
+  // Track accumulated content and metadata per model
+  const modelContents: Record<string, string> = {};
+  const modelMeta: Record<string, { responseTimeMs: number; promptTokens?: number; completionTokens?: number }> = {};
 
+  // Stream responses from all models
+  for await (const event of queryCouncilModelsStreaming(messages, signal)) {
+    if (signal?.aborted) return;
+
+    if ('done' in event && event.done === true) {
+      // Model complete event (ModelStreamComplete)
+      modelMeta[event.model] = {
+        responseTimeMs: event.responseTimeMs,
+        promptTokens: event.promptTokens,
+        completionTokens: event.completionTokens,
+      };
+      yield {
+        type: 'stage1_model_complete',
+        model: event.model,
+        responseTimeMs: event.responseTimeMs,
+        promptTokens: event.promptTokens,
+        completionTokens: event.completionTokens,
+      };
+    } else if ('delta' in event) {
+      // Chunk event (ModelStreamChunk) - accumulate and forward
+      if (!modelContents[event.model]) {
+        modelContents[event.model] = '';
+      }
+      modelContents[event.model] += event.delta;
+      yield { type: 'stage1_chunk', model: event.model, delta: event.delta };
+    }
+  }
+
+  // Build final results for Stage 2/3 processing
   const stage1Results: IStage1Response[] = [];
-  for (const response of responses) {
+  for (const [model, content] of Object.entries(modelContents)) {
+    const meta = modelMeta[model] || { responseTimeMs: 0 };
     const result: IStage1Response = {
-      model: response.model,
-      response: response.content,
-      responseTimeMs: response.responseTimeMs,
-      promptTokens: response.promptTokens,
-      completionTokens: response.completionTokens,
+      model,
+      response: content,
+      responseTimeMs: meta.responseTimeMs,
+      promptTokens: meta.promptTokens,
+      completionTokens: meta.completionTokens,
     };
     stage1Results.push(result);
     yield { type: 'stage1_response', data: result };

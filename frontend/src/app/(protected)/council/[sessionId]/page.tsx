@@ -115,6 +115,7 @@ export default function CouncilSessionPage() {
     pendingMessage,
     currentStage,
     stage1Responses,
+    stage1StreamingContent,
     stage2Reviews,
     stage3Synthesis,
     labelToModel,
@@ -290,16 +291,17 @@ export default function CouncilSessionPage() {
                 >
                   <StageProgress
                     currentStage={currentStage}
-                    stage1Count={stage1Responses.length}
+                    stage1Count={stage1Responses.length + Object.keys(stage1StreamingContent).length}
                     stage2Count={stage2Reviews.length}
                     hasStage3={!!stage3Synthesis}
                   />
 
                   <AnimatePresence>
-                    {stage1Responses.length > 0 && (
+                    {(stage1Responses.length > 0 || Object.keys(stage1StreamingContent).length > 0) && (
                       <Stage1Panel
                         key="stage1-panel"
                         responses={stage1Responses}
+                        streamingContent={stage1StreamingContent}
                         isLoading={currentStage === "stage1"}
                       />
                     )}

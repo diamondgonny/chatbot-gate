@@ -67,6 +67,8 @@ export interface AggregateRanking {
 // SSE Event types
 export type SSEEventType =
   | "stage1_start"
+  | "stage1_chunk"
+  | "stage1_model_complete"
   | "stage1_response"
   | "stage1_complete"
   | "stage2_start"
@@ -77,10 +79,32 @@ export type SSEEventType =
   | "complete"
   | "error";
 
+// Stage 1 streaming chunk event
+export interface Stage1ChunkEvent {
+  type: "stage1_chunk";
+  model: string;
+  delta: string;
+}
+
+// Stage 1 model complete event
+export interface Stage1ModelCompleteEvent {
+  type: "stage1_model_complete";
+  model: string;
+  responseTimeMs: number;
+  promptTokens?: number;
+  completionTokens?: number;
+}
+
 export interface SSEEvent {
   type: SSEEventType;
   data?: Stage1Response | Stage2Review | Stage3Synthesis | { labelToModel: Record<string, string>; aggregateRankings: AggregateRanking[] };
   error?: string;
+  // Streaming fields (for stage1_chunk and stage1_model_complete events)
+  model?: string;
+  delta?: string;
+  responseTimeMs?: number;
+  promptTokens?: number;
+  completionTokens?: number;
 }
 
 // API response types
