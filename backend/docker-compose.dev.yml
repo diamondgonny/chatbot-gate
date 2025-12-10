@@ -50,6 +50,7 @@ services:
     volumes:
       - ./src:/app/src:delegated
       - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./nodemon.json:/app/nodemon.json:ro
       - ./logs:/app/logs
       - /app/node_modules
 
