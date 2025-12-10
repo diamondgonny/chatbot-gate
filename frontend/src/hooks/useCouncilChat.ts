@@ -94,8 +94,6 @@ export function useCouncilChat(): UseCouncilChatReturn {
     switch (event.type) {
       case "stage1_start":
         setCurrentStage("stage1");
-        // Clear stall for stage1 (new stage starting, can stream normally)
-        stalledStagesRef.current.delete("stage1");
         break;
 
       case "stage1_chunk":
@@ -128,8 +126,6 @@ export function useCouncilChat(): UseCouncilChatReturn {
 
       case "stage2_start":
         setCurrentStage("stage2");
-        // Clear stall for stage2 (new stage starting, can stream normally)
-        stalledStagesRef.current.delete("stage2");
         break;
 
       case "stage2_chunk":
@@ -166,8 +162,6 @@ export function useCouncilChat(): UseCouncilChatReturn {
 
       case "stage3_start":
         setCurrentStage("stage3");
-        // Clear stall for stage3 (new stage starting, can stream normally)
-        stalledStagesRef.current.delete("stage3");
         break;
 
       case "stage3_chunk":
@@ -190,8 +184,15 @@ export function useCouncilChat(): UseCouncilChatReturn {
         // Set current stage from server's tracking
         if (event.stage) {
           setCurrentStage(event.stage as CurrentStage);
-          // Note: stall is already set at reconnection start, not here
-          // This ensures replay chunks are skipped before this event arrives
+          // Clear stall for FUTURE stages only (they can stream normally)
+          // Current and past stages remain stalled to prevent duplicate replay
+          if (event.stage === "stage1") {
+            stalledStagesRef.current.delete("stage2");
+            stalledStagesRef.current.delete("stage3");
+          } else if (event.stage === "stage2") {
+            stalledStagesRef.current.delete("stage3");
+          }
+          // stage3: no future stages, keep all stalls
         }
         // Set userMessage as pendingMessage to display the user bubble
         if (event.userMessage) {
