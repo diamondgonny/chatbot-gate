@@ -89,8 +89,6 @@ export function useCouncilChat(): UseCouncilChatReturn {
     switch (event.type) {
       case "stage1_start":
         setCurrentStage("stage1");
-        // Clear streaming content for fresh start (important for reconnection)
-        setStage1StreamingContent({});
         break;
 
       case "stage1_chunk":
@@ -121,8 +119,6 @@ export function useCouncilChat(): UseCouncilChatReturn {
 
       case "stage2_start":
         setCurrentStage("stage2");
-        // Clear streaming content for fresh start (important for reconnection)
-        setStage2StreamingContent({});
         break;
 
       case "stage2_chunk":
@@ -157,8 +153,6 @@ export function useCouncilChat(): UseCouncilChatReturn {
 
       case "stage3_start":
         setCurrentStage("stage3");
-        // Clear streaming content for fresh start (important for reconnection)
-        setStage3StreamingContent("");
         break;
 
       case "stage3_chunk":
