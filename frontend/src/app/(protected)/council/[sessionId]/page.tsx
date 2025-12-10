@@ -224,7 +224,7 @@ export default function CouncilSessionPage() {
               <div className="text-center text-slate-400">
                 <p className="mb-2">Start by asking a question.</p>
                 <p className="text-sm text-slate-500">
-                  5 AI models will collaborate to provide you with a
+                  Multiple AI models will collaborate to provide you with a
                   comprehensive answer.
                 </p>
               </div>
