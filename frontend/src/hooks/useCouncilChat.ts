@@ -69,6 +69,10 @@ export function useCouncilChat(): UseCouncilChatReturn {
   // AbortController for cancelling fetch requests
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Track stalled stage during reconnection (chunks for this stage are ignored)
+  // Using ref for synchronous access during event processing
+  const stalledStageRef = useRef<CurrentStage | null>(null);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -92,6 +96,8 @@ export function useCouncilChat(): UseCouncilChatReturn {
         break;
 
       case "stage1_chunk":
+        // Skip chunks if stage1 is stalled (reconnection scenario)
+        if (stalledStageRef.current === "stage1") break;
         if (event.model && event.delta) {
           setStage1StreamingContent((prev) => ({
             ...prev,
@@ -119,9 +125,15 @@ export function useCouncilChat(): UseCouncilChatReturn {
 
       case "stage2_start":
         setCurrentStage("stage2");
+        // Clear stall if stage1 was stalled (stage2 is new, can stream normally)
+        if (stalledStageRef.current === "stage1") {
+          stalledStageRef.current = null;
+        }
         break;
 
       case "stage2_chunk":
+        // Skip chunks if stage2 is stalled (reconnection scenario)
+        if (stalledStageRef.current === "stage2") break;
         if (event.model && event.delta) {
           setStage2StreamingContent((prev) => ({
             ...prev,
@@ -153,9 +165,15 @@ export function useCouncilChat(): UseCouncilChatReturn {
 
       case "stage3_start":
         setCurrentStage("stage3");
+        // Clear stall if stage1 or stage2 was stalled (stage3 is new, can stream normally)
+        if (stalledStageRef.current === "stage1" || stalledStageRef.current === "stage2") {
+          stalledStageRef.current = null;
+        }
         break;
 
       case "stage3_chunk":
+        // Skip chunks if stage3 is stalled (reconnection scenario)
+        if (stalledStageRef.current === "stage3") break;
         if (event.delta) {
           setStage3StreamingContent((prev) => prev + event.delta);
         }
@@ -173,6 +191,10 @@ export function useCouncilChat(): UseCouncilChatReturn {
         // Set current stage from server's tracking
         if (event.stage) {
           setCurrentStage(event.stage as CurrentStage);
+          // Stall the current stage - chunks will be ignored, only final responses accepted
+          if (event.stage !== "idle") {
+            stalledStageRef.current = event.stage as CurrentStage;
+          }
         }
         // Set userMessage as pendingMessage to display the user bubble
         if (event.userMessage) {
@@ -278,6 +300,7 @@ export function useCouncilChat(): UseCouncilChatReturn {
     setWasAborted(false);
     setPendingMessage(null);
     setError(null);
+    stalledStageRef.current = null;
 
     setIsLoading(true);
     try {
@@ -322,6 +345,7 @@ export function useCouncilChat(): UseCouncilChatReturn {
     setIsProcessing(true);
     setWasAborted(false);
     setError(null);
+    stalledStageRef.current = null;
 
     // Store pending message (will be added to messages on stage1_start)
     setPendingMessage(content);
