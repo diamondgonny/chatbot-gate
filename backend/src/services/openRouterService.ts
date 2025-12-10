@@ -71,14 +71,24 @@ export const isOpenRouterConfigured = (): boolean => {
 export const chatCompletion = async (
   model: string,
   messages: OpenRouterMessage[],
-  maxTokens: number = COUNCIL.MAX_TOKENS
+  maxTokens: number = COUNCIL.MAX_TOKENS,
+  externalSignal?: AbortSignal
 ): Promise<{ content: string; responseTimeMs: number; promptTokens?: number; completionTokens?: number }> => {
   const startTime = Date.now();
   let lastError: Error | null = null;
 
+  // Check if already aborted before starting
+  if (externalSignal?.aborted) {
+    throw new Error(`Request aborted for model ${model}`);
+  }
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), COUNCIL.API_TIMEOUT_MS);
+
+    // Listen to external abort signal
+    const abortHandler = () => controller.abort();
+    externalSignal?.addEventListener('abort', abortHandler);
 
     try {
       const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
@@ -122,6 +132,9 @@ export const chatCompletion = async (
         console.log(`[Retry success] ${model}: succeeded after ${attempt} retries`);
       }
 
+      // Cleanup before returning
+      externalSignal?.removeEventListener('abort', abortHandler);
+
       return {
         content: data.choices[0]?.message?.content || '',
         responseTimeMs,
@@ -130,9 +143,15 @@ export const chatCompletion = async (
       };
     } catch (error) {
       clearTimeout(timeoutId);
+      externalSignal?.removeEventListener('abort', abortHandler);
 
       if (!(error instanceof Error)) {
         throw error;
+      }
+
+      // If externally aborted, don't retry - throw immediately
+      if (externalSignal?.aborted) {
+        throw new Error(`Request aborted for model ${model}`);
       }
 
       lastError = error;
@@ -162,11 +181,17 @@ export const chatCompletion = async (
  * Returns successful responses, gracefully handling individual failures
  */
 export const queryCouncilModels = async (
-  messages: OpenRouterMessage[]
+  messages: OpenRouterMessage[],
+  signal?: AbortSignal
 ): Promise<ModelResponse[]> => {
+  // If already aborted, return empty array immediately
+  if (signal?.aborted) {
+    return [];
+  }
+
   const results = await Promise.allSettled(
     COUNCIL.MODELS.map(async (model) => {
-      const result = await chatCompletion(model, messages);
+      const result = await chatCompletion(model, messages, COUNCIL.MAX_TOKENS, signal);
       return {
         model,
         content: result.content,
@@ -200,12 +225,14 @@ export const queryCouncilModels = async (
  * Query the chairman model for final synthesis
  */
 export const queryChairman = async (
-  messages: OpenRouterMessage[]
+  messages: OpenRouterMessage[],
+  signal?: AbortSignal
 ): Promise<ModelResponse> => {
   const result = await chatCompletion(
     COUNCIL.CHAIRMAN_MODEL,
     messages,
-    COUNCIL.CHAIRMAN_MAX_TOKENS
+    COUNCIL.CHAIRMAN_MAX_TOKENS,
+    signal
   );
   return {
     model: COUNCIL.CHAIRMAN_MODEL,

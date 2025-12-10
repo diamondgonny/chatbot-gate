@@ -257,7 +257,8 @@ const calculateAggregateRankings = (
  */
 async function* stage1CollectResponses(
   userMessage: string,
-  history: OpenRouterMessage[]
+  history: OpenRouterMessage[],
+  signal?: AbortSignal
 ): AsyncGenerator<SSEEvent> {
   yield { type: 'stage1_start' };
 
@@ -267,7 +268,7 @@ async function* stage1CollectResponses(
     { role: 'user', content: userMessage },
   ];
 
-  const responses = await queryCouncilModels(messages);
+  const responses = await queryCouncilModels(messages, signal);
 
   const stage1Results: IStage1Response[] = [];
   for (const response of responses) {
@@ -292,7 +293,8 @@ async function* stage1CollectResponses(
  */
 async function* stage2CollectRankings(
   userMessage: string,
-  stage1Results: IStage1Response[]
+  stage1Results: IStage1Response[],
+  signal?: AbortSignal
 ): AsyncGenerator<SSEEvent, { reviews: IStage2Review[]; labelToModel: Record<string, string> }> {
   yield { type: 'stage2_start' };
 
@@ -343,7 +345,7 @@ Now provide your evaluation and ranking:`;
 
   const messages: OpenRouterMessage[] = [{ role: 'user', content: rankingPrompt }];
 
-  const responses = await queryCouncilModels(messages);
+  const responses = await queryCouncilModels(messages, signal);
 
   const stage2Results: IStage2Review[] = [];
   for (const response of responses) {
@@ -373,7 +375,8 @@ async function* stage3Synthesize(
   userMessage: string,
   stage1Results: IStage1Response[],
   stage2Results: IStage2Review[],
-  labelToModel: Record<string, string>
+  labelToModel: Record<string, string>,
+  signal?: AbortSignal
 ): AsyncGenerator<SSEEvent, IStage3Synthesis> {
   yield { type: 'stage3_start' };
 
@@ -413,7 +416,7 @@ Provide a clear, well-reasoned final answer that represents the council's collec
 
   const messages: OpenRouterMessage[] = [{ role: 'user', content: chairmanPrompt }];
 
-  const response = await queryChairman(messages);
+  const response = await queryChairman(messages, signal);
 
   const stage3Result: IStage3Synthesis = {
     model: response.model,
@@ -434,7 +437,8 @@ Provide a clear, well-reasoned final answer that represents the council's collec
 export async function* processCouncilMessage(
   userId: string,
   sessionId: string,
-  userMessage: string
+  userMessage: string,
+  signal?: AbortSignal
 ): AsyncGenerator<SSEEvent> {
   // Find session
   const session = await CouncilSession.findOne({ userId, sessionId });
@@ -461,10 +465,20 @@ export async function* processCouncilMessage(
   const history = buildConversationHistory(session.messages);
 
   try {
+    // Check for abort before starting
+    if (signal?.aborted) {
+      console.log('[Council] Processing aborted before Stage 1');
+      return;
+    }
+
     // Stage 1: Collect individual responses
     const stage1Results: IStage1Response[] = [];
-    const stage1Gen = stage1CollectResponses(userMessage, history);
+    const stage1Gen = stage1CollectResponses(userMessage, history, signal);
     for await (const event of stage1Gen) {
+      if (signal?.aborted) {
+        console.log('[Council] Processing aborted during Stage 1');
+        return;
+      }
       yield event;
       if (event.type === 'stage1_response') {
         stage1Results.push(event.data);
@@ -476,11 +490,21 @@ export async function* processCouncilMessage(
       return;
     }
 
+    // Check for abort before Stage 2
+    if (signal?.aborted) {
+      console.log('[Council] Processing aborted before Stage 2');
+      return;
+    }
+
     // Stage 2: Collect rankings
     let stage2Results: IStage2Review[] = [];
     let labelToModel: Record<string, string> = {};
-    const stage2Gen = stage2CollectRankings(userMessage, stage1Results);
+    const stage2Gen = stage2CollectRankings(userMessage, stage1Results, signal);
     for await (const event of stage2Gen) {
+      if (signal?.aborted) {
+        console.log('[Council] Processing aborted during Stage 2');
+        return;
+      }
       yield event;
       if (event.type === 'stage2_response') {
         stage2Results.push(event.data);
@@ -489,10 +513,20 @@ export async function* processCouncilMessage(
       }
     }
 
+    // Check for abort before Stage 3
+    if (signal?.aborted) {
+      console.log('[Council] Processing aborted before Stage 3');
+      return;
+    }
+
     // Stage 3: Chairman synthesis (with label mapping for context)
     let stage3Result: IStage3Synthesis | null = null;
-    const stage3Gen = stage3Synthesize(userMessage, stage1Results, stage2Results, labelToModel);
+    const stage3Gen = stage3Synthesize(userMessage, stage1Results, stage2Results, labelToModel, signal);
     for await (const event of stage3Gen) {
+      if (signal?.aborted) {
+        console.log('[Council] Processing aborted during Stage 3');
+        return;
+      }
       yield event;
       if (event.type === 'stage3_response') {
         stage3Result = event.data;

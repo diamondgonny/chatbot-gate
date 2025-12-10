@@ -167,10 +167,31 @@ export const sendMessage = async (req: Request, res: Response) => {
   // Flush headers immediately
   res.flushHeaders();
 
+  // Create abort controller for client disconnect handling
+  const abortController = new AbortController();
+
+  // Detect client disconnect and abort processing
+  req.on('close', () => {
+    if (!res.writableEnded) {
+      console.log(`[Council] Client disconnected for session ${sessionId}, aborting processing`);
+      abortController.abort();
+    }
+  });
+
   try {
-    const generator = councilService.processCouncilMessage(userId, sessionId, content);
+    const generator = councilService.processCouncilMessage(
+      userId,
+      sessionId,
+      content,
+      abortController.signal
+    );
 
     for await (const event of generator) {
+      // Check if client disconnected before writing
+      if (abortController.signal.aborted) {
+        break;
+      }
+
       res.write(`data: ${JSON.stringify(event)}\n\n`);
 
       // Ensure data is flushed immediately
@@ -179,9 +200,18 @@ export const sendMessage = async (req: Request, res: Response) => {
       }
     }
   } catch (error) {
+    // Ignore abort errors - these are expected when client disconnects
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.log(`[Council] Processing aborted for session ${sessionId}`);
+      return;
+    }
     console.error('Council message error:', error);
-    res.write(`data: ${JSON.stringify({ type: 'error', error: 'Processing failed' })}\n\n`);
+    if (!abortController.signal.aborted) {
+      res.write(`data: ${JSON.stringify({ type: 'error', error: 'Processing failed' })}\n\n`);
+    }
   } finally {
-    res.end();
+    if (!res.writableEnded) {
+      res.end();
+    }
   }
 };
