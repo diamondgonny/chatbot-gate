@@ -23,12 +23,13 @@ function formatModelName(model: string): string {
 
 /**
  * Replace "Response X" labels with actual model names for markdown rendering
+ * Uses word boundary to avoid matching inside words (e.g., "Evaluations")
  */
 function deAnonymizeForMarkdown(
   text: string,
   labelToModel: Record<string, string>
 ): string {
-  return text.replace(/Response [A-Z]/g, (match) => {
+  return text.replace(/\bResponse [A-Z]\b/g, (match) => {
     const modelName = labelToModel[match];
     if (modelName) {
       return `**${formatModelName(modelName)}**`;
