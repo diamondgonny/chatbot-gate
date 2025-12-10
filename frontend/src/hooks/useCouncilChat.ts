@@ -27,6 +27,7 @@ interface UseCouncilChatReturn {
   error: string | null;
   loadSession: (sessionId: string) => Promise<void>;
   sendMessage: (sessionId: string, content: string, onComplete?: () => void) => void;
+  abortProcessing: () => void;
   clearError: () => void;
 }
 
@@ -233,6 +234,16 @@ export function useCouncilChat(): UseCouncilChatReturn {
     setError(null);
   }, []);
 
+  const abortProcessing = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    setCurrentStage("idle");
+    setIsProcessing(false);
+    setPendingMessage(null);
+  }, []);
+
   return {
     messages,
     pendingMessage,
@@ -247,6 +258,7 @@ export function useCouncilChat(): UseCouncilChatReturn {
     error,
     loadSession,
     sendMessage,
+    abortProcessing,
     clearError,
   };
 }

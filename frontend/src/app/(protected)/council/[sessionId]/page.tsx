@@ -124,6 +124,7 @@ export default function CouncilSessionPage() {
     error,
     loadSession,
     sendMessage,
+    abortProcessing,
     clearError,
   } = useCouncilChat();
 
@@ -358,55 +359,73 @@ export default function CouncilSessionPage() {
           )}
         </div>
 
-        {/* Input area */}
-        <div className="border-t border-slate-800 p-4">
-          <form
-            onSubmit={handleSubmit}
-            className="max-w-4xl mx-auto flex gap-3"
-          >
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask the council a question..."
-              disabled={isProcessing}
-              rows={2}
-              className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none disabled:opacity-50"
-            />
-            <button
-              type="submit"
-              disabled={!input.trim() || isProcessing}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-xl transition-colors flex items-center gap-2"
+        {/* Input area - only show form when no messages exist, abort button during processing */}
+        {messages.length === 0 && !isProcessing && (
+          <div className="border-t border-slate-800 p-4">
+            <form
+              onSubmit={handleSubmit}
+              className="max-w-4xl mx-auto flex gap-3"
             >
-              {isProcessing ? (
-                <>
-                  <span className="animate-spin">⏳</span>
-                  Processing
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                    />
-                  </svg>
-                  Ask
-                </>
-              )}
-            </button>
-          </form>
-          <p className="text-center text-xs text-slate-600 mt-2">
-            Press Enter to send, Shift+Enter for new line
-          </p>
-        </div>
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask the council a question..."
+                rows={2}
+                className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
+              <button
+                type="submit"
+                disabled={!input.trim()}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-xl transition-colors flex items-center gap-2"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                  />
+                </svg>
+                Ask
+              </button>
+            </form>
+            <p className="text-center text-xs text-slate-600 mt-2">
+              Press Enter to send, Shift+Enter for new line
+            </p>
+          </div>
+        )}
+
+        {isProcessing && (
+          <div className="border-t border-slate-800 p-4">
+            <div className="max-w-4xl mx-auto flex justify-center">
+              <button
+                onClick={abortProcessing}
+                className="px-6 py-3 bg-red-600/20 hover:bg-red-600/30 border border-red-600/50 text-red-400 rounded-xl transition-colors flex items-center gap-2"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+                Stop Generation
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
