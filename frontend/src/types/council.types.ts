@@ -72,12 +72,16 @@ export type SSEEventType =
   | "stage1_response"
   | "stage1_complete"
   | "stage2_start"
+  | "stage2_chunk"
+  | "stage2_model_complete"
   | "stage2_response"
   | "stage2_complete"
   | "stage3_start"
+  | "stage3_chunk"
   | "stage3_response"
   | "complete"
-  | "error";
+  | "error"
+  | "reconnected";
 
 // Stage 1 streaming chunk event
 export interface Stage1ChunkEvent {
@@ -99,12 +103,15 @@ export interface SSEEvent {
   type: SSEEventType;
   data?: Stage1Response | Stage2Review | Stage3Synthesis | { labelToModel: Record<string, string>; aggregateRankings: AggregateRanking[] };
   error?: string;
-  // Streaming fields (for stage1_chunk and stage1_model_complete events)
+  // Streaming fields (for chunk and model_complete events across all stages)
   model?: string;
   delta?: string;
   responseTimeMs?: number;
   promptTokens?: number;
   completionTokens?: number;
+  // Reconnection fields
+  stage?: string;
+  userMessage?: string;
 }
 
 // API response types
@@ -119,3 +126,16 @@ export interface GetCouncilSessionsResponse {
 }
 
 export interface GetCouncilSessionResponse extends CouncilSessionDetail {}
+
+// Processing status for reconnection
+export interface ProcessingStatus {
+  isProcessing: boolean;
+  canReconnect: boolean;
+  currentStage?: "stage1" | "stage2" | "stage3";
+  startedAt?: string;
+  partialResults?: {
+    stage1Count: number;
+    stage2Count: number;
+    hasStage3: boolean;
+  };
+}

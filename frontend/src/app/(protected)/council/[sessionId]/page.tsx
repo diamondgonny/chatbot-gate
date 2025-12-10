@@ -117,10 +117,13 @@ export default function CouncilSessionPage() {
     stage1Responses,
     stage1StreamingContent,
     stage2Reviews,
+    stage2StreamingContent,
     stage3Synthesis,
+    stage3StreamingContent,
     labelToModel,
     aggregateRankings,
     isProcessing,
+    wasAborted,
     isLoading: chatLoading,
     error,
     loadSession,
@@ -282,18 +285,25 @@ export default function CouncilSessionPage() {
                 </motion.div>
               )}
 
-              {/* Current processing state */}
-              {isProcessing && (
+              {/* Current processing state or aborted state */}
+              {(isProcessing || wasAborted) && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="space-y-4"
                 >
+                  {/* Aborted indicator */}
+                  {wasAborted && !isProcessing && (
+                    <div className="bg-amber-900/20 border border-amber-700/30 rounded-lg px-4 py-2 flex items-center justify-between">
+                      <span className="text-amber-400 text-sm">Generation stopped - partial results shown below</span>
+                    </div>
+                  )}
+
                   <StageProgress
                     currentStage={currentStage}
                     stage1Count={stage1Responses.length + Object.keys(stage1StreamingContent).length}
-                    stage2Count={stage2Reviews.length}
-                    hasStage3={!!stage3Synthesis}
+                    stage2Count={stage2Reviews.length + Object.keys(stage2StreamingContent).length}
+                    hasStage3={!!stage3Synthesis || !!stage3StreamingContent}
                   />
 
                   <AnimatePresence>
@@ -306,20 +316,22 @@ export default function CouncilSessionPage() {
                       />
                     )}
 
-                    {stage2Reviews.length > 0 && (
+                    {(stage2Reviews.length > 0 || Object.keys(stage2StreamingContent).length > 0) && (
                       <Stage2Panel
                         key="stage2-panel"
                         reviews={stage2Reviews}
+                        streamingContent={stage2StreamingContent}
                         labelToModel={labelToModel}
                         aggregateRankings={aggregateRankings}
                         isLoading={currentStage === "stage2"}
                       />
                     )}
 
-                    {(stage3Synthesis || currentStage === "stage3") && (
+                    {(stage3Synthesis || stage3StreamingContent || currentStage === "stage3") && (
                       <Stage3Panel
                         key="stage3-panel"
                         synthesis={stage3Synthesis}
+                        streamingContent={stage3StreamingContent}
                         isLoading={currentStage === "stage3"}
                       />
                     )}

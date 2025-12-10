@@ -6,6 +6,7 @@
 import { Request, Response } from 'express';
 import * as councilService from '../services/councilService';
 import { isOpenRouterConfigured } from '../services/openRouterService';
+import { processingRegistry } from '../services/processingRegistry';
 
 /**
  * Create a new council session
@@ -158,6 +159,15 @@ export const sendMessage = async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Server misconfiguration: OpenRouter API key missing' });
   }
 
+  // Check for existing processing - return 409 if already processing
+  if (processingRegistry.isProcessing(userId, sessionId)) {
+    return res.status(409).json({
+      error: 'Processing already in progress',
+      code: 'ALREADY_PROCESSING',
+      canReconnect: true,
+    });
+  }
+
   // Set SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -170,48 +180,193 @@ export const sendMessage = async (req: Request, res: Response) => {
   // Create abort controller for client disconnect handling
   const abortController = new AbortController();
 
-  // Detect client disconnect via response stream close (more reliable for SSE than req.on('close'))
+  // Create generator
+  const generator = councilService.processCouncilMessage(
+    userId,
+    sessionId,
+    content,
+    abortController.signal
+  );
+
+  // Register processing with registry
+  const processing = processingRegistry.register(
+    userId,
+    sessionId,
+    content,
+    generator,
+    abortController
+  );
+  processing.clients.add(res);
+
+  // Detect client disconnect - use grace period instead of immediate abort
   res.on('close', () => {
     if (!res.writableEnded) {
-      console.log(`[Council] Client disconnected for session ${sessionId}, aborting processing`);
-      abortController.abort();
+      console.log(`[Council] Client disconnected for session ${sessionId}`);
+      processingRegistry.removeClient(userId, sessionId, res);
     }
   });
 
   try {
-    const generator = councilService.processCouncilMessage(
-      userId,
-      sessionId,
-      content,
-      abortController.signal
-    );
-
     for await (const event of generator) {
-      // Check if client disconnected before writing
+      // Check if aborted
       if (abortController.signal.aborted) {
         break;
       }
 
-      res.write(`data: ${JSON.stringify(event)}\n\n`);
+      // Record event in registry for replay on reconnection
+      processingRegistry.recordEvent(userId, sessionId, event);
 
-      // Ensure data is flushed immediately
-      if (typeof (res as Response & { flush?: () => void }).flush === 'function') {
-        (res as Response & { flush?: () => void }).flush?.();
+      // Broadcast to all connected clients
+      processingRegistry.broadcast(userId, sessionId, event);
+
+      // Mark complete on final events
+      if (event.type === 'complete' || event.type === 'error') {
+        processingRegistry.complete(userId, sessionId);
+        break;
       }
     }
   } catch (error) {
     // Ignore abort errors - these are expected when client disconnects
     if (error instanceof Error && error.name === 'AbortError') {
       console.log(`[Council] Processing aborted for session ${sessionId}`);
+      processingRegistry.complete(userId, sessionId);
       return;
     }
     console.error('Council message error:', error);
     if (!abortController.signal.aborted) {
-      res.write(`data: ${JSON.stringify({ type: 'error', error: 'Processing failed' })}\n\n`);
+      const errorEvent = { type: 'error' as const, error: 'Processing failed' };
+      processingRegistry.broadcast(userId, sessionId, errorEvent);
     }
+    processingRegistry.complete(userId, sessionId);
   } finally {
+    // Close this client's connection
     if (!res.writableEnded) {
       res.end();
     }
   }
+};
+
+/**
+ * Get processing status for a session
+ * GET /api/council/sessions/:sessionId/status
+ */
+export const getProcessingStatus = async (req: Request, res: Response) => {
+  const userId = req.userId;
+  const { sessionId } = req.params;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  if (!councilService.validateSessionId(sessionId)) {
+    return res.status(400).json({ error: 'Invalid session ID format' });
+  }
+
+  const processing = processingRegistry.get(userId, sessionId);
+
+  if (!processing) {
+    return res.json({
+      isProcessing: false,
+      canReconnect: false,
+    });
+  }
+
+  return res.json({
+    isProcessing: true,
+    canReconnect: true,
+    currentStage: processing.currentStage,
+    startedAt: processing.startedAt.toISOString(),
+    partialResults: {
+      stage1Count: processing.stage1Results.length,
+      stage2Count: processing.stage2Results.length,
+      hasStage3: !!processing.stage3Content,
+    },
+  });
+};
+
+/**
+ * Reconnect to existing processing (SSE streaming)
+ * GET /api/council/sessions/:sessionId/reconnect
+ */
+export const reconnectToProcessing = async (req: Request, res: Response) => {
+  const userId = req.userId;
+  const { sessionId } = req.params;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  if (!councilService.validateSessionId(sessionId)) {
+    return res.status(400).json({ error: 'Invalid session ID format' });
+  }
+
+  const processing = processingRegistry.get(userId, sessionId);
+
+  if (!processing) {
+    return res.status(404).json({
+      error: 'No active processing found',
+      code: 'NO_ACTIVE_PROCESSING',
+    });
+  }
+
+  // Set SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  // Replay accumulated state
+  // 1. Stage 1 results
+  if (processing.stage1Results.length > 0) {
+    res.write(`data: ${JSON.stringify({ type: 'stage1_start' })}\n\n`);
+    for (const result of processing.stage1Results) {
+      res.write(`data: ${JSON.stringify({ type: 'stage1_response', data: result })}\n\n`);
+    }
+    res.write(`data: ${JSON.stringify({ type: 'stage1_complete' })}\n\n`);
+  }
+
+  // 2. Stage 2 results
+  if (processing.stage2Results.length > 0) {
+    res.write(`data: ${JSON.stringify({ type: 'stage2_start' })}\n\n`);
+    for (const result of processing.stage2Results) {
+      res.write(`data: ${JSON.stringify({ type: 'stage2_response', data: result })}\n\n`);
+    }
+    if (Object.keys(processing.labelToModel).length > 0) {
+      res.write(`data: ${JSON.stringify({
+        type: 'stage2_complete',
+        data: {
+          labelToModel: processing.labelToModel,
+          aggregateRankings: processing.aggregateRankings,
+        },
+      })}\n\n`);
+    }
+  }
+
+  // 3. Stage 3 partial content
+  if (processing.stage3Content) {
+    res.write(`data: ${JSON.stringify({ type: 'stage3_start' })}\n\n`);
+    // Send accumulated content as a single chunk
+    res.write(`data: ${JSON.stringify({ type: 'stage3_chunk', delta: processing.stage3Content })}\n\n`);
+  }
+
+  // 4. Send reconnection marker with current stage
+  res.write(`data: ${JSON.stringify({
+    type: 'reconnected',
+    stage: processing.currentStage,
+    userMessage: processing.userMessage,
+  })}\n\n`);
+
+  // Add this client to receive future events
+  processingRegistry.addClient(userId, sessionId, res);
+
+  // Handle disconnect
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      processingRegistry.removeClient(userId, sessionId, res);
+    }
+  });
+
+  // Keep connection open - events will be broadcast via processingRegistry
+  // Connection will be closed when processing completes or client disconnects
 };

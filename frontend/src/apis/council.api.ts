@@ -3,10 +3,11 @@ import type {
   CreateCouncilSessionResponse,
   GetCouncilSessionsResponse,
   GetCouncilSessionResponse,
+  ProcessingStatus,
 } from "@/types";
 
 // Re-export streaming utilities for council message handling
-export { streamSSE, getCouncilMessageUrl, StreamError } from "@/utils/streamUtils";
+export { streamSSE, reconnectSSE, getCouncilMessageUrl, getReconnectUrl, StreamError } from "@/utils/streamUtils";
 
 export async function createCouncilSession(): Promise<CreateCouncilSessionResponse> {
   const response = await apiClient.post<CreateCouncilSessionResponse>(
@@ -33,4 +34,11 @@ export async function getCouncilSession(
 
 export async function deleteCouncilSession(sessionId: string): Promise<void> {
   await apiClient.delete(`/api/council/sessions/${sessionId}`);
+}
+
+export async function getProcessingStatus(sessionId: string): Promise<ProcessingStatus> {
+  const response = await apiClient.get<ProcessingStatus>(
+    `/api/council/sessions/${sessionId}/status`
+  );
+  return response.data;
 }

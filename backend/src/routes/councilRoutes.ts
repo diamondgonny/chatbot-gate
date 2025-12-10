@@ -5,6 +5,8 @@ import {
   getSession,
   deleteSession,
   sendMessage,
+  getProcessingStatus,
+  reconnectToProcessing,
 } from '../controllers/councilController';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { createRateLimiter } from '../middleware/rateLimiter';
@@ -48,6 +50,20 @@ router.post(
   '/sessions/:sessionId/message',
   createRateLimiter({ windowMs: 60_000, max: 10, routeName: 'council_send_message' }),
   sendMessage
+);
+
+// GET /api/council/sessions/:sessionId/status - Check processing status
+router.get(
+  '/sessions/:sessionId/status',
+  createRateLimiter({ windowMs: 60_000, max: 60, routeName: 'council_status' }),
+  getProcessingStatus
+);
+
+// GET /api/council/sessions/:sessionId/reconnect - Reconnect to processing (SSE)
+router.get(
+  '/sessions/:sessionId/reconnect',
+  createRateLimiter({ windowMs: 60_000, max: 20, routeName: 'council_reconnect' }),
+  reconnectToProcessing
 );
 
 export default router;
