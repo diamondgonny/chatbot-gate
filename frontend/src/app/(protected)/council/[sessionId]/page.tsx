@@ -72,7 +72,7 @@ function CouncilSessionContent() {
   }, [loadSessions]);
 
   return (
-    <div className="h-screen flex">
+    <div className="h-screen flex overflow-hidden">
       <CouncilSidebar
         sessions={sessions}
         currentSessionId={sessionId}
@@ -83,9 +83,9 @@ function CouncilSessionContent() {
       />
 
       {/* Main chat area */}
-      <div className="flex-1 flex flex-col bg-slate-900">
+      <div className="flex-1 flex flex-col bg-slate-900 min-h-0 overflow-hidden">
         {/* Messages area */}
-        <div className="flex-1 overflow-y-auto p-4 scrollbar-custom">
+        <div className="flex-1 overflow-y-auto p-4 scrollbar-custom min-h-0">
           <MessageList />
         </div>
 

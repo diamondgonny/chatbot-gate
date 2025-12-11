@@ -32,7 +32,7 @@ export default function CouncilPage() {
   };
 
   return (
-    <div className="h-screen flex">
+    <div className="h-screen flex overflow-hidden">
       <CouncilSidebar
         sessions={sessions}
         currentSessionId={null}
@@ -43,7 +43,7 @@ export default function CouncilPage() {
       />
 
       {/* Main content area - empty state */}
-      <div className="flex-1 flex flex-col items-center justify-center bg-slate-900">
+      <div className="flex-1 flex flex-col items-center justify-center bg-slate-900 min-h-0 overflow-hidden">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

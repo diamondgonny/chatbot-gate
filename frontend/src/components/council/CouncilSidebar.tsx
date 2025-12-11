@@ -62,7 +62,7 @@ export function CouncilSidebar({
   }, []);
 
   return (
-    <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-full">
+    <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-full min-h-0 overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b border-slate-800">
         <button
