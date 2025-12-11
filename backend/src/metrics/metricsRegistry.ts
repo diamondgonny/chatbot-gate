@@ -15,6 +15,14 @@ client.collectDefaultMetrics({
   labels: { deployment_env: getDeploymentEnv() },
 });
 
+/**
+ * Stop metrics collection and clear registry (for graceful shutdown)
+ * Note: prom-client v15 doesn't expose a stop function, so we clear the registry
+ */
+export const stopMetricsCollection = (): void => {
+  register.clear();
+};
+
 // ============================================
 // HTTP Metrics
 // ============================================

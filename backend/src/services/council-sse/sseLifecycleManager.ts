@@ -16,6 +16,8 @@ export class SSELifecycleManager {
   ) {
     // Cleanup stale processing every 5 minutes
     this.cleanupInterval = setInterval(() => this.cleanupStale(), 5 * 60 * 1000);
+    // Don't let this timer prevent process from exiting
+    this.cleanupInterval.unref();
   }
 
   /**

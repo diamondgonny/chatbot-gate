@@ -2,12 +2,15 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import { connectDB } from './db';
 import { cookieConfig } from './config';
 import morgan from 'morgan';
 import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import { metricsMiddleware } from './middleware/metricsMiddleware';
+import { processingRegistry } from './services/council-sse';
+import { stopMetricsCollection } from './metrics/metricsRegistry';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -191,19 +194,49 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   });
 });
 
+// Start the Server
+const server = app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
+});
+
 // Graceful shutdown handler
-const gracefulShutdown = () => {
-  console.log('Shutting down gracefully...');
+const gracefulShutdown = async (signal: string) => {
+  console.log(`\n[${signal}] Shutting down gracefully...`);
+
+  // 1. Stop accepting new connections
+  server.close((err) => {
+    if (err) console.error('Error closing HTTP server:', err);
+    else console.log('HTTP server closed');
+  });
+
+  // 2. Cleanup SSE clients and abort in-progress processing
+  processingRegistry.shutdown();
+  console.log('SSE registry shut down');
+
+  // 3. Stop metrics collection timer
+  stopMetricsCollection();
+  console.log('Metrics collection stopped');
+
+  // 4. Close MongoDB connection
+  try {
+    await mongoose.connection.close(false);
+    console.log('MongoDB connection closed');
+  } catch (err) {
+    console.error('Error closing MongoDB:', err);
+  }
+
+  // 5. Close log stream and exit
   accessLogStream.end(() => {
     console.log('Access log stream closed');
     process.exit(0);
   });
+
+  // Timeout fallback (10 seconds)
+  setTimeout(() => {
+    console.error('Forced shutdown after timeout');
+    process.exit(1);
+  }, 10000).unref();
 };
 
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
-
-// Start the Server
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
