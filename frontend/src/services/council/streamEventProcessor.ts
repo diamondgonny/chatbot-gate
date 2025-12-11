@@ -12,7 +12,7 @@ import type {
   CouncilAssistantMessage,
 } from "@/types";
 import type { CurrentStage, StreamState } from "@/domain/council";
-import { createInitialStreamState } from "@/domain/council";
+import { buildLabelToModel, calculateAggregateRankings } from "@/domain/council";
 
 /**
  * Callbacks for stream event processing
@@ -278,20 +278,22 @@ export class StreamEventProcessor {
   private handleStage2Complete(event: SSEEvent): void {
     this.stage2StreamingContent = {};
 
-    if (event.data && "labelToModel" in event.data) {
-      this.tempLabelToModel = event.data.labelToModel || {};
-      this.tempAggregateRankings = event.data.aggregateRankings || [];
+    // Use backend-provided values or compute locally via domain functions
+    const eventData = event.data as
+      | { labelToModel?: Record<string, string>; aggregateRankings?: AggregateRanking[] }
+      | undefined;
 
-      this.callbacks.onStateChange({
-        stage2StreamingContent: {},
-        labelToModel: this.tempLabelToModel,
-        aggregateRankings: this.tempAggregateRankings,
-      });
-    } else {
-      this.callbacks.onStateChange({
-        stage2StreamingContent: {},
-      });
-    }
+    this.tempLabelToModel =
+      eventData?.labelToModel || buildLabelToModel(this.tempStage1);
+    this.tempAggregateRankings =
+      eventData?.aggregateRankings ||
+      calculateAggregateRankings(this.tempStage2, this.tempLabelToModel);
+
+    this.callbacks.onStateChange({
+      stage2StreamingContent: {},
+      labelToModel: this.tempLabelToModel,
+      aggregateRankings: this.tempAggregateRankings,
+    });
   }
 
   private handleStage3ReasoningChunk(event: SSEEvent): void {
