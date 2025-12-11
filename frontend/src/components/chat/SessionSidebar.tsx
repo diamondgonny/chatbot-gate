@@ -127,8 +127,8 @@ export default function SessionSidebar({
         )}
       </div>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-slate-800">
+      {/* Footer - height matches input area */}
+      <div className="px-4 py-[30px] border-t border-slate-800">
         <a
           href="/hub"
           className="flex items-center gap-2 text-slate-400 hover:text-slate-200 transition-colors text-sm"
