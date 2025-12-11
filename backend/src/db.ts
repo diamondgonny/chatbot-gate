@@ -3,6 +3,19 @@ import { config } from './config';
 import { mongoConnectionState, activeSessions, getDeploymentEnv } from './metrics/metricsRegistry';
 import { ChatSession } from './models/ChatSession';
 
+// Active sessions tracking interval handle
+let activeSessionsInterval: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * Stop active sessions tracking (for graceful shutdown)
+ */
+export const stopActiveSessionsTracking = (): void => {
+  if (activeSessionsInterval) {
+    clearInterval(activeSessionsInterval);
+    activeSessionsInterval = null;
+  }
+};
+
 // Connect to MongoDB
 // Mongoose handles connection pooling automatically
 export const connectDB = async () => {
@@ -54,8 +67,9 @@ export const connectDB = async () => {
     await updateActiveSessions();
     console.log('[Metrics] Active sessions tracking started (5-minute window, 30s interval)');
 
-    // Periodic updates
-    setInterval(updateActiveSessions, UPDATE_INTERVAL_MS).unref();
+    // Periodic updates (store handle for cleanup on shutdown)
+    activeSessionsInterval = setInterval(updateActiveSessions, UPDATE_INTERVAL_MS);
+    activeSessionsInterval.unref();
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);
     process.exit(1);

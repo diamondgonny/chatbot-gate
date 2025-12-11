@@ -3,7 +3,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import { connectDB } from './db';
+import { connectDB, stopActiveSessionsTracking } from './db';
 import { cookieConfig } from './config';
 import morgan from 'morgan';
 import { createWriteStream, existsSync, mkdirSync } from 'fs';
@@ -203,10 +203,13 @@ const server = app.listen(PORT, () => {
 const gracefulShutdown = async (signal: string) => {
   console.log(`\n[${signal}] Shutting down gracefully...`);
 
-  // 1. Stop accepting new connections
-  server.close((err) => {
-    if (err) console.error('Error closing HTTP server:', err);
-    else console.log('HTTP server closed');
+  // 1. Stop accepting new connections and wait for existing requests to complete
+  await new Promise<void>((resolve) => {
+    server.close((err) => {
+      if (err) console.error('Error closing HTTP server:', err);
+      else console.log('HTTP server closed');
+      resolve(); // Continue shutdown even on error
+    });
   });
 
   // 2. Cleanup SSE clients and abort in-progress processing
@@ -217,7 +220,11 @@ const gracefulShutdown = async (signal: string) => {
   stopMetricsCollection();
   console.log('Metrics collection stopped');
 
-  // 4. Close MongoDB connection
+  // 4. Stop active sessions tracking
+  stopActiveSessionsTracking();
+  console.log('Active sessions tracking stopped');
+
+  // 5. Close MongoDB connection
   try {
     await mongoose.connection.close(false);
     console.log('MongoDB connection closed');
@@ -225,7 +232,7 @@ const gracefulShutdown = async (signal: string) => {
     console.error('Error closing MongoDB:', err);
   }
 
-  // 5. Close log stream and exit
+  // 6. Close log stream and exit
   accessLogStream.end(() => {
     console.log('Access log stream closed');
     process.exit(0);
