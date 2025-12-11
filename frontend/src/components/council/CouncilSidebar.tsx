@@ -64,10 +64,10 @@ export function CouncilSidebar({
   return (
     <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-full min-h-0 overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-slate-800">
+      <div className="p-4 border-b border-slate-800 min-h-[88px] flex items-center">
         <button
           onClick={onNewSession}
-          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium"
         >
           <svg
             className="w-4 h-4"
@@ -87,7 +87,7 @@ export function CouncilSidebar({
       </div>
 
       {/* Session list */}
-      <div className="flex-1 overflow-y-auto py-2 pl-2 divide-y divide-slate-800/60 scrollbar-custom">
+      <div className="flex-1 overflow-y-auto py-2 pl-2 pr-2 scrollbar-custom">
         {isLoading ? (
           <div className="flex items-center justify-center py-8 text-slate-500">
             <span className="animate-spin mr-2">⏳</span> Loading...

@@ -57,7 +57,7 @@ export default function SessionSidebar({
       </div>
 
       {/* Sessions List */}
-      <div className="flex-1 overflow-y-auto p-2 scrollbar-custom">
+      <div className="flex-1 overflow-y-auto py-2 pl-2 pr-2 scrollbar-custom">
         {sessions.length === 0 ? (
           <div className="text-slate-500 text-sm p-4 text-center">
             No sessions yet.
