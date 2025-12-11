@@ -6,7 +6,7 @@
 import { Request, Response } from 'express';
 import * as councilService from '../services/councilService';
 import { isOpenRouterConfigured } from '../services/openRouterService';
-import { processingRegistry } from '../services/processingRegistry';
+import { processingRegistry } from '../services/council-sse';
 
 /**
  * Create a new council session
