@@ -291,4 +291,3 @@ e7eaacb fix(frontend): address additional resource leak feedback
 1. **자동화 테스트**: E2E 테스트 추가
 2. **에러 처리**: 사용자 친화적 에러 메시지
 3. **성능 모니터링**: LLM 응답 시간 메트릭
-4. **모델 설정**: 사용자별 모델 선택 기능
