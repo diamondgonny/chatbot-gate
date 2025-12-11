@@ -316,6 +316,7 @@ export default function ChatInterface() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Type your message..."
+              maxLength={1024}
               className="w-full bg-slate-800 text-slate-200 placeholder-slate-500 rounded-full py-3 px-6 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
             />
             <button

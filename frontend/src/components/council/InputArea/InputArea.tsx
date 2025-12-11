@@ -117,6 +117,7 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
                 onKeyDown={handleKeyDown}
                 placeholder="Ask the council a question..."
                 rows={MIN_ROWS}
+                maxLength={65536}
                 className="w-full bg-transparent text-slate-200 placeholder-slate-500 focus:outline-none resize-none scrollbar-custom"
                 style={{ lineHeight: `${LINE_HEIGHT}px` }}
               />
