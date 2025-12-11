@@ -60,10 +60,12 @@ export async function getCouncilSessions(): Promise<GetCouncilSessionsResponse> 
  * Get a specific council session with messages
  */
 export async function getCouncilSession(
-  sessionId: string
+  sessionId: string,
+  signal?: AbortSignal
 ): Promise<GetCouncilSessionResponse> {
   const response = await apiClient.get<GetCouncilSessionResponse>(
-    `/api/council/sessions/${sessionId}`
+    `/api/council/sessions/${sessionId}`,
+    { signal }
   );
   return response.data;
 }
@@ -79,10 +81,12 @@ export async function deleteCouncilSession(sessionId: string): Promise<void> {
  * Get the processing status of a council session
  */
 export async function getProcessingStatus(
-  sessionId: string
+  sessionId: string,
+  signal?: AbortSignal
 ): Promise<ProcessingStatus> {
   const response = await apiClient.get<ProcessingStatus>(
-    `/api/council/sessions/${sessionId}/status`
+    `/api/council/sessions/${sessionId}/status`,
+    { signal }
   );
   return response.data;
 }

@@ -10,6 +10,7 @@ import {
   useContext,
   useCallback,
   useMemo,
+  useRef,
   type ReactNode,
 } from "react";
 import type { CouncilMessage, CouncilAssistantMessage } from "@/types";
@@ -55,6 +56,10 @@ interface CouncilProviderProps {
  */
 export function CouncilProvider({ children }: CouncilProviderProps) {
   const [state, actions] = useCouncilState();
+
+  // Track current session for race condition prevention
+  const loadSessionIdRef = useRef<string | null>(null);
+  const loadAbortControllerRef = useRef<AbortController | null>(null);
 
   // Store onComplete callback for title_complete events
   let onCompleteCallback: (() => void) | undefined;
@@ -112,7 +117,15 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
    */
   const loadSession = useCallback(
     async (sessionId: string) => {
-      // Abort any in-flight request
+      // Cancel previous in-flight request (race condition prevention)
+      loadAbortControllerRef.current?.abort();
+      const controller = new AbortController();
+      loadAbortControllerRef.current = controller;
+
+      // Track current session ID
+      loadSessionIdRef.current = sessionId;
+
+      // Abort any in-flight SSE stream
       abortStream();
 
       // Reset all state
@@ -120,11 +133,23 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       actions.setLoading(true);
 
       try {
-        const session = await getCouncilSession(sessionId);
+        const session = await getCouncilSession(sessionId, controller.signal);
+
+        // Skip if session changed (race condition)
+        if (loadSessionIdRef.current !== sessionId) {
+          return;
+        }
+
         actions.setMessages(session.messages);
 
         // Check for active processing and reconnect if needed
-        const status = await getProcessingStatus(sessionId);
+        const status = await getProcessingStatus(sessionId, controller.signal);
+
+        // Skip if session changed (race condition)
+        if (loadSessionIdRef.current !== sessionId) {
+          return;
+        }
+
         if (status.isProcessing && status.canReconnect) {
           console.log(
             `[Council] Active processing found for session ${sessionId}, reconnecting...`
@@ -133,10 +158,22 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
           reconnectStream(sessionId);
         }
       } catch (err) {
+        // Ignore AbortError (normal cancellation)
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
+
         console.error("Error loading council session:", err);
-        actions.setError("Failed to load session");
+
+        // Only set error if still on the same session
+        if (loadSessionIdRef.current === sessionId) {
+          actions.setError("Failed to load session");
+        }
       } finally {
-        actions.setLoading(false);
+        // Only update loading state if still on the same session
+        if (loadSessionIdRef.current === sessionId) {
+          actions.setLoading(false);
+        }
       }
     },
     [abortStream, reconnectStream, actions]
