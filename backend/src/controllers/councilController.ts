@@ -230,7 +230,7 @@ export const sendMessage = async (req: Request, res: Response) => {
 
       // Mark complete on final events
       if (event.type === 'complete' || event.type === 'error') {
-        processingRegistry.complete(userId, sessionId);
+        processingRegistry.complete(userId, sessionId, abortController);
         break;
       }
     }
@@ -238,7 +238,7 @@ export const sendMessage = async (req: Request, res: Response) => {
     // Ignore abort errors - these are expected when client disconnects
     if (error instanceof Error && error.name === 'AbortError') {
       console.log(`[Council] Processing aborted for session ${sessionId}`);
-      processingRegistry.complete(userId, sessionId);
+      processingRegistry.complete(userId, sessionId, abortController);
       return;
     }
     console.error('Council message error:', error);
@@ -246,7 +246,7 @@ export const sendMessage = async (req: Request, res: Response) => {
       const errorEvent = { type: 'error' as const, error: 'Processing failed' };
       processingRegistry.broadcast(userId, sessionId, errorEvent);
     }
-    processingRegistry.complete(userId, sessionId);
+    processingRegistry.complete(userId, sessionId, abortController);
   } finally {
     // Close this client's connection
     if (!res.writableEnded) {

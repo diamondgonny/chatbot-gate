@@ -55,11 +55,10 @@ class ProcessingRegistry {
     // Cancel any grace period timer
     this.lifecycleManager.cancelGracePeriod(userId, sessionId);
 
-    // Abort any existing processing for this session
-    const existing = this.jobTracker.get(userId, sessionId);
-    if (existing) {
-      existing.abortController.abort();
-      console.log(`[ProcessingRegistry] Aborted existing processing for ${this.jobTracker.getKey(userId, sessionId)}`);
+    // Fully abort and cleanup existing processing BEFORE registering new one
+    // This prevents race condition where old processing's complete() removes new processing
+    if (this.jobTracker.isProcessing(userId, sessionId)) {
+      this.lifecycleManager.abort(userId, sessionId);
     }
 
     return this.jobTracker.register(userId, sessionId, userMessage, generator, abortController);
@@ -116,9 +115,10 @@ class ProcessingRegistry {
 
   /**
    * Mark processing as complete (success or error)
+   * @param abortController - If provided, only complete if it matches current processing
    */
-  complete(userId: string, sessionId: string): void {
-    this.lifecycleManager.complete(userId, sessionId);
+  complete(userId: string, sessionId: string, abortController?: AbortController): void {
+    this.lifecycleManager.complete(userId, sessionId, abortController);
   }
 
   /**

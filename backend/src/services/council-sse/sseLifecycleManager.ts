@@ -57,9 +57,23 @@ export class SSELifecycleManager {
 
   /**
    * Mark processing as complete (success or error)
+   * @param forAbortController - If provided, only complete if it matches current processing
    */
-  complete(userId: string, sessionId: string): void {
+  complete(userId: string, sessionId: string, forAbortController?: AbortController): void {
     const key = this.jobTracker.getKey(userId, sessionId);
+    const processing = this.jobTracker.get(userId, sessionId);
+
+    // Already cleaned up
+    if (!processing) {
+      console.log(`[SSELifecycleManager] Processing already cleaned up for ${key}`);
+      return;
+    }
+
+    // Skip if this is a stale call (abortController doesn't match current processing)
+    if (forAbortController && processing.abortController !== forAbortController) {
+      console.log(`[SSELifecycleManager] Skipping stale complete call for ${key}`);
+      return;
+    }
 
     // Cancel any grace period timer
     const timer = this.gracePeriodTimers.get(key);
@@ -69,10 +83,7 @@ export class SSELifecycleManager {
     }
 
     // Close all connected clients before removing
-    const processing = this.jobTracker.get(userId, sessionId);
-    if (processing) {
-      this.clientManager.closeAllClients(processing);
-    }
+    this.clientManager.closeAllClients(processing);
 
     this.jobTracker.remove(userId, sessionId);
     console.log(`[SSELifecycleManager] Completed processing for ${key}`);
@@ -87,9 +98,9 @@ export class SSELifecycleManager {
     if (processing) {
       processing.abortController.abort();
       console.log(`[SSELifecycleManager] Aborted processing for ${this.jobTracker.getKey(userId, sessionId)}`);
+      // Pass the abortController to ensure we only clean up this specific processing
+      this.complete(userId, sessionId, processing.abortController);
     }
-
-    this.complete(userId, sessionId);
   }
 
   /**
