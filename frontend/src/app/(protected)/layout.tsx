@@ -3,5 +3,5 @@ export default function ProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return <div className="min-h-screen h-screen overflow-hidden">{children}</div>;
 }
