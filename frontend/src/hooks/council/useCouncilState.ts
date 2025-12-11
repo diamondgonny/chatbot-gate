@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import type {
   CouncilMessage,
   Stage1Response,
@@ -203,18 +203,32 @@ export function useCouncilState(): [CouncilState, CouncilStateActions] {
   };
 
   // Build actions object
-  const actions: CouncilStateActions = {
-    setMessages,
-    setPendingMessage,
-    updateStreamState,
-    setProcessing: setIsProcessing,
-    setReconnecting: setIsReconnecting,
-    setAborted: setWasAborted,
-    setLoading: setIsLoading,
-    setError,
-    resetStreamState,
-    resetAll,
-  };
+  const actions: CouncilStateActions = useMemo(
+    () => ({
+      setMessages,
+      setPendingMessage,
+      updateStreamState,
+      setProcessing: setIsProcessing,
+      setReconnecting: setIsReconnecting,
+      setAborted: setWasAborted,
+      setLoading: setIsLoading,
+      setError,
+      resetStreamState,
+      resetAll,
+    }),
+    [
+      resetAll,
+      resetStreamState,
+      setError,
+      setIsLoading,
+      setIsProcessing,
+      setIsReconnecting,
+      setMessages,
+      setPendingMessage,
+      setWasAborted,
+      updateStreamState,
+    ]
+  );
 
   return [state, actions];
 }

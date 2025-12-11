@@ -23,6 +23,26 @@ import {
   abortCouncilProcessing,
 } from "@/services/council";
 
+// Treat both DOM aborts and axios cancellations as benign
+function isAbortError(error: unknown): boolean {
+  if (error instanceof Error) {
+    if (error.name === "AbortError" || error.name === "CanceledError") {
+      return true;
+    }
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ERR_CANCELED"
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Council context value shape
  */
@@ -158,8 +178,8 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
           reconnectStream(sessionId);
         }
       } catch (err) {
-        // Ignore AbortError (normal cancellation)
-        if (err instanceof Error && err.name === "AbortError") {
+        // Ignore intentional cancellations (AbortController/axios)
+        if (isAbortError(err)) {
           return;
         }
 
