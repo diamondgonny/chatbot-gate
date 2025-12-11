@@ -17,6 +17,17 @@ const failureBuckets = new Map<string, FailureBucket>();
 
 const nowMs = () => Date.now();
 
+// Periodic cleanup to prevent memory leaks from IP churn
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+setInterval(() => {
+  const now = nowMs();
+  for (const [ip, bucket] of failureBuckets) {
+    if (now - bucket.lastFail > BACKOFF.FAILURE_WINDOW_MS) {
+      failureBuckets.delete(ip);
+    }
+  }
+}, CLEANUP_INTERVAL_MS).unref();
+
 /**
  * Get the current failure bucket for an IP, with automatic decay
  */
@@ -24,8 +35,9 @@ const getBucket = (ip: string): FailureBucket => {
   const existing = failureBuckets.get(ip);
   if (!existing) return { count: 0, lastFail: 0 };
 
-  // Decay if outside window
+  // Decay if outside window - also delete stale entry
   if (nowMs() - existing.lastFail > BACKOFF.FAILURE_WINDOW_MS) {
+    failureBuckets.delete(ip);
     return { count: 0, lastFail: 0 };
   }
   return existing;

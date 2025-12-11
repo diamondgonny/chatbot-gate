@@ -70,7 +70,8 @@ export default function ChatInterface() {
       );
       return sortSessionsByUpdatedAt(updated);
     });
-  }, [messages, setSessions, sortSessionsByUpdatedAt, intendedSessionRef]);
+  // Note: intendedSessionRef is a ref (stable), so not needed in dependencies
+  }, [messages, setSessions, sortSessionsByUpdatedAt]);
 
   // Auto-dismiss session error after 10 seconds
   useEffect(() => {

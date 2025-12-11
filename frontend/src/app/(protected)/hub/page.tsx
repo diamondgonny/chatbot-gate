@@ -21,14 +21,18 @@ export default function Hub() {
           <p className="text-slate-400">Talk to our AI, your travel friend.</p>
         </Link>
 
-        <div className="p-8 bg-slate-800/20 border border-slate-800 rounded-2xl opacity-50 cursor-not-allowed">
-          <h2 className="text-2xl font-semibold text-slate-500 mb-2">
+        <Link
+          href="/council"
+          className="group relative p-8 bg-slate-800/50 border border-slate-700 rounded-2xl hover:bg-slate-800 transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-purple-900/20"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity" />
+          <h2 className="text-2xl font-semibold text-slate-200 mb-2">
             AI Council
           </h2>
-          <p className="text-slate-600">
-            AI Council works together to answer your questions (Coming Soon)
+          <p className="text-slate-400">
+            Multiple AIs collaborate to answer your questions.
           </p>
-        </div>
+        </Link>
       </div>
     </div>
   );

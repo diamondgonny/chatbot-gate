@@ -45,6 +45,13 @@ export default function Gate() {
 
   const [now, setNow] = useState(Date.now());
 
+  // Auto-clear error state after shake animation
+  useEffect(() => {
+    if (!error) return;
+    const timer = setTimeout(() => setError(false), 500);
+    return () => clearTimeout(timer);
+  }, [error]);
+
   useEffect(() => {
     if (!cooldownUntil) return;
 
@@ -104,8 +111,7 @@ export default function Gate() {
         }
       }
 
-      // Shake animation trigger
-      setTimeout(() => setError(false), 500);
+      // Error state triggers shake animation, auto-cleared by useEffect
     } finally {
       setLoading(false);
     }

@@ -3,3 +3,6 @@
 *.swp
 .idea
 .vscode
+
+# Reference
+reference/

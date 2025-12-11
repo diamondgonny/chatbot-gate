@@ -28,3 +28,33 @@ export const BACKOFF = {
   /** Backoff duration in seconds */
   SECONDS: 30,
 } as const;
+
+/** Council-related constants */
+export const COUNCIL = {
+  /** Maximum number of council sessions allowed per user */
+  MAX_SESSIONS_PER_USER: 50,
+  /** Council member models (via OpenRouter) */
+  MODELS: [
+    'anthropic/claude-sonnet-4.5',
+    'openai/gpt-4.1',
+    'google/gemini-2.5-flash',
+    'x-ai/grok-4.1-fast',
+  ] as const,
+  /** Chairman model for final synthesis */
+  CHAIRMAN_MODEL: 'google/gemini-3-pro-preview',
+  /** System prompt for council members */
+  SYSTEM_PROMPT: `You are a helpful AI assistant participating in a council discussion.
+Provide a complete, comprehensive answer in a single response.
+Do not ask follow-up questions or break your response into multiple parts.
+Answer fully and directly.`,
+  /** Maximum allowed message length in characters */
+  MAX_MESSAGE_LENGTH: 4000,
+  /** Number of recent messages to include in context */
+  RECENT_MESSAGES_LIMIT: 5,
+  /** API request timeout in milliseconds */
+  API_TIMEOUT_MS: 60000,
+  /** Max tokens for council member responses */
+  MAX_TOKENS: 8192,
+  /** Max tokens for chairman synthesis (higher for comprehensive answer) */
+  CHAIRMAN_MAX_TOKENS: 16384,
+} as const;

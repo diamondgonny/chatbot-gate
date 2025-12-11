@@ -9,7 +9,7 @@ interface RateLimitConfig {
 
 type Bucket = { count: number; expiresAt: number };
 
-const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // Clean up expired buckets every 5 minutes
+const CLEANUP_INTERVAL_MS = 1 * 60 * 1000; // Clean up expired buckets every 1 minute
 
 export const createRateLimiter = ({ windowMs, max, routeName = 'unknown' }: RateLimitConfig) => {
   // Per-limiter buckets to avoid cross-talk between different routes

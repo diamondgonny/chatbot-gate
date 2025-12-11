@@ -1,6 +1,6 @@
 services:
   mongodb:
-    command: ["mongod", "--verbose"]
+    command: ["mongod", "--verbose", "--auth", "--bind_ip_all"]
     ports:
       - "127.0.0.1:27017:27017"
 
@@ -31,6 +31,7 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
       VALID_CODES: ${VALID_CODES:-sample-code-1,sample-code-2}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       FRONTEND_URLS: ${FRONTEND_URLS}
 
     depends_on:
@@ -49,6 +50,7 @@ services:
     volumes:
       - ./src:/app/src:delegated
       - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./nodemon.json:/app/nodemon.json:ro
       - ./logs:/app/logs
       - /app/node_modules
 
