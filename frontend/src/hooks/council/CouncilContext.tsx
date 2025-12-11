@@ -56,6 +56,7 @@ export interface CouncilContextValue extends CouncilState {
   ) => void;
   abortProcessing: (sessionId: string) => Promise<void>;
   clearError: () => void;
+  setInputExpanded: (isExpanded: boolean) => void;
 }
 
 // Create context with undefined default (must be used within provider)
@@ -256,8 +257,9 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       sendMessage,
       abortProcessing,
       clearError,
+      setInputExpanded: actions.setInputExpanded,
     }),
-    [state, loadSession, sendMessage, abortProcessing, clearError]
+    [state, loadSession, sendMessage, abortProcessing, clearError, actions.setInputExpanded]
   );
 
   return (

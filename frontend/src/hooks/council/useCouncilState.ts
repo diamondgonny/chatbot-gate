@@ -42,6 +42,9 @@ export interface CouncilState {
   wasAborted: boolean;
   isLoading: boolean;
   error: string | null;
+
+  // UI state
+  isInputExpanded: boolean;
 }
 
 /**
@@ -58,6 +61,7 @@ export interface CouncilStateActions {
   setAborted: (wasAborted: boolean) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
+  setInputExpanded: (isExpanded: boolean) => void;
   resetStreamState: () => void;
   resetAll: () => void;
 }
@@ -76,6 +80,7 @@ function createInitialState(): CouncilState {
     wasAborted: false,
     isLoading: false,
     error: null,
+    isInputExpanded: false,
   };
 }
 
@@ -114,6 +119,9 @@ export function useCouncilState(): [CouncilState, CouncilStateActions] {
   const [wasAborted, setWasAborted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // UI state
+  const [isInputExpanded, setIsInputExpanded] = useState(false);
 
   /**
    * Update multiple stream state fields at once
@@ -179,6 +187,7 @@ export function useCouncilState(): [CouncilState, CouncilStateActions] {
     setWasAborted(false);
     setIsLoading(false);
     setError(null);
+    setIsInputExpanded(false);
   }, [resetStreamState]);
 
   // Build state object
@@ -200,6 +209,7 @@ export function useCouncilState(): [CouncilState, CouncilStateActions] {
     wasAborted,
     isLoading,
     error,
+    isInputExpanded,
   };
 
   // Build actions object
@@ -213,6 +223,7 @@ export function useCouncilState(): [CouncilState, CouncilStateActions] {
       setAborted: setWasAborted,
       setLoading: setIsLoading,
       setError,
+      setInputExpanded: setIsInputExpanded,
       resetStreamState,
       resetAll,
     }),
@@ -220,6 +231,7 @@ export function useCouncilState(): [CouncilState, CouncilStateActions] {
       resetAll,
       resetStreamState,
       setError,
+      setIsInputExpanded,
       setIsLoading,
       setIsProcessing,
       setIsReconnecting,

@@ -30,8 +30,8 @@ function EmptyState() {
   return (
     <div className="flex items-center justify-center h-full">
       <div className="text-center text-slate-400">
-        <p className="mb-2">Start by asking a question.</p>
-        <p className="text-sm text-slate-500">
+        <p className="text-xl mb-2">Start by asking a question.</p>
+        <p className="text-base text-slate-500">
           Multiple AI models will collaborate to provide you with a
           comprehensive answer.
         </p>
@@ -57,6 +57,7 @@ export function MessageList() {
     pendingMessage,
     isProcessing,
     isLoading,
+    isInputExpanded,
     stage1Responses,
     stage2Reviews,
     stage3Synthesis,
@@ -85,10 +86,15 @@ export function MessageList() {
     return <LoadingState />;
   }
 
-  // Show empty state
+  // Show empty state (hide when input is expanded/multiline)
   const isEmpty = messages.length === 0 && !pendingMessage && !isProcessing;
-  if (isEmpty) {
+  if (isEmpty && !isInputExpanded) {
     return <EmptyState />;
+  }
+
+  // Return null when empty but input is expanded
+  if (isEmpty) {
+    return null;
   }
 
   return (

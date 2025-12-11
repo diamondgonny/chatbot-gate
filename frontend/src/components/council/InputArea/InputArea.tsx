@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useCouncilContext } from "@/hooks/council";
 
 interface InputAreaProps {
@@ -14,17 +14,17 @@ interface InputAreaProps {
 }
 
 /**
- * Send icon SVG
+ * Send icon SVG (matches chat style)
  */
 function SendIcon() {
   return (
-    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-      />
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="w-5 h-5"
+    >
+      <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" />
     </svg>
   );
 }
@@ -45,10 +45,37 @@ function StopIcon() {
   );
 }
 
+// Constants for textarea auto-resize
+const LINE_HEIGHT = 24; // px per line
+const MIN_ROWS = 1;
+const MAX_ROWS = 18;
+
 export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
-  const { messages, isProcessing, sendMessage, abortProcessing } =
+  const { messages, isProcessing, sendMessage, abortProcessing, setInputExpanded } =
     useCouncilContext();
   const [input, setInput] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea based on content
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    // Reset height to calculate scroll height
+    textarea.style.height = "auto";
+
+    const minHeight = LINE_HEIGHT * MIN_ROWS;
+    const maxHeight = LINE_HEIGHT * MAX_ROWS;
+    const scrollHeight = textarea.scrollHeight;
+
+    // Clamp height between min and max
+    const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+    textarea.style.height = `${newHeight}px`;
+
+    // Update expanded state when multiline (more than 1 line)
+    const isMultiline = scrollHeight > LINE_HEIGHT * 1.5;
+    setInputExpanded(isMultiline);
+  }, [input, setInputExpanded]);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -78,24 +105,33 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
   // Show input form only when no messages exist and not processing
   if (messages.length === 0 && !isProcessing) {
     return (
-      <div className="border-t border-slate-800 p-4">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto flex gap-3">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask the council a question..."
-            rows={2}
-            className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim()}
-            className="px-6 py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-xl transition-colors flex items-center gap-2"
-          >
-            <SendIcon />
-            Ask
-          </button>
+      <div className="p-4 bg-slate-900/80 backdrop-blur-md">
+        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
+          <div className="bg-slate-800 rounded-xl border border-slate-700 focus-within:ring-2 focus-within:ring-blue-500/50 focus-within:border-transparent transition-all">
+            {/* Scrollable textarea area */}
+            <div className="px-4 pt-3">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask the council a question..."
+                rows={MIN_ROWS}
+                className="w-full bg-transparent text-slate-200 placeholder-slate-500 focus:outline-none resize-none scrollbar-custom"
+                style={{ lineHeight: `${LINE_HEIGHT}px` }}
+              />
+            </div>
+            {/* Button row - fixed at bottom */}
+            <div className="flex justify-end px-3 pb-3">
+              <button
+                type="submit"
+                disabled={!input.trim()}
+                className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors"
+              >
+                <SendIcon />
+              </button>
+            </div>
+          </div>
         </form>
         <p className="text-center text-xs text-slate-600 mt-2">
           Press Enter to send, Shift+Enter for new line
@@ -107,7 +143,7 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
   // Show abort button during processing
   if (isProcessing) {
     return (
-      <div className="border-t border-slate-800 p-4">
+      <div className="p-4">
         <div className="max-w-4xl mx-auto flex justify-center">
           <button
             onClick={handleAbort}
