@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useCouncilSessions } from "@/hooks";
+import { useCouncilSessions, useTitleAlert } from "@/hooks";
 import { CouncilProvider, useCouncilContext } from "@/hooks/council";
 import { CouncilSidebar, MessageList, InputArea } from "@/components/council";
 import AlertModal from "@/components/common/AlertModal";
@@ -23,8 +23,10 @@ function CouncilSessionContent() {
     loadSessions,
   } = useCouncilSessions();
 
-  const { loadSession } = useCouncilContext();
+  const { loadSession, stage3Synthesis, isProcessing } = useCouncilContext();
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const { startAlert } = useTitleAlert();
+  const prevProcessingRef = useRef(isProcessing);
 
   // Load session on mount or sessionId change
   useEffect(() => {
@@ -32,6 +34,17 @@ function CouncilSessionContent() {
       loadSession(sessionId);
     }
   }, [sessionId, loadSession]);
+
+  // Notify user when Stage 3 completes (tab title flash)
+  useEffect(() => {
+    // Detect when isProcessing transitions from true to false with stage3Synthesis present
+    if (prevProcessingRef.current && !isProcessing && stage3Synthesis) {
+      if (document.hidden) {
+        startAlert("📜 Council 완료!");
+      }
+    }
+    prevProcessingRef.current = isProcessing;
+  }, [isProcessing, stage3Synthesis, startAlert]);
 
   const handleNewSession = useCallback(async () => {
     const newSessionId = await createSession();

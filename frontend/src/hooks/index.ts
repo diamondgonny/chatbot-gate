@@ -1,6 +1,7 @@
 export { useSessions } from "./useSessions";
 export { useChat } from "./useChat";
 export { useCouncilSessions } from "./useCouncilSessions";
+export { useTitleAlert } from "./useTitleAlert";
 
 // Legacy hook - kept for backward compatibility during migration
 export { useCouncilChat } from "./useCouncilChat";
