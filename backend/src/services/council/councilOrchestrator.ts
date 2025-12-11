@@ -26,6 +26,14 @@ import {
 } from './councilRankingService';
 import { buildConversationHistory } from './councilHistoryBuilder';
 import type { SSEEvent } from '../../types/council';
+import {
+  councilMessagesTotal,
+  councilStageDuration,
+  openrouterApiCalls,
+  openrouterResponseTime,
+  openrouterTokensUsed,
+  getDeploymentEnv,
+} from '../../metrics/metricsRegistry';
 
 /**
  * Stage 1: Collect individual responses from all council models (streaming)
@@ -36,6 +44,8 @@ async function* stage1CollectResponses(
   history: OpenRouterMessage[],
   signal?: AbortSignal
 ): AsyncGenerator<SSEEvent> {
+  const stageStartTime = Date.now();
+  const deploymentEnv = getDeploymentEnv();
   yield { type: 'stage1_start' };
 
   const messages: OpenRouterMessage[] = [
@@ -59,6 +69,15 @@ async function* stage1CollectResponses(
         promptTokens: event.promptTokens,
         completionTokens: event.completionTokens,
       };
+      // Record OpenRouter metrics
+      openrouterApiCalls.labels(event.model, '1', 'success', deploymentEnv).inc();
+      openrouterResponseTime.labels(event.model, '1', deploymentEnv).observe(event.responseTimeMs / 1000);
+      if (event.promptTokens) {
+        openrouterTokensUsed.labels(event.model, '1', 'prompt', deploymentEnv).inc(event.promptTokens);
+      }
+      if (event.completionTokens) {
+        openrouterTokensUsed.labels(event.model, '1', 'completion', deploymentEnv).inc(event.completionTokens);
+      }
       yield {
         type: 'stage1_model_complete',
         model: event.model,
@@ -91,6 +110,8 @@ async function* stage1CollectResponses(
     yield { type: 'stage1_response', data: result };
   }
 
+  // Record stage 1 duration
+  councilStageDuration.labels('1', deploymentEnv).observe((Date.now() - stageStartTime) / 1000);
   yield { type: 'stage1_complete' };
 
   return stage1Results;
@@ -104,6 +125,8 @@ async function* stage2CollectRankings(
   stage1Results: IStage1Response[],
   signal?: AbortSignal
 ): AsyncGenerator<SSEEvent, { reviews: IStage2Review[]; labelToModel: Record<string, string> }> {
+  const stageStartTime = Date.now();
+  const deploymentEnv = getDeploymentEnv();
   yield { type: 'stage2_start' };
 
   // Create anonymized labels
@@ -168,6 +191,15 @@ Now provide your evaluation and ranking:`;
         promptTokens: event.promptTokens,
         completionTokens: event.completionTokens,
       };
+      // Record OpenRouter metrics
+      openrouterApiCalls.labels(event.model, '2', 'success', deploymentEnv).inc();
+      openrouterResponseTime.labels(event.model, '2', deploymentEnv).observe(event.responseTimeMs / 1000);
+      if (event.promptTokens) {
+        openrouterTokensUsed.labels(event.model, '2', 'prompt', deploymentEnv).inc(event.promptTokens);
+      }
+      if (event.completionTokens) {
+        openrouterTokensUsed.labels(event.model, '2', 'completion', deploymentEnv).inc(event.completionTokens);
+      }
       yield {
         type: 'stage2_model_complete',
         model: event.model,
@@ -203,6 +235,9 @@ Now provide your evaluation and ranking:`;
   }
 
   const aggregateRankings = calculateAggregateRankings(stage2Results, labelToModel);
+
+  // Record stage 2 duration
+  councilStageDuration.labels('2', deploymentEnv).observe((Date.now() - stageStartTime) / 1000);
   yield { type: 'stage2_complete', data: { labelToModel, aggregateRankings } };
 
   return { reviews: stage2Results, labelToModel };
@@ -218,6 +253,8 @@ async function* stage3Synthesize(
   _labelToModel: Record<string, string>,  // Unused - Chairman receives anonymized data
   signal?: AbortSignal
 ): AsyncGenerator<SSEEvent, IStage3Synthesis> {
+  const stageStartTime = Date.now();
+  const deploymentEnv = getDeploymentEnv();
   yield { type: 'stage3_start' };
 
   // Build anonymized context for chairman (blind evaluation)
@@ -293,16 +330,32 @@ Provide the council's collective wisdom as your own authoritative answer:`;
     }
   }
 
+  // Record OpenRouter metrics for Chairman
+  const responseTimeMs = Date.now() - startTime;
+  openrouterApiCalls.labels(COUNCIL.CHAIRMAN_MODEL, '3', 'success', deploymentEnv).inc();
+  openrouterResponseTime.labels(COUNCIL.CHAIRMAN_MODEL, '3', deploymentEnv).observe(responseTimeMs / 1000);
+  if (promptTokens) {
+    openrouterTokensUsed.labels(COUNCIL.CHAIRMAN_MODEL, '3', 'prompt', deploymentEnv).inc(promptTokens);
+  }
+  if (completionTokens) {
+    openrouterTokensUsed.labels(COUNCIL.CHAIRMAN_MODEL, '3', 'completion', deploymentEnv).inc(completionTokens);
+  }
+  if (reasoningTokens) {
+    openrouterTokensUsed.labels(COUNCIL.CHAIRMAN_MODEL, '3', 'reasoning', deploymentEnv).inc(reasoningTokens);
+  }
+
   const stage3Result: IStage3Synthesis = {
     model: COUNCIL.CHAIRMAN_MODEL,
     response: content,
     reasoning: reasoning || undefined,
-    responseTimeMs: Date.now() - startTime,
+    responseTimeMs,
     promptTokens,
     completionTokens,
     reasoningTokens,
   };
 
+  // Record stage 3 duration
+  councilStageDuration.labels('3', deploymentEnv).observe((Date.now() - stageStartTime) / 1000);
   yield { type: 'stage3_response', data: stage3Result };
 
   return stage3Result;
@@ -318,12 +371,17 @@ export async function* processCouncilMessage(
   signal?: AbortSignal,
   onTitleGenerated?: (title: string) => void
 ): AsyncGenerator<SSEEvent> {
+  const deploymentEnv = getDeploymentEnv();
+
   // Find session
   const session = await CouncilSession.findOne({ userId, sessionId });
   if (!session) {
     yield { type: 'error', error: 'Session not found' };
     return;
   }
+
+  // Record user message
+  councilMessagesTotal.labels('user', deploymentEnv).inc();
 
   // Add user message to in-memory session (for history building)
   // Note: We don't save here - both user and assistant messages are saved atomically
@@ -547,6 +605,9 @@ export async function* processCouncilMessage(
     // Save both user and assistant messages atomically
     // Note: Title is saved separately via callback for immediate UI update
     await session.save();
+
+    // Record AI message
+    councilMessagesTotal.labels('ai', deploymentEnv).inc();
 
     yield { type: 'complete' };
   } catch (error) {

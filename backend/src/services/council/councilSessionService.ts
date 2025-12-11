@@ -12,6 +12,7 @@ import {
   GetSessionResult,
   DeleteSessionResult,
 } from '../../types/council';
+import { councilSessionsTotal, getDeploymentEnv } from '../../metrics/metricsRegistry';
 
 /**
  * Validate session ID format (UUID v4)
@@ -68,6 +69,9 @@ export const createSession = async (userId: string): Promise<CreateSessionResult
     };
   }
 
+  // Record session creation
+  councilSessionsTotal.labels('create', getDeploymentEnv()).inc();
+
   return { success: true, session };
 };
 
@@ -110,6 +114,10 @@ export const deleteSession = async (
   if (result.deletedCount === 0) {
     return { success: false, error: 'Session not found' };
   }
+
+  // Record session deletion
+  councilSessionsTotal.labels('delete', getDeploymentEnv()).inc();
+
   return { success: true };
 };
 

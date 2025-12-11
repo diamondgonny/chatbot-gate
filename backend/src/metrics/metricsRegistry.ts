@@ -144,3 +144,69 @@ export const rateLimitHits = new Counter({
   labelNames: ['route', 'deployment_env'],
   registers: [register],
 });
+
+// ============================================
+// Business Metrics - AI Council
+// ============================================
+
+export const councilMessagesTotal = new Counter({
+  name: 'chatbot_gate_council_messages_total',
+  help: 'Total council messages processed',
+  labelNames: ['direction', 'deployment_env'], // direction: user, ai
+  registers: [register],
+});
+
+export const councilSessionsTotal = new Counter({
+  name: 'chatbot_gate_council_sessions_total',
+  help: 'Total council session operations',
+  labelNames: ['operation', 'deployment_env'], // operation: create, delete
+  registers: [register],
+});
+
+export const councilStageDuration = new Histogram({
+  name: 'chatbot_gate_council_stage_duration_seconds',
+  help: 'Council stage processing duration in seconds',
+  labelNames: ['stage', 'deployment_env'], // stage: 1, 2, 3
+  buckets: [5, 15, 30, 60, 120, 300],
+  registers: [register],
+});
+
+export const councilSseConnections = new Gauge({
+  name: 'chatbot_gate_council_sse_connections',
+  help: 'Number of active council SSE connections',
+  labelNames: ['deployment_env'],
+  registers: [register],
+});
+
+export const councilAbortsTotal = new Counter({
+  name: 'chatbot_gate_council_aborts_total',
+  help: 'Total council processing aborts',
+  labelNames: ['stage', 'deployment_env'], // stage: 1, 2, 3, unknown
+  registers: [register],
+});
+
+// ============================================
+// Infrastructure Metrics - OpenRouter API
+// ============================================
+
+export const openrouterApiCalls = new Counter({
+  name: 'chatbot_gate_openrouter_api_calls_total',
+  help: 'Total OpenRouter API calls',
+  labelNames: ['model', 'stage', 'status', 'deployment_env'], // status: success, error
+  registers: [register],
+});
+
+export const openrouterResponseTime = new Histogram({
+  name: 'chatbot_gate_openrouter_response_time_seconds',
+  help: 'OpenRouter API response time in seconds',
+  labelNames: ['model', 'stage', 'deployment_env'],
+  buckets: [1, 5, 10, 30, 60, 120],
+  registers: [register],
+});
+
+export const openrouterTokensUsed = new Counter({
+  name: 'chatbot_gate_openrouter_tokens_total',
+  help: 'Total OpenRouter tokens used',
+  labelNames: ['model', 'stage', 'type', 'deployment_env'], // type: prompt, completion, reasoning
+  registers: [register],
+});

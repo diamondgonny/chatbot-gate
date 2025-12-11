@@ -10,6 +10,11 @@ import { SSEClientManager } from './sseClientManager';
 import { SSEEventAccumulator } from './sseEventAccumulator';
 import { SSEBroadcaster } from './sseBroadcaster';
 import { SSELifecycleManager } from './sseLifecycleManager';
+import {
+  councilSseConnections,
+  councilAbortsTotal,
+  getDeploymentEnv,
+} from '../../metrics/metricsRegistry';
 
 // Re-export ActiveProcessing type
 export type { ActiveProcessing } from './sseJobTracker';
@@ -75,6 +80,10 @@ class ProcessingRegistry {
     this.lifecycleManager.cancelGracePeriod(userId, sessionId);
 
     this.clientManager.addClient(processing, client);
+
+    // Record SSE connection
+    councilSseConnections.labels(getDeploymentEnv()).inc();
+
     return true;
   }
 
@@ -86,6 +95,9 @@ class ProcessingRegistry {
     if (!processing) return;
 
     this.clientManager.removeClient(processing, client);
+
+    // Record SSE disconnection
+    councilSseConnections.labels(getDeploymentEnv()).dec();
 
     // If all clients disconnected, start grace period
     if (!this.clientManager.hasClients(processing)) {
@@ -125,6 +137,13 @@ class ProcessingRegistry {
    * Abort processing and cleanup registry
    */
   abort(userId: string, sessionId: string): void {
+    // Record abort with current stage
+    const processing = this.jobTracker.get(userId, sessionId);
+    if (processing) {
+      const stage = processing.currentStage?.replace('stage', '') || 'unknown';
+      councilAbortsTotal.labels(stage, getDeploymentEnv()).inc();
+    }
+
     this.lifecycleManager.abort(userId, sessionId);
   }
 
