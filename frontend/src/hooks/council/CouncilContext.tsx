@@ -74,6 +74,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       },
       onComplete: (assistantMessage: CouncilAssistantMessage) => {
         actions.setMessages((prev) => [...prev, assistantMessage]);
+        actions.setPendingMessage(null); // Clear pending message (including reconnection case)
         onCompleteCallback?.();
       },
       onError: (error: string) => {
