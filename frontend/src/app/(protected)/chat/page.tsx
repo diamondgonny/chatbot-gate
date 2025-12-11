@@ -251,7 +251,7 @@ export default function ChatInterface() {
           <h2 className="text-xl font-semibold text-slate-200">
             AI Chat Session
           </h2>
-          <p className="text-xs text-slate-500">Connected to Gatekeeper Node</p>
+          <p className="text-xs text-slate-500">Connected to Joonman AI</p>
         </header>
 
         {sessionError && (
@@ -310,7 +310,7 @@ export default function ChatInterface() {
           onSubmit={handleSendMessage}
           className="p-4 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md"
         >
-          <div className="relative flex items-center">
+          <div className="relative flex items-center max-w-4xl mx-auto">
             <input
               type="text"
               value={input}
@@ -339,10 +339,10 @@ export default function ChatInterface() {
       {/* Delete Confirmation Modal */}
       <AlertModal
         isOpen={!!sessionToDelete}
-        title="채팅 삭제"
-        message="정말로 이 채팅을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
-        confirmText="삭제"
-        cancelText="취소"
+        title="Delete chat"
+        message="Are you sure you want to delete this chat? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
         isDestructive={true}
         onClose={() => setSessionToDelete(null)}
         onConfirm={confirmDeleteSession}

@@ -1,7 +1,7 @@
 /**
- * Format a date to Korean "time ago" format
+ * Format a date to English "time ago" format
  * @param date - Date string or Date object
- * @returns Formatted string like "1분 전", "2시간 전", "3일 전"
+ * @returns Formatted string like "Just now", "2h ago", "3d ago"
  */
 export const formatTimeAgo = (date: string | Date): string => {
   const now = new Date();
@@ -16,18 +16,18 @@ export const formatTimeAgo = (date: string | Date): string => {
   const diffYears = Math.floor(diffDays / 365);
 
   if (diffSeconds < 60) {
-    return '방금 전';
+    return "Just now";
   } else if (diffMinutes < 60) {
-    return `${diffMinutes}분 전`;
+    return `${diffMinutes}m ago`;
   } else if (diffHours < 24) {
-    return `${diffHours}시간 전`;
+    return `${diffHours}h ago`;
   } else if (diffDays < 7) {
-    return `${diffDays}일 전`;
+    return `${diffDays}d ago`;
   } else if (diffWeeks < 4) {
-    return `${diffWeeks}주 전`;
+    return `${diffWeeks}w ago`;
   } else if (diffMonths < 12) {
-    return `${diffMonths}개월 전`;
+    return `${diffMonths}mo ago`;
   } else {
-    return `${diffYears}년 전`;
+    return `${diffYears}y ago`;
   }
 };
