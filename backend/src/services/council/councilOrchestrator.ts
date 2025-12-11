@@ -342,20 +342,30 @@ export async function* processCouncilMessage(
   const isFirstMessage = session.messages.length === 1;
   if (isFirstMessage && onTitleGenerated) {
     const TITLE_TIMEOUT_MS = 30000;
+    let timeoutHandle: ReturnType<typeof setTimeout>;
+
     const titleWithTimeout = Promise.race([
       generateTitle(userMessage),
-      new Promise<string>((_, reject) =>
-        setTimeout(() => reject(new Error('Title generation timeout')), TITLE_TIMEOUT_MS)
-      ),
+      new Promise<string>((_, reject) => {
+        timeoutHandle = setTimeout(
+          () => reject(new Error('Title generation timeout')),
+          TITLE_TIMEOUT_MS
+        );
+        timeoutHandle.unref();  // Don't block process exit
+      }),
     ]);
 
-    titleWithTimeout.then(async (title) => {
-      session.title = title;
-      await session.save();  // Save title immediately
-      onTitleGenerated(title);  // Notify via callback
-    }).catch((err) => {
-      console.error('[Council] Title generation failed:', err);
-    });
+    titleWithTimeout
+      .then(async (title) => {
+        clearTimeout(timeoutHandle);  // Clean up timer on success
+        session.title = title;
+        await session.save();  // Save title immediately
+        onTitleGenerated(title);  // Notify via callback
+      })
+      .catch((err) => {
+        clearTimeout(timeoutHandle);  // Clean up timer on failure too
+        console.error('[Council] Title generation failed:', err);
+      });
   }
 
   // Helper to save partial results on abort

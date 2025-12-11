@@ -5,7 +5,8 @@ dotenv.config();
 export const config = {
   port: process.env.PORT || 4000,
   // Parse the comma-separated list of codes into an array
-  validCodes: (process.env.VALID_CODES || '').split(',').map(code => code.trim()),
+  // Filter out empty strings to prevent blank codes from being valid
+  validCodes: (process.env.VALID_CODES || '').split(',').map(code => code.trim()).filter(Boolean),
   openaiApiKey: process.env.OPENAI_API_KEY,
   modelName: 'gpt-5.1-chat-latest',
   mongoUri: process.env.MONGO_URI || '',

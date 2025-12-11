@@ -15,9 +15,6 @@ import { stopMetricsCollection } from './metrics/metricsRegistry';
 // Load environment variables from .env file
 dotenv.config();
 
-// Connect to MongoDB
-connectDB();
-
 // Initialize the Express application
 // In Spring, this is similar to the ApplicationContext.
 // In FastAPI, this is `app = FastAPI()`.
@@ -195,55 +192,67 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 });
 
 // Start the Server
-const server = app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
-});
-
-// Graceful shutdown handler
-const gracefulShutdown = async (signal: string) => {
-  console.log(`\n[${signal}] Shutting down gracefully...`);
-
-  // 1. Stop accepting new connections and wait for existing requests to complete
-  await new Promise<void>((resolve) => {
-    server.close((err) => {
-      if (err) console.error('Error closing HTTP server:', err);
-      else console.log('HTTP server closed');
-      resolve(); // Continue shutdown even on error
-    });
-  });
-
-  // 2. Cleanup SSE clients and abort in-progress processing
-  processingRegistry.shutdown();
-  console.log('SSE registry shut down');
-
-  // 3. Stop metrics collection timer
-  stopMetricsCollection();
-  console.log('Metrics collection stopped');
-
-  // 4. Stop active sessions tracking
-  stopActiveSessionsTracking();
-  console.log('Active sessions tracking stopped');
-
-  // 5. Close MongoDB connection
+const startServer = async () => {
   try {
-    await mongoose.connection.close(false);
-    console.log('MongoDB connection closed');
-  } catch (err) {
-    console.error('Error closing MongoDB:', err);
-  }
+    // Connect to MongoDB before accepting requests
+    await connectDB();
 
-  // 6. Close log stream and exit
-  accessLogStream.end(() => {
-    console.log('Access log stream closed');
-    process.exit(0);
-  });
+    const server = app.listen(PORT, () => {
+      console.log(`Server is running on http://localhost:${PORT}`);
+    });
 
-  // Timeout fallback (10 seconds)
-  setTimeout(() => {
-    console.error('Forced shutdown after timeout');
+    // Graceful shutdown handler
+    const gracefulShutdown = async (signal: string) => {
+      console.log(`\n[${signal}] Shutting down gracefully...`);
+
+      // 1. Stop accepting new connections and wait for existing requests to complete
+      await new Promise<void>((resolve) => {
+        server.close((err) => {
+          if (err) console.error('Error closing HTTP server:', err);
+          else console.log('HTTP server closed');
+          resolve(); // Continue shutdown even on error
+        });
+      });
+
+      // 2. Cleanup SSE clients and abort in-progress processing
+      processingRegistry.shutdown();
+      console.log('SSE registry shut down');
+
+      // 3. Stop metrics collection timer
+      stopMetricsCollection();
+      console.log('Metrics collection stopped');
+
+      // 4. Stop active sessions tracking
+      stopActiveSessionsTracking();
+      console.log('Active sessions tracking stopped');
+
+      // 5. Close MongoDB connection
+      try {
+        await mongoose.connection.close(false);
+        console.log('MongoDB connection closed');
+      } catch (err) {
+        console.error('Error closing MongoDB:', err);
+      }
+
+      // 6. Close log stream and exit
+      accessLogStream.end(() => {
+        console.log('Access log stream closed');
+        process.exit(0);
+      });
+
+      // Timeout fallback (10 seconds)
+      setTimeout(() => {
+        console.error('Forced shutdown after timeout');
+        process.exit(1);
+      }, 10000).unref();
+    };
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
     process.exit(1);
-  }, 10000).unref();
+  }
 };
 
-process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+startServer();
