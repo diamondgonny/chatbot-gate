@@ -3,23 +3,13 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Stage1Response } from "@/types";
+import { formatModelName } from "@/domain/council";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface Stage1PanelProps {
   responses: Stage1Response[];
   streamingContent?: Record<string, string>;
   isLoading?: boolean;
-}
-
-function formatModelName(model: string): string {
-  // Extract readable name from model identifier
-  // e.g., "anthropic/claude-sonnet-4" -> "Claude Sonnet 4"
-  const parts = model.split("/");
-  const name = parts[parts.length - 1];
-  return name
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
 }
 
 export function Stage1Panel({ responses, streamingContent = {}, isLoading }: Stage1PanelProps) {

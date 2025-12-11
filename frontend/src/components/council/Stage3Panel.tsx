@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Stage3Synthesis } from "@/types";
+import { formatModelName } from "@/domain/council";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface Stage3PanelProps {
@@ -10,15 +11,6 @@ interface Stage3PanelProps {
   streamingContent?: string;
   streamingReasoning?: string;
   isLoading?: boolean;
-}
-
-function formatModelName(model: string): string {
-  const parts = model.split("/");
-  const name = parts[parts.length - 1];
-  return name
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
 }
 
 export function Stage3Panel({

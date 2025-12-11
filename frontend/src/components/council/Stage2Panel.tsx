@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Stage2Review, AggregateRanking } from "@/types";
+import { formatModelName } from "@/domain/council";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface Stage2PanelProps {
@@ -12,15 +13,6 @@ interface Stage2PanelProps {
   aggregateRankings: AggregateRanking[];
   isLoading?: boolean;
   hideResults?: boolean;
-}
-
-function formatModelName(model: string): string {
-  const parts = model.split("/");
-  const name = parts[parts.length - 1];
-  return name
-    .split("-")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
 }
 
 /**
