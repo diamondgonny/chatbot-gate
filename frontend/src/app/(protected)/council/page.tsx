@@ -2,8 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useState, useCallback } from "react";
 import { useCouncilSessions } from "@/hooks";
 import { CouncilSidebar } from "@/components/council";
+import AlertModal from "@/components/common/AlertModal";
 
 export default function CouncilPage() {
   const router = useRouter();
@@ -13,23 +15,28 @@ export default function CouncilPage() {
     createSession,
     removeSession,
   } = useCouncilSessions();
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
 
-  const handleNewSession = async () => {
+  const handleNewSession = useCallback(async () => {
     const sessionId = await createSession();
     if (sessionId) {
       router.push(`/council/${sessionId}`);
     }
-  };
+  }, [createSession, router]);
 
-  const handleSelectSession = (sessionId: string) => {
+  const handleSelectSession = useCallback((sessionId: string) => {
     router.push(`/council/${sessionId}`);
-  };
+  }, [router]);
 
-  const handleDeleteSession = async (sessionId: string) => {
-    if (confirm("Are you sure you want to delete this session?")) {
-      await removeSession(sessionId);
-    }
-  };
+  const handleDeleteSession = useCallback((sessionId: string) => {
+    setSessionToDelete(sessionId);
+  }, []);
+
+  const confirmDeleteSession = useCallback(async () => {
+    if (!sessionToDelete) return;
+    await removeSession(sessionToDelete);
+    setSessionToDelete(null);
+  }, [removeSession, sessionToDelete]);
 
   return (
     <div className="h-screen flex overflow-hidden">
@@ -93,6 +100,17 @@ export default function CouncilPage() {
           </button>
         </motion.div>
       </div>
+
+      <AlertModal
+        isOpen={!!sessionToDelete}
+        title="Delete chat"
+        message="Are you sure you want to delete this chat? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDestructive
+        onClose={() => setSessionToDelete(null)}
+        onConfirm={confirmDeleteSession}
+      />
     </div>
   );
 }
