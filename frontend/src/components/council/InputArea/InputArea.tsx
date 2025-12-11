@@ -54,6 +54,7 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
   const { messages, isProcessing, sendMessage, abortProcessing, setInputExpanded } =
     useCouncilContext();
   const [input, setInput] = useState("");
+  const [isMultiline, setIsMultiline] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize textarea based on content
@@ -61,20 +62,25 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    // Reset height to calculate scroll height
     textarea.style.height = "auto";
 
     const minHeight = LINE_HEIGHT * MIN_ROWS;
     const maxHeight = LINE_HEIGHT * MAX_ROWS;
     const scrollHeight = textarea.scrollHeight;
 
-    // Clamp height between min and max
-    const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
-    textarea.style.height = `${newHeight}px`;
+    const hasNewline = input.includes('\n');
+    const exceedsSingleLine = scrollHeight > LINE_HEIGHT * 1.5;
+    const multiline = hasNewline || exceedsSingleLine;
+    setIsMultiline(multiline);
 
-    // Update expanded state when multiline (more than 1 line)
-    const isMultiline = scrollHeight > LINE_HEIGHT * 1.5;
-    setInputExpanded(isMultiline);
+    if (!multiline) {
+      textarea.style.height = `${LINE_HEIGHT}px`;
+    } else {
+      const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
+      textarea.style.height = `${newHeight}px`;
+    }
+
+    setInputExpanded(multiline);
   }, [input, setInputExpanded]);
 
   const handleSubmit = useCallback(
@@ -102,32 +108,38 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
     abortProcessing(sessionId);
   }, [abortProcessing, sessionId]);
 
+  const showScrollbar = textareaRef.current
+    ? textareaRef.current.scrollHeight > LINE_HEIGHT * MAX_ROWS
+    : false;
+
   // Show input form only when no messages exist and not processing
   if (messages.length === 0 && !isProcessing) {
     return (
       <div className="p-4 bg-slate-900/80 backdrop-blur-md">
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-          <div className="bg-slate-800 rounded-xl border border-slate-700 focus-within:ring-2 focus-within:ring-blue-500/50 focus-within:border-transparent transition-all">
-            {/* Scrollable textarea area */}
-            <div className="px-4 pt-3">
+          <div className={`bg-slate-800 rounded-xl border border-slate-700 focus-within:ring-2 focus-within:ring-blue-500/50 focus-within:border-transparent transition-all ${
+            isMultiline ? '' : 'flex items-center'
+          }`}>
+            <div className={isMultiline ? 'px-4 pt-3' : 'flex-1 px-3 py-2'}>
               <textarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask the council a question..."
-                rows={MIN_ROWS}
+                rows={1}
                 maxLength={65536}
-                className="w-full bg-transparent text-slate-200 placeholder-slate-500 focus:outline-none resize-none scrollbar-custom"
+                className={`w-full bg-transparent text-slate-200 placeholder-slate-500 focus:outline-none resize-none ${
+                  showScrollbar ? 'overflow-y-auto scrollbar-custom' : 'overflow-hidden'
+                }`}
                 style={{ lineHeight: `${LINE_HEIGHT}px` }}
               />
             </div>
-            {/* Button row - fixed at bottom */}
-            <div className="flex justify-end px-3 pb-3">
+            <div className={isMultiline ? 'flex justify-end px-3 pb-3' : 'pr-3'}>
               <button
                 type="submit"
                 disabled={!input.trim()}
-                className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors"
+                className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors flex-shrink-0"
               >
                 <SendIcon />
               </button>
