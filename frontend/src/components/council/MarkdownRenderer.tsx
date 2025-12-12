@@ -11,14 +11,26 @@ interface MarkdownRendererProps {
   className?: string;
 }
 
+/**
+ * Normalize escaped newlines from API responses
+ * Some models (e.g., Gemini) return reasoning with literal \n instead of actual newlines
+ */
+function normalizeNewlines(text: string): string {
+  // Replace literal \n (backslash + n) with actual newline character
+  // Use a regex that matches the escaped sequence, not the actual newline
+  return text.replace(/\\n/g, '\n');
+}
+
 export function MarkdownRenderer({ content, className = "" }: MarkdownRendererProps) {
+  const normalizedContent = normalizeNewlines(content);
+
   return (
     <div className={`markdown-content ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkBreaks, remarkMath]}
         rehypePlugins={[rehypeKatex]}
       >
-        {content}
+        {normalizedContent}
       </ReactMarkdown>
     </div>
   );
