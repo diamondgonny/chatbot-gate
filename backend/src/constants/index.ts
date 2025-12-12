@@ -6,7 +6,7 @@
 /** Session-related constants */
 export const SESSION = {
   /** Maximum number of sessions allowed per user */
-  MAX_PER_USER: 50,
+  MAX_PER_USER: 300,
   /** UUID v4 pattern for session ID validation */
   ID_PATTERN: /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
 } as const;
