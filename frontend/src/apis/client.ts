@@ -1,7 +1,6 @@
 "use client";
 
 import axios from "axios";
-import { clearAuth } from "@/utils/authUtils";
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000",
@@ -32,9 +31,6 @@ apiClient.interceptors.response.use(
 
       if (status === 401 || status === 403) {
         isRedirecting = true;
-
-        // Clear local auth data
-        clearAuth();
 
         // Redirect to gate page
         window.location.href = "/";
