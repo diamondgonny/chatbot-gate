@@ -35,7 +35,7 @@ export interface UseCouncilStreamCallbacks {
  * Return type for useCouncilStream
  */
 export interface UseCouncilStreamReturn {
-  startStream: (sessionId: string, content: string) => void;
+  startStream: (sessionId: string, content: string, mode?: 'lite' | 'ultra') => void;
   reconnectStream: (sessionId: string) => Promise<void>;
   abortStream: () => void;
 }
@@ -68,7 +68,7 @@ export function useCouncilStream(
    * Start a new SSE stream for sending a message
    */
   const startStream = useCallback(
-    (sessionId: string, content: string) => {
+    (sessionId: string, content: string, mode: 'lite' | 'ultra' = 'ultra') => {
       // Abort any existing request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -123,7 +123,7 @@ export function useCouncilStream(
       const processStream = async () => {
         try {
           const url = getCouncilMessageUrl(sessionId);
-          const stream = streamSSE(url, { content }, abortController.signal);
+          const stream = streamSSE(url, { content, mode }, abortController.signal);
 
           for await (const event of stream) {
             processor.processEvent(event);

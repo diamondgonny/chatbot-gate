@@ -62,7 +62,7 @@ function parseSSEBuffer(buffer: string): [SSEEvent[], string] {
  */
 export async function* streamSSE(
   url: string,
-  body: { content: string },
+  body: { content: string; mode?: 'lite' | 'ultra' },
   signal?: AbortSignal
 ): AsyncGenerator<SSEEvent> {
   const csrfToken = getCsrfToken();

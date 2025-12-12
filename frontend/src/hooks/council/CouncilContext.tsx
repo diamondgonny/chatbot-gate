@@ -52,6 +52,7 @@ export interface CouncilContextValue extends CouncilState {
   sendMessage: (
     sessionId: string,
     content: string,
+    mode?: 'lite' | 'ultra',
     onComplete?: () => void
   ) => void;
   abortProcessing: (sessionId: string) => Promise<void>;
@@ -204,7 +205,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
    * Send a message to the council
    */
   const sendMessage = useCallback(
-    (sessionId: string, content: string, onComplete?: () => void) => {
+    (sessionId: string, content: string, mode: 'lite' | 'ultra' = 'ultra', onComplete?: () => void) => {
       // Store callback for later use
       onCompleteCallback = onComplete;
 
@@ -212,8 +213,8 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       actions.resetStreamState();
       actions.setPendingMessage(content);
 
-      // Start streaming
-      startStream(sessionId, content);
+      // Start streaming with mode
+      startStream(sessionId, content, mode);
     },
     [startStream, actions]
   );

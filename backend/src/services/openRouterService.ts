@@ -4,7 +4,7 @@
  */
 
 import { config } from '../config';
-import { COUNCIL } from '../constants';
+import { COUNCIL, CouncilMode, getModelsForMode, getChairmanForMode } from '../constants';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
@@ -182,6 +182,7 @@ export const chatCompletion = async (
  */
 export const queryCouncilModels = async (
   messages: OpenRouterMessage[],
+  mode: CouncilMode = 'lite',
   signal?: AbortSignal
 ): Promise<ModelResponse[]> => {
   // If already aborted, return empty array immediately
@@ -189,8 +190,9 @@ export const queryCouncilModels = async (
     return [];
   }
 
+  const models = getModelsForMode(mode);
   const results = await Promise.allSettled(
-    COUNCIL.MODELS.map(async (model) => {
+    models.map(async (model) => {
       const result = await chatCompletion(model, messages, COUNCIL.MAX_TOKENS, signal);
       return {
         model,
@@ -209,8 +211,8 @@ export const queryCouncilModels = async (
     if (result.status === 'fulfilled') {
       successfulResponses.push(result.value);
     } else {
-      failedModels.push(COUNCIL.MODELS[index]);
-      console.error(`Council model ${COUNCIL.MODELS[index]} failed:`, result.reason);
+      failedModels.push(models[index]);
+      console.error(`Council model ${models[index]} failed:`, result.reason);
     }
   });
 
@@ -226,16 +228,18 @@ export const queryCouncilModels = async (
  */
 export const queryChairman = async (
   messages: OpenRouterMessage[],
+  mode: CouncilMode = 'lite',
   signal?: AbortSignal
 ): Promise<ModelResponse> => {
+  const chairmanModel = getChairmanForMode(mode);
   const result = await chatCompletion(
-    COUNCIL.CHAIRMAN_MODEL,
+    chairmanModel,
     messages,
     COUNCIL.CHAIRMAN_MAX_TOKENS,
     signal
   );
   return {
-    model: COUNCIL.CHAIRMAN_MODEL,
+    model: chairmanModel,
     content: result.content,
     responseTimeMs: result.responseTimeMs,
     promptTokens: result.promptTokens,
@@ -503,6 +507,7 @@ const BATCH_INTERVAL_MS = 50;
  */
 export async function* queryCouncilModelsStreaming(
   messages: OpenRouterMessage[],
+  mode: CouncilMode = 'lite',
   signal?: AbortSignal
 ): AsyncGenerator<ModelStreamEvent> {
   if (signal?.aborted) return;
@@ -519,8 +524,9 @@ export async function* queryCouncilModelsStreaming(
 
   type StreamPromiseResult = { stream: StreamState; result: IteratorResult<StreamEvent, void> };
 
+  const models = getModelsForMode(mode);
   // Initialize streams for all models
-  const streams: StreamState[] = COUNCIL.MODELS.map((model) => ({
+  const streams: StreamState[] = models.map((model) => ({
     model,
     generator: chatCompletionStream(model, messages, COUNCIL.MAX_TOKENS, signal),
     startTime: Date.now(),

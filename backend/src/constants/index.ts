@@ -29,20 +29,33 @@ export const BACKOFF = {
   SECONDS: 30,
 } as const;
 
+/** Council mode type */
+export type CouncilMode = 'lite' | 'ultra';
+
 /** Council-related constants */
 export const COUNCIL = {
   /** Maximum number of council sessions allowed per user */
   MAX_SESSIONS_PER_USER: 50,
-  /** Council member models (via OpenRouter) */
-  MODELS: [
+  /** Ultra council member models (via OpenRouter) */
+  ULTRA_MODELS: [
     'anthropic/claude-opus-4.5',
     'openai/gpt-5.1',
     'google/gemini-3-pro-preview',
     'x-ai/grok-4',
     'deepseek/deepseek-v3.2-speciale'
   ] as const,
-  /** Chairman model for final synthesis */
-  CHAIRMAN_MODEL: 'google/gemini-3-pro-preview',
+  /** Lite council member models (via OpenRouter) */
+  LITE_MODELS: [
+    'anthropic/claude-haiku-4.5',
+    'openai/gpt-5-mini',
+    'google/gemini-2.5-flash',
+    'moonshotai/kimi-k2-0905',
+    'deepseek/deepseek-v3.2'
+  ] as const,
+  /** Ultra chairman model for final synthesis */
+  ULTRA_CHAIRMAN_MODEL: 'google/gemini-3-pro-preview',
+  /** Lite chairman model for final synthesis */
+  LITE_CHAIRMAN_MODEL: 'google/gemini-2.5-flash',
   /** System prompt for council members */
   SYSTEM_PROMPT: `You are a helpful AI assistant participating in a council discussion.
 Provide a complete, comprehensive answer in a single response.
@@ -59,3 +72,13 @@ Answer fully and directly.`,
   /** Max tokens for chairman synthesis (higher for comprehensive answer) */
   CHAIRMAN_MAX_TOKENS: 16384,
 } as const;
+
+/** Get council member models for a given mode */
+export function getModelsForMode(mode: CouncilMode): readonly string[] {
+  return mode === 'ultra' ? COUNCIL.ULTRA_MODELS : COUNCIL.LITE_MODELS;
+}
+
+/** Get chairman model for a given mode */
+export function getChairmanForMode(mode: CouncilMode): string {
+  return mode === 'ultra' ? COUNCIL.ULTRA_CHAIRMAN_MODEL : COUNCIL.LITE_CHAIRMAN_MODEL;
+}

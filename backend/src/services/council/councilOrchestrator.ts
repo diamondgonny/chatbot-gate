@@ -14,7 +14,7 @@ import {
   chatCompletionStreamWithReasoning,
   OpenRouterMessage,
 } from '../openRouterService';
-import { COUNCIL } from '../../constants';
+import { COUNCIL, CouncilMode, getChairmanForMode } from '../../constants';
 import { generateTitle } from '../titleService';
 import {
   buildPartialStage1Responses,
@@ -42,6 +42,7 @@ import {
 async function* stage1CollectResponses(
   userMessage: string,
   history: OpenRouterMessage[],
+  mode: CouncilMode,
   signal?: AbortSignal
 ): AsyncGenerator<SSEEvent> {
   const stageStartTime = Date.now();
@@ -59,7 +60,7 @@ async function* stage1CollectResponses(
   const modelMeta: Record<string, { responseTimeMs: number; promptTokens?: number; completionTokens?: number }> = {};
 
   // Stream responses from all models
-  for await (const event of queryCouncilModelsStreaming(messages, signal)) {
+  for await (const event of queryCouncilModelsStreaming(messages, mode, signal)) {
     if (signal?.aborted) return;
 
     if ('done' in event && event.done === true) {
@@ -123,6 +124,7 @@ async function* stage1CollectResponses(
 async function* stage2CollectRankings(
   userMessage: string,
   stage1Results: IStage1Response[],
+  mode: CouncilMode,
   signal?: AbortSignal
 ): AsyncGenerator<SSEEvent, { reviews: IStage2Review[]; labelToModel: Record<string, string> }> {
   const stageStartTime = Date.now();
@@ -181,7 +183,7 @@ Now provide your evaluation and ranking:`;
   const modelMeta: Record<string, { responseTimeMs: number; promptTokens?: number; completionTokens?: number }> = {};
 
   // Stream responses from all models
-  for await (const event of queryCouncilModelsStreaming(messages, signal)) {
+  for await (const event of queryCouncilModelsStreaming(messages, mode, signal)) {
     if (signal?.aborted) return { reviews: [], labelToModel };
 
     if ('done' in event && event.done === true) {
@@ -251,6 +253,7 @@ async function* stage3Synthesize(
   stage1Results: IStage1Response[],
   stage2Results: IStage2Review[],
   _labelToModel: Record<string, string>,  // Unused - Chairman receives anonymized data
+  mode: CouncilMode,
   signal?: AbortSignal
 ): AsyncGenerator<SSEEvent, IStage3Synthesis> {
   const stageStartTime = Date.now();
@@ -290,6 +293,7 @@ Provide the council's collective wisdom as your own authoritative answer:`;
   const messages: OpenRouterMessage[] = [{ role: 'user', content: chairmanPrompt }];
 
   // Stream chairman response with reasoning enabled
+  const chairmanModel = getChairmanForMode(mode);
   const startTime = Date.now();
   let content = '';
   let reasoning = '';
@@ -298,14 +302,14 @@ Provide the council's collective wisdom as your own authoritative answer:`;
   let reasoningTokens: number | undefined;
 
   for await (const event of chatCompletionStreamWithReasoning(
-    COUNCIL.CHAIRMAN_MODEL,
+    chairmanModel,
     messages,
     COUNCIL.CHAIRMAN_MAX_TOKENS,
     signal
   )) {
     if (signal?.aborted) {
       return {
-        model: COUNCIL.CHAIRMAN_MODEL,
+        model: chairmanModel,
         response: content,
         reasoning: reasoning || undefined,
         responseTimeMs: Date.now() - startTime,
@@ -332,20 +336,20 @@ Provide the council's collective wisdom as your own authoritative answer:`;
 
   // Record OpenRouter metrics for Chairman
   const responseTimeMs = Date.now() - startTime;
-  openrouterApiCalls.labels(COUNCIL.CHAIRMAN_MODEL, '3', 'success', deploymentEnv).inc();
-  openrouterResponseTime.labels(COUNCIL.CHAIRMAN_MODEL, '3', deploymentEnv).observe(responseTimeMs / 1000);
+  openrouterApiCalls.labels(chairmanModel, '3', 'success', deploymentEnv).inc();
+  openrouterResponseTime.labels(chairmanModel, '3', deploymentEnv).observe(responseTimeMs / 1000);
   if (promptTokens) {
-    openrouterTokensUsed.labels(COUNCIL.CHAIRMAN_MODEL, '3', 'prompt', deploymentEnv).inc(promptTokens);
+    openrouterTokensUsed.labels(chairmanModel, '3', 'prompt', deploymentEnv).inc(promptTokens);
   }
   if (completionTokens) {
-    openrouterTokensUsed.labels(COUNCIL.CHAIRMAN_MODEL, '3', 'completion', deploymentEnv).inc(completionTokens);
+    openrouterTokensUsed.labels(chairmanModel, '3', 'completion', deploymentEnv).inc(completionTokens);
   }
   if (reasoningTokens) {
-    openrouterTokensUsed.labels(COUNCIL.CHAIRMAN_MODEL, '3', 'reasoning', deploymentEnv).inc(reasoningTokens);
+    openrouterTokensUsed.labels(chairmanModel, '3', 'reasoning', deploymentEnv).inc(reasoningTokens);
   }
 
   const stage3Result: IStage3Synthesis = {
-    model: COUNCIL.CHAIRMAN_MODEL,
+    model: chairmanModel,
     response: content,
     reasoning: reasoning || undefined,
     responseTimeMs,
@@ -368,6 +372,7 @@ export async function* processCouncilMessage(
   userId: string,
   sessionId: string,
   userMessage: string,
+  mode: CouncilMode = 'ultra',
   signal?: AbortSignal,
   onTitleGenerated?: (title: string) => void
 ): AsyncGenerator<SSEEvent> {
@@ -441,10 +446,11 @@ export async function* processCouncilMessage(
 
     session.messages.push({
       role: 'assistant',
+      mode,
       stage1,
       stage2: stage2.length > 0 ? stage2 : undefined,
       stage3: stage3Content ? {
-        model: COUNCIL.CHAIRMAN_MODEL,
+        model: getChairmanForMode(mode),
         response: stage3Content,
         reasoning: stage3Reasoning || undefined,
         responseTimeMs: 0,
@@ -466,7 +472,7 @@ export async function* processCouncilMessage(
     // Stage 1: Collect individual responses
     const stage1Results: IStage1Response[] = [];
     const stage1StreamingContent: Record<string, string> = {};  // Track streaming content for abort
-    const stage1Gen = stage1CollectResponses(userMessage, history, signal);
+    const stage1Gen = stage1CollectResponses(userMessage, history, mode, signal);
     try {
       for await (const event of stage1Gen) {
         if (signal?.aborted) {
@@ -519,7 +525,7 @@ export async function* processCouncilMessage(
     let stage2Results: IStage2Review[] = [];
     let labelToModel: Record<string, string> = {};
     const stage2StreamingContent: Record<string, string> = {};  // Track streaming content for abort
-    const stage2Gen = stage2CollectRankings(userMessage, stage1Results, signal);
+    const stage2Gen = stage2CollectRankings(userMessage, stage1Results, mode, signal);
     for await (const event of stage2Gen) {
       if (signal?.aborted) {
         console.log('[Council] Processing aborted during Stage 2');
@@ -559,7 +565,7 @@ export async function* processCouncilMessage(
     let stage3Result: IStage3Synthesis | null = null;
     let stage3StreamingContent = '';  // Track streaming content for abort
     let stage3StreamingReasoning = '';  // Track reasoning content for abort
-    const stage3Gen = stage3Synthesize(userMessage, stage1Results, stage2Results, labelToModel, signal);
+    const stage3Gen = stage3Synthesize(userMessage, stage1Results, stage2Results, labelToModel, mode, signal);
     try {
       for await (const event of stage3Gen) {
         if (signal?.aborted) {
@@ -596,6 +602,7 @@ export async function* processCouncilMessage(
     // Save complete assistant message
     session.messages.push({
       role: 'assistant',
+      mode,
       stage1: stage1Results,
       stage2: stage2Results,
       stage3: stage3Result,

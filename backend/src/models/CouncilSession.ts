@@ -76,6 +76,7 @@ export interface ICouncilUserMessage {
 // Assistant message with 3 stages
 export interface ICouncilAssistantMessage {
   role: 'assistant';
+  mode?: 'lite' | 'ultra';     // council mode used for this response
   stage1: IStage1Response[];
   stage2?: IStage2Review[];    // optional for abort cases
   stage3?: IStage3Synthesis;   // optional for abort cases
@@ -92,6 +93,7 @@ const CouncilMessageSchema = new Schema(
     // User message fields
     content: { type: String },
     // Assistant message fields
+    mode: { type: String, enum: ['lite', 'ultra'] },
     stage1: [Stage1ResponseSchema],
     stage2: [Stage2ReviewSchema],
     stage3: Stage3SynthesisSchema,

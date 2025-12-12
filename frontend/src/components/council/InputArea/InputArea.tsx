@@ -88,7 +88,7 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
   const { messages, isProcessing, sendMessage, abortProcessing, setInputExpanded } =
     useCouncilContext();
   const [input, setInput] = useState("");
-  const [mode, setMode] = useState<"lite" | "ultra">("lite");
+  const [mode, setMode] = useState<"lite" | "ultra">("ultra");
   const [isMultiline, setIsMultiline] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
@@ -149,10 +149,7 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
       e.preventDefault();
       if (!input.trim() || isProcessing) return;
 
-      // TODO: Pass mode to sendMessage if backend supports it
-      console.log(`Sending message in ${mode} mode`);
-
-      sendMessage(sessionId, input.trim(), onMessageSent);
+      sendMessage(sessionId, input.trim(), mode, onMessageSent);
       setInput("");
     },
     [input, isProcessing, sendMessage, sessionId, onMessageSent, mode]

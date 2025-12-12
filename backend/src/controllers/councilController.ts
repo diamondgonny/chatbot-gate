@@ -7,6 +7,7 @@ import { Request, Response } from 'express';
 import * as councilService from '../services/councilService';
 import { isOpenRouterConfigured } from '../services/openRouterService';
 import { processingRegistry } from '../services/council-sse';
+import type { CouncilMode } from '../constants';
 
 /**
  * Create a new council session
@@ -140,6 +141,13 @@ export const sendMessage = async (req: Request, res: Response) => {
   const userId = req.userId;
   const { sessionId } = req.params;
   const content = req.body?.content as string;
+  const modeParam = req.body?.mode as string | undefined;
+
+  // Validate and normalize mode (default to 'ultra')
+  const validModes: CouncilMode[] = ['lite', 'ultra'];
+  const mode: CouncilMode = validModes.includes(modeParam as CouncilMode)
+    ? (modeParam as CouncilMode)
+    : 'ultra';
 
   if (!userId) {
     return res.status(401).json({ error: 'Authentication required' });
@@ -192,6 +200,7 @@ export const sendMessage = async (req: Request, res: Response) => {
     userId,
     sessionId,
     content,
+    mode,
     abortController.signal,
     onTitleGenerated
   );
