@@ -45,53 +45,117 @@ function StopIcon() {
   );
 }
 
+/**
+ * Mode Toggle Component
+ */
+function ModeToggle({ mode, onToggle }: { mode: 'lite' | 'ultra'; onToggle: (m: 'lite' | 'ultra') => void }) {
+  return (
+    <div className="flex bg-slate-900/50 p-1 rounded-lg border border-slate-700/50 mr-3">
+      <button
+        type="button"
+        onClick={() => onToggle('lite')}
+        className={`px-3 py-1 text-xs font-medium rounded-md cursor-pointer transition-all duration-200 ${
+          mode === 'lite'
+            ? 'bg-blue-600 text-white shadow-sm'
+            : 'text-slate-400 hover:text-slate-200'
+        }`}
+      >
+        Lite
+      </button>
+      <button
+        type="button"
+        onClick={() => onToggle('ultra')}
+        className={`px-3 py-1 text-xs font-medium rounded-md cursor-pointer transition-all duration-200 ${
+          mode === 'ultra'
+            ? 'bg-purple-600 text-white shadow-sm'
+            : 'text-slate-400 hover:text-slate-200'
+        }`}
+      >
+        Ultra
+      </button>
+    </div>
+  );
+}
+
 // Constants for textarea auto-resize
 const LINE_HEIGHT = 24; // px per line
 const MIN_ROWS = 1;
 const MAX_ROWS = 18;
+// Width of inline controls (toggle + send button + gaps) in single-line mode
+const INLINE_CONTROLS_WIDTH = 190;
 
 export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
   const { messages, isProcessing, sendMessage, abortProcessing, setInputExpanded } =
     useCouncilContext();
   const [input, setInput] = useState("");
+  const [mode, setMode] = useState<"lite" | "ultra">("lite");
   const [isMultiline, setIsMultiline] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const measureRef = useRef<HTMLSpanElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Auto-resize textarea based on content
   useEffect(() => {
     const textarea = textareaRef.current;
-    if (!textarea) return;
+    const measure = measureRef.current;
+    const container = containerRef.current;
+    if (!textarea || !measure || !container) return;
 
     textarea.style.height = "auto";
+    const scrollHeight = textarea.scrollHeight;
+    const hasNewline = input.includes('\n');
+
+    // Measure actual text width using hidden span
+    const textWidth = measure.offsetWidth;
+    // Available width in single-line mode (container minus inline controls)
+    const singleLineAvailable = container.clientWidth - INLINE_CONTROLS_WIDTH;
+
+    setIsMultiline(prev => {
+      // Newline always triggers multiline
+      if (hasNewline) return true;
+
+      if (prev) {
+        // Exit multiline: when text fits in single-line available space
+        return textWidth > singleLineAvailable;
+      }
+
+      // Enter multiline: when content wraps (scrollHeight exceeds single line)
+      return scrollHeight > LINE_HEIGHT * 1.5;
+    });
+  }, [input]);
+
+  // Separate effect for height adjustment to avoid circular dependency
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
 
     const minHeight = LINE_HEIGHT * MIN_ROWS;
     const maxHeight = LINE_HEIGHT * MAX_ROWS;
-    const scrollHeight = textarea.scrollHeight;
 
-    const hasNewline = input.includes('\n');
-    const exceedsSingleLine = scrollHeight > LINE_HEIGHT * 1.5;
-    const multiline = hasNewline || exceedsSingleLine;
-    setIsMultiline(multiline);
-
-    if (!multiline) {
+    if (!isMultiline) {
       textarea.style.height = `${LINE_HEIGHT}px`;
     } else {
+      textarea.style.height = "auto";
+      const scrollHeight = textarea.scrollHeight;
       const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
       textarea.style.height = `${newHeight}px`;
     }
 
-    setInputExpanded(multiline);
-  }, [input, setInputExpanded]);
+    setInputExpanded(isMultiline);
+  }, [input, isMultiline, setInputExpanded]);
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
       if (!input.trim() || isProcessing) return;
 
+      // TODO: Pass mode to sendMessage if backend supports it
+      console.log(`Sending message in ${mode} mode`);
+
       sendMessage(sessionId, input.trim(), onMessageSent);
       setInput("");
     },
-    [input, isProcessing, sendMessage, sessionId, onMessageSent]
+    [input, isProcessing, sendMessage, sessionId, onMessageSent, mode]
   );
 
   const handleKeyDown = useCallback(
@@ -117,32 +181,64 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
     return (
       <div className="p-4 bg-slate-900/80 backdrop-blur-md">
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-          <div className={`bg-slate-800 rounded-xl border border-slate-700 focus-within:ring-2 focus-within:ring-blue-500/50 focus-within:border-transparent transition-all ${
-            isMultiline ? '' : 'flex items-center'
-          }`}>
-            <div className={isMultiline ? 'px-4 pt-3' : 'flex-1 px-3 py-2'}>
+          {/* Hidden span for measuring text width */}
+          <span
+            ref={measureRef}
+            className="absolute invisible whitespace-pre pointer-events-none"
+            style={{
+              fontSize: '16px',
+              fontFamily: 'inherit',
+              lineHeight: `${LINE_HEIGHT}px`,
+            }}
+            aria-hidden="true"
+          >
+            {input || ' '}
+          </span>
+          <div
+            ref={containerRef}
+            className={`bg-slate-800 rounded-xl border border-slate-700 focus-within:ring-2 focus-within:ring-blue-500/50 focus-within:border-transparent transition-all ${
+              isMultiline ? "" : "flex items-center"
+            }`}
+          >
+            <div className={isMultiline ? "px-4 pt-3" : "flex-1 px-3 py-2"}>
               <textarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask the council a question..."
+                placeholder={`Ask the council a question...`}
                 rows={1}
                 maxLength={65536}
                 className={`w-full bg-transparent text-slate-200 placeholder-slate-500 focus:outline-none resize-none ${
-                  showScrollbar ? 'overflow-y-auto scrollbar-custom' : 'overflow-hidden'
+                  showScrollbar
+                    ? "overflow-y-auto scrollbar-custom"
+                    : "overflow-hidden"
                 }`}
                 style={{ lineHeight: `${LINE_HEIGHT}px` }}
               />
             </div>
-            <div className={isMultiline ? 'flex justify-end px-3 pb-3' : 'pr-3'}>
-              <button
-                type="submit"
-                disabled={!input.trim()}
-                className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors flex-shrink-0"
-              >
-                <SendIcon />
-              </button>
+            <div
+              className={`${
+                isMultiline
+                  ? "flex justify-between items-center px-3 pb-3"
+                  : "flex items-center pr-3"
+              }`}
+            >
+              {/* Spacer for multiline alignment if needed, or put toggle here */}
+              <div className={isMultiline ? "" : ""}>
+                {/* Potentially put toggle here for multiline left side? */}
+              </div>
+
+              <div className="flex items-center">
+                <ModeToggle mode={mode} onToggle={setMode} />
+                <button
+                  type="submit"
+                  disabled={!input.trim()}
+                  className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 transition-colors flex-shrink-0"
+                >
+                  <SendIcon />
+                </button>
+              </div>
             </div>
           </div>
         </form>
