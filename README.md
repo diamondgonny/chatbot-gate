@@ -2,14 +2,17 @@
 
 ## 프로젝트 개요
 
-- 접속 코드를 통해 이용할 수 있는 프라이빗 AI 챗봇 서비스입니다.
 - 간단한 인프라 구축, 배포, 모니터링을 연습하고자 토이 프로젝트로 만든 풀스택 애플리케이션입니다.
+- 접속 코드를 통해 이용할 수 있습니다.
+- **AI Chat**에서 편하게 대화할 수 있습니다.
+- **AI Council**에서 어려운 문제를 인공지능에게 물어볼 수 있습니다.
 
 ## 사용 방법
 
 1. **코드 입력**: 메인 화면에서 전달받은 코드를 입력하세요.
 2. **입장**: 코드가 확인되면 채팅 로비로 이동합니다.
-3. **대화 시작**: '새 채팅'을 눌러 대화를 시작하거나, 왼쪽 목록에서 이전 대화를 선택하세요.
+3. **AI Chat**: 편하게 대화합니다.
+4. **AI Council**: 여러 LLM이 협업하여 답변합니다. (Lite/Ultra 모드 지원)
 
 ## 스크린샷
 
@@ -23,8 +26,8 @@
 
 ## 기술 스택
 
-- **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS, Framer Motion
-- **Backend**: Express.js 5, TypeScript, MongoDB (Mongoose 9), OpenAI API
+- **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS, Framer Motion, react-markdown
+- **Backend**: Express.js 5, TypeScript, MongoDB (Mongoose 9), OpenAI API, OpenRouter API (Multi-LLM)
 - **Infrastructure**: Vercel, Docker + GHCR, GitHub Actions CI/CD, Blue-Green Deployment
 - **Monitoring**: Prometheus, Grafana
 
@@ -36,29 +39,37 @@ chatbot-gate/
 ├── backend/
 │   ├── src/
 │   │   ├── controllers/        # HTTP 요청/응답 처리
-│   │   ├── services/           # 비즈니스 로직 (gate, session, chat)
+│   │   ├── services/           # 비즈니스 로직
+│   │   │   ├── council/        # Council 오케스트레이션
+│   │   │   └── council-sse/    # SSE 인프라
 │   │   ├── middleware/         # auth, rateLimiter, metrics
 │   │   ├── models/             # Mongoose 스키마
 │   │   ├── routes/             # API 엔드포인트
-│   │   ├── types/              # 요청/응답 타입 정의
+│   │   ├── types/              # TypeScript 타입
 │   │   ├── constants/          # 공유 상수
 │   │   ├── metrics/            # Prometheus 메트릭
-│   │   └── utils/              # JWT 유틸리티
+│   │   └── utils/              # 유틸리티
 │   ├── monitoring-config/      # Prometheus, Grafana 설정
 │   └── docker-compose.yml
 ├── frontend/
 │   └── src/
 │       ├── app/
 │       │   ├── (public)/       # 인증 불필요 라우트 (/)
-│       │   └── (protected)/    # 인증 필요 라우트 (/hub, /chat)
-│       ├── apis/               # API 클라이언트 및 엔드포인트
+│       │   └── (protected)/    # 인증 필요 라우트 (/hub, /chat, /council)
+│       ├── apis/               # API 클라이언트
 │       ├── components/
-│       │   ├── common/         # AlertModal
-│       │   └── chat/           # SessionSidebar
-│       ├── hooks/              # useChat, useSessions
-│       ├── types/              # 공유 타입 정의
-│       ├── utils/              # authUtils, timeUtils
-│       └── proxy.ts            # SSR 인증 가드 (JWT 검증)
+│       │   ├── common/         # 공통 컴포넌트
+│       │   ├── chat/           # Chat UI
+│       │   └── council/        # Council UI
+│       ├── hooks/              # React Hooks
+│       │   └── council/        # Council 상태 관리
+│       ├── services/
+│       │   └── council/        # Council 스트리밍
+│       ├── domain/
+│       │   └── council/        # Council 비즈니스 로직
+│       ├── types/              # TypeScript 타입
+│       └── utils/              # 유틸리티
+├── docs/                       # 프로젝트 문서
 └── README.md
 ```
 
@@ -74,4 +85,12 @@ chatbot-gate/
 | `/api/sessions` | POST | 세션 생성 | O |
 | `/api/sessions/:id` | GET | 단일 세션 조회 | O |
 | `/api/sessions/:id` | DELETE | 단일 세션 삭제 | O |
+| `/api/council/sessions` | GET | Council 세션 목록 | O |
+| `/api/council/sessions` | POST | Council 세션 생성 | O |
+| `/api/council/sessions/:id` | GET | Council 세션 조회 | O |
+| `/api/council/sessions/:id` | DELETE | Council 세션 삭제 | O |
+| `/api/council/sessions/:id/message` | POST | Council 메시지 (SSE) | O |
+| `/api/council/sessions/:id/status` | GET | Council 처리 상태 | O |
+| `/api/council/sessions/:id/reconnect` | GET | SSE 재연결 | O |
+| `/api/council/sessions/:id/abort` | POST | Council 처리 중단 | O |
 | `/metrics` | GET | Prometheus 메트릭 | - |
