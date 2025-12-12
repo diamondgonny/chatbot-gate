@@ -1,3 +1,6 @@
+// Council mode for model routing
+export type CouncilMode = 'lite' | 'ultra';
+
 // Stage 1: Individual model response
 export interface Stage1Response {
   model: string;

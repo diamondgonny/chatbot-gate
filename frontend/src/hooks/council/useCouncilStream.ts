@@ -6,7 +6,7 @@
 "use client";
 
 import { useCallback, useRef, useEffect } from "react";
-import type { CouncilMessage, CouncilAssistantMessage } from "@/types";
+import type { CouncilMessage, CouncilAssistantMessage, CouncilMode } from "@/types";
 import type { CurrentStage, StreamState } from "@/domain/council";
 import {
   streamSSE,
@@ -35,7 +35,7 @@ export interface UseCouncilStreamCallbacks {
  * Return type for useCouncilStream
  */
 export interface UseCouncilStreamReturn {
-  startStream: (sessionId: string, content: string, mode?: 'lite' | 'ultra') => void;
+  startStream: (sessionId: string, content: string, mode?: CouncilMode) => void;
   reconnectStream: (sessionId: string) => Promise<void>;
   abortStream: () => void;
 }
@@ -68,7 +68,7 @@ export function useCouncilStream(
    * Start a new SSE stream for sending a message
    */
   const startStream = useCallback(
-    (sessionId: string, content: string, mode: 'lite' | 'ultra' = 'ultra') => {
+    (sessionId: string, content: string, mode: CouncilMode = 'ultra') => {
       // Abort any existing request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();

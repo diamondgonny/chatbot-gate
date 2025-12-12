@@ -5,7 +5,7 @@
 
 "use client";
 
-import type { SSEEvent } from "@/types";
+import type { SSEEvent, CouncilMode } from "@/types";
 
 /**
  * Get CSRF token from cookie
@@ -62,7 +62,7 @@ function parseSSEBuffer(buffer: string): [SSEEvent[], string] {
  */
 export async function* streamSSE(
   url: string,
-  body: { content: string; mode?: 'lite' | 'ultra' },
+  body: { content: string; mode?: CouncilMode },
   signal?: AbortSignal
 ): AsyncGenerator<SSEEvent> {
   const csrfToken = getCsrfToken();

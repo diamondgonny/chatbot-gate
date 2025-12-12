@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useCouncilContext } from "@/hooks/council";
+import type { CouncilMode } from "@/types";
 
 interface InputAreaProps {
   sessionId: string;
@@ -48,7 +49,7 @@ function StopIcon() {
 /**
  * Mode Toggle Component
  */
-function ModeToggle({ mode, onToggle }: { mode: 'lite' | 'ultra'; onToggle: (m: 'lite' | 'ultra') => void }) {
+function ModeToggle({ mode, onToggle }: { mode: CouncilMode; onToggle: (m: CouncilMode) => void }) {
   return (
     <div className="flex bg-slate-900/50 p-1 rounded-lg border border-slate-700/50 mr-3">
       <button
@@ -88,7 +89,7 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
   const { messages, isProcessing, sendMessage, abortProcessing, setInputExpanded } =
     useCouncilContext();
   const [input, setInput] = useState("");
-  const [mode, setMode] = useState<"lite" | "ultra">("ultra");
+  const [mode, setMode] = useState<CouncilMode>("ultra");
   const [isMultiline, setIsMultiline] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);

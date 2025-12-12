@@ -13,7 +13,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import type { CouncilMessage, CouncilAssistantMessage } from "@/types";
+import type { CouncilMessage, CouncilAssistantMessage, CouncilMode } from "@/types";
 import type { CurrentStage } from "@/domain/council";
 import { useCouncilState, type CouncilState } from "./useCouncilState";
 import { useCouncilStream } from "./useCouncilStream";
@@ -52,7 +52,7 @@ export interface CouncilContextValue extends CouncilState {
   sendMessage: (
     sessionId: string,
     content: string,
-    mode?: 'lite' | 'ultra',
+    mode?: CouncilMode,
     onComplete?: () => void
   ) => void;
   abortProcessing: (sessionId: string) => Promise<void>;
@@ -205,7 +205,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
    * Send a message to the council
    */
   const sendMessage = useCallback(
-    (sessionId: string, content: string, mode: 'lite' | 'ultra' = 'ultra', onComplete?: () => void) => {
+    (sessionId: string, content: string, mode: CouncilMode = 'ultra', onComplete?: () => void) => {
       // Store callback for later use
       onCompleteCallback = onComplete;
 
