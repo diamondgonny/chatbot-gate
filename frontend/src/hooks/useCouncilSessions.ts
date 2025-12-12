@@ -5,7 +5,7 @@ import {
   getCouncilSessions,
   createCouncilSession,
   deleteCouncilSession,
-} from "@/apis";
+} from "@/services/council";
 import type { CouncilSession } from "@/types";
 
 interface UseCouncilSessionsReturn {
