@@ -1,34 +1,36 @@
 # AI Council Architecture Refactoring Report
 
 **프로젝트**: Chatbot Gate
-**작업 기간**: 2025-12-11
+**작업 기간**: 2025-12-11 ~ 12-12
 **브랜치**: council
-**커밋 범위**: `ef3ea08c`..`6f76ba0`
+**커밋 범위**: `ef3ea08c`..`b2f2356`
 
 ---
 
 ## 개요
 
-AI Council 기능의 **대규모 아키텍처 리팩토링** 작업 보고서입니다. Backend와 Frontend 모두 기존 모놀리식 구조에서 모듈화된 레이어 아키텍처로 전환되었습니다.
+AI Council 기능의 **아키텍처 리팩토링** 작업 보고서입니다. Backend와 Frontend 모두 기존 모놀리식 구조에서 모듈화된 레이어 아키텍처로 전환되었으며, Lite/Ultra 모드 라우팅과 Prometheus 메트릭스가 추가되었습니다.
 
 ### 통계 요약
 
 | 항목 | 수치 |
 |------|------|
-| 총 커밋 수 | 19 |
-| 수정된 파일 수 | 56 |
-| 추가된 코드 라인 | +4,342 |
-| 삭제된 코드 라인 | -1,741 |
-| 순 변경 | +2,601 |
+| 총 커밋 수 | 32 |
+| 수정된 파일 수 | 66 |
+| 추가된 코드 라인 | +5,566 |
+| 삭제된 코드 라인 | -2,326 |
+| 순 변경 | +3,240 |
 
 ### 커밋 유형 분포
 
 | 유형 | 개수 | 설명 |
 |------|------|------|
-| fix | 10 | 버그 수정 (race condition, memory leak, graceful shutdown) |
+| fix | 12 | 버그 수정 (race condition, memory leak, graceful shutdown 등) |
+| feat | 8 | 신규 기능 (Lite/Ultra 모드, Prometheus 메트릭스, ChatGPT 스타일 입력) |
+| refactor | 6 | 아키텍처 리팩토링 (타입 추출, 코드 정리) |
 | style | 4 | UI/스타일 조정 |
-| feat | 3 | 신규 기능 (입력 제한, 모델 업데이트) |
-| refactor | 2 | 아키텍처 리팩토링 |
+| chore | 1 | 유지보수 (세션 제한 증가) |
+| docs | 1 | 문서 업데이트 |
 
 ---
 
@@ -42,23 +44,23 @@ AI Council 기능의 **대규모 아키텍처 리팩토링** 작업 보고서입
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  Stage 1: Individual Responses                                  │
-│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐              │
-│  │ GPT-4o  │ │ Claude  │ │ Gemini  │ │ DeepSeek│  ...         │
-│  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘              │
-│       │           │           │           │                    │
-│       └───────────┴───────────┴───────────┘                    │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐                │
+│  │ GPT-4o  │ │ Claude  │ │ Gemini  │ │ DeepSeek│  ...           │
+│  └────┬────┘ └────┬────┘ └────┬────┘ └────┬────┘                │
+│       │           │           │           │                     │
+│       └───────────┴───────────┴───────────┘                     │
 │                       │                                         │
-│  Stage 2: Peer Review (Blind Evaluation)                       │
-│  ┌─────────────────────────────────────────┐                   │
-│  │  Each model ranks other models' answers │                   │
-│  │  (Anonymized as Response A, B, C, D...) │                   │
-│  └─────────────────────┬───────────────────┘                   │
+│  Stage 2: Peer Review (Blind Evaluation)                        │
+│  ┌─────────────────────────────────────────┐                    │
+│  │  Each model ranks other models' answers │                    │
+│  │  (Anonymized as Response A, B, C, D...) │                    │
+│  └─────────────────────┬───────────────────┘                    │
 │                        │                                        │
-│  Stage 3: Chairman Synthesis                                   │
-│  ┌─────────────────────────────────────────┐                   │
-│  │  Claude synthesizes best response       │                   │
-│  │  based on peer rankings                 │                   │
-│  └─────────────────────────────────────────┘                   │
+│  Stage 3: Chairman Synthesis                                    │
+│  ┌─────────────────────────────────────────┐                    │
+│  │  Chairman synthesizes best response     │                    │
+│  │  based on the review (Still anonymized) │                    │
+│  └─────────────────────────────────────────┘                    │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -67,8 +69,8 @@ AI Council 기능의 **대규모 아키텍처 리팩토링** 작업 보고서입
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     Controller Layer                             │
-│              councilController.ts (435 lines)                   │
+│                     Controller Layer                            │
+│              councilController.ts (444 lines)                   │
 └────────────────────────────┬────────────────────────────────────┘
                              │
         ┌────────────────────┴────────────────────┐
@@ -77,7 +79,7 @@ AI Council 기능의 **대규모 아키텍처 리팩토링** 작업 보고서입
 ┌───────────────────────┐              ┌───────────────────────┐
 │   Core Council Layer  │              │   SSE Infrastructure  │
 │   services/council/   │              │   services/council-sse│
-│      (825 lines)      │              │      (572 lines)      │
+│      (901 lines)      │              │      (591 lines)      │
 ├───────────────────────┤              ├───────────────────────┤
 │ councilSessionService │              │ ProcessingRegistry    │
 │ councilOrchestrator   │◄────────────►│   ├─ SSEJobTracker    │
@@ -97,7 +99,7 @@ AI Council 기능의 **대규모 아키텍처 리팩토링** 작업 보고서입
 └────────────────────────────┬────────────────────────────────────┘
                              │
 ┌────────────────────────────▼────────────────────────────────────┐
-│                    State Layer (552 lines)                      │
+│                    State Layer (793 lines)                      │
 │                     hooks/council/                              │
 │     useCouncilState + useCouncilStream + CouncilContext         │
 └────────────────────────────┬────────────────────────────────────┘
@@ -108,7 +110,7 @@ AI Council 기능의 **대규모 아키텍처 리팩토링** 작업 보고서입
 ┌───────────────────────┐              ┌───────────────────────┐
 │   Service Layer       │              │   Domain Layer        │
 │ services/council/     │              │  domain/council/      │
-│    (691 lines)        │              │    (385 lines)        │
+│    (693 lines)        │              │    (385 lines)        │
 ├───────────────────────┤              ├───────────────────────┤
 │ councilApi            │              │ types                 │
 │ streamClient          │              │ modelMapping          │
@@ -117,7 +119,7 @@ AI Council 기능의 **대규모 아키텍처 리팩토링** 작업 보고서입
 └───────────────────────┘              └───────────────────────┘
                              │
 ┌────────────────────────────▼────────────────────────────────────┐
-│                     UI Layer (1,507 lines)                      │
+│                     UI Layer (1,597 lines)                      │
 │                    components/council/                          │
 │     MessageList/* + InputArea/* + Stage*Panel + Sidebar         │
 └─────────────────────────────────────────────────────────────────┘
@@ -129,21 +131,21 @@ AI Council 기능의 **대규모 아키텍처 리팩토링** 작업 보고서입
 
 ### 서비스 레이어 구조
 
-#### Core Council Layer (`services/council/`, 825 lines)
+#### Core Council Layer (`services/council/`, 901 lines)
 
 | 파일 | 라인 | 책임 |
 |------|------|------|
-| `councilSessionService.ts` | 123 | 세션 CRUD, 유효성 검사 |
-| `councilOrchestrator.ts` | 559 | 3단계 LLM 파이프라인 오케스트레이션 |
+| `councilSessionService.ts` | 131 | 세션 CRUD, 유효성 검사 |
+| `councilOrchestrator.ts` | 627 | 3단계 LLM 파이프라인 오케스트레이션, Lite/Ultra 모드 라우팅 |
 | `councilRankingService.ts` | 77 | 랭킹 파싱 및 집계 |
 | `councilHistoryBuilder.ts` | 29 | 대화 컨텍스트 빌더 |
 | `index.ts` | 37 | Barrel export (Facade) |
 
-#### SSE Infrastructure Layer (`services/council-sse/`, 572 lines)
+#### SSE Infrastructure Layer (`services/council-sse/`, 591 lines)
 
 | 파일 | 라인 | 책임 |
 |------|------|------|
-| `index.ts` | 140 | ProcessingRegistry Facade |
+| `index.ts` | 159 | ProcessingRegistry Facade |
 | `sseJobTracker.ts` | 124 | 활성 작업 레지스트리 |
 | `sseLifecycleManager.ts` | 150 | Grace period, 정리, 종료 |
 | `sseEventAccumulator.ts` | 79 | 이벤트 상태 누적 (재연결용) |
@@ -188,29 +190,29 @@ AI Council 기능의 **대규모 아키텍처 리팩토링** 작업 보고서입
 | `messageReconstruction.ts` | 71 | 메시지 표시 데이터 계산 |
 | `index.ts` | 35 | Public API exports |
 
-#### Layer 2: Service Layer (`services/council/`, 691 lines)
+#### Layer 2: Service Layer (`services/council/`, 693 lines)
 
 **특징**: HTTP/SSE 통신 담당
 
 | 파일 | 라인 | 책임 |
 |------|------|------|
 | `councilApi.ts` | 99 | REST API 호출 |
-| `streamClient.ts` | 209 | SSE 스트리밍 (fetch + ReadableStream) |
-| `streamEventProcessor.ts` | 356 | 이벤트 상태 머신, 콜백 발행 |
+| `streamClient.ts` | 209 | SSE 스트리밍 (fetch + ReadableStream), Lite/Ultra 모드 지원 |
+| `streamEventProcessor.ts` | 358 | 이벤트 상태 머신, 콜백 발행 |
 | `index.ts` | 27 | Public API re-exports |
 
-#### Layer 3: State Layer (`hooks/council/`, 552 lines)
+#### Layer 3: State Layer (`hooks/council/`, 793 lines)
 
 **특징**: React 상태 관리 + Context API
 
 | 파일 | 라인 | 책임 |
 |------|------|------|
 | `useCouncilState.ts` | 246 | 중앙 상태 관리 |
-| `useCouncilStream.ts` | 244 | SSE 스트림 관리 |
-| `CouncilContext.tsx` | 282 | Context Provider |
+| `useCouncilStream.ts` | 244 | SSE 스트림 관리, 모드 전달 |
+| `CouncilContext.tsx` | 283 | Context Provider, sendMessage 모드 파라미터 |
 | `index.ts` | 20 | Public hook exports |
 
-#### Layer 4: UI Layer (`components/council/`, 1,507 lines)
+#### Layer 4: UI Layer (`components/council/`, 1,597 lines)
 
 **MessageList 컴포넌트**
 
@@ -229,11 +231,11 @@ AI Council 기능의 **대규모 아키텍처 리팩토링** 작업 보고서입
 |------|------|------|
 | `Stage2Panel.tsx` | 239 | Stage 2 결과 패널 |
 | `CouncilSidebar.tsx` | 195 | 세션 사이드바 |
-| `InputArea.tsx` | 163 | 입력 영역 (자동 확장) |
+| `InputArea.tsx` | 269 | 입력 영역 (자동 확장, ModeToggle) |
 | `StageProgress.tsx` | 153 | 진행 상태 표시 |
 | `Stage3Panel.tsx` | 150 | Stage 3 결과 패널 |
 | `Stage1Panel.tsx` | 118 | Stage 1 결과 패널 |
-| `MarkdownRenderer.tsx` | 25 | Markdown 렌더러 |
+| `MarkdownRenderer.tsx` | 37 | Markdown 렌더러 (escaped newlines 정규화) |
 
 ### 아키텍처 개선 효과
 
@@ -253,6 +255,28 @@ AI Council 기능의 **대규모 아키텍처 리팩토링** 작업 보고서입
 ```
 cdf1067 refactor(backend): decompose council services for low coupling, high cohesion
 5e8682c refactor(frontend): restructure council feature with 4-layer architecture
+86d25d3 refactor(frontend): extract CouncilMode type for consistency
+```
+
+### Lite/Ultra Mode 라우팅
+
+```
+64a4b65 feat: implement Lite/Ultra mode routing for AI Council
+51d79ef feat(frontend): add Lite/Ultra mode toggle to Council input
+```
+
+### Prometheus 메트릭스
+
+```
+2c8d91f feat(backend): add Prometheus metrics for Council
+a39f5ec feat(backend): add OpenRouter metrics for council operations
+```
+
+### ChatGPT-style 입력 UI
+
+```
+bd66003 style(frontend): ChatGPT-style single-line input with inline controls
+8c2659a feat(frontend): enhance council input with auto-expand textarea
 ```
 
 ### Graceful Shutdown 개선
@@ -275,16 +299,23 @@ fd93143 fix(backend): implement proper graceful shutdown to prevent resource lea
 ### UI/UX 개선
 
 ```
-8c2659a feat(frontend): enhance council input with auto-expand textarea
 9ff1dc3 feat(frontend): add input character limits
 58dee08 fix(frontend): use custom delete modal for council sessions
 4ace857 fix(frontend): enforce single-scroll layout for council pages
 a00e61b style(frontend): align chat UI with council style
 ```
 
-### 모델 업데이트
+### 버그 수정
 
 ```
+d5dc83c fix(frontend): normalize escaped newlines in markdown content
+b2f2356 fix(frontend): preserve userId on token expiration
+```
+
+### 유지보수
+
+```
+86e1920 chore(backend): increase max sessions per user from 50 to 300
 6f76ba0 feat(backend): update council member models to latest versions
 ```
 
@@ -315,6 +346,13 @@ a00e61b style(frontend): align chat UI with council style
 | `index.ts` | `server.close()` await, 활성 세션 정리 |
 | `processingRegistry` | `shutdown()` 메서드로 모든 작업 중단 |
 | `sseLifecycleManager` | 타이머 정리, 클라이언트 종료 |
+
+### 기타 수정
+
+| 위치 | 문제 | 해결 |
+|------|------|------|
+| `MarkdownRenderer` | OpenRouter API에서 reasoning 필드에 `\n` 문자열 반환 | `normalizeNewlines()` 함수로 정규화 |
+| `authUtils.ts` | 토큰 만료 시 userId까지 삭제됨 | `clearAuthData()`에서 userId 보존 |
 
 ---
 
@@ -364,3 +402,75 @@ a00e61b style(frontend): align chat UI with council style
 - 수동 테스트로 SSE 스트리밍, 재연결, Abort 기능 검증
 - Race condition 시나리오 (빠른 세션 전환) 테스트
 - Graceful shutdown 시나리오 테스트
+- Lite/Ultra 모드 전환 테스트
+
+---
+
+## Lite/Ultra Mode 라우팅
+
+### 개요
+
+사용자가 성능/비용 트레이드오프를 선택할 수 있는 2가지 모드 제공:
+- **Ultra Mode**: 최신 고성능 모델 사용 (기본값)
+- **Lite Mode**: 경량 모델로 빠른 응답 및 비용 절감
+
+### 모델 구성
+
+**Ultra Mode (고성능)**
+
+| 모델 | 역할 |
+|------|------|
+| anthropic/claude-opus-4.5 | Council Member |
+| openai/gpt-5.1 | Council Member |
+| google/gemini-3-pro-preview | Council Member, Chairman |
+| x-ai/grok-4 | Council Member |
+| deepseek/deepseek-v3.2-speciale | Council Member |
+
+**Lite Mode (경량)**
+
+| 모델 | 역할 |
+|------|------|
+| anthropic/claude-haiku-4.5 | Council Member |
+| openai/gpt-5-mini | Council Member |
+| google/gemini-2.5-flash | Council Member, Chairman |
+| moonshotai/kimi-k2-0905 | Council Member |
+| deepseek/deepseek-v3.2 | Council Member |
+
+### 구현 위치
+
+| 레이어 | 파일 | 역할 |
+|--------|------|------|
+| Backend | `constants/index.ts` | 모델 목록 정의 |
+| Backend | `councilOrchestrator.ts` | 모드별 모델 선택 |
+| Backend | `openRouterService.ts` | API 호출 |
+| Frontend | `InputArea.tsx` | ModeToggle UI 컴포넌트 |
+| Frontend | `CouncilContext.tsx` | sendMessage 모드 파라미터 |
+| Frontend | `useCouncilStream.ts` | 스트림 시작 시 모드 전달 |
+| Frontend | `streamClient.ts` | SSE 요청에 모드 포함 |
+| Types | `council.types.ts` | `CouncilMode = 'lite' | 'ultra'` |
+
+---
+
+## Prometheus 메트릭스
+
+### Council 메트릭스
+
+| 메트릭 | 타입 | 설명 |
+|--------|------|------|
+| `council_messages_total` | Counter | 처리된 메시지 수 (label: mode, status) |
+| `council_sessions_total` | Counter | 세션 생성/삭제 수 (label: action) |
+| `council_stage_duration_seconds` | Histogram | 스테이지별 처리 시간 (label: stage, mode) |
+| `council_sse_connections` | Gauge | 활성 SSE 연결 수 |
+| `council_aborts_total` | Counter | 중단된 처리 수 |
+
+### OpenRouter 메트릭스
+
+| 메트릭 | 타입 | 설명 |
+|--------|------|------|
+| `openrouter_api_calls_total` | Counter | API 호출 수 (label: model, status) |
+| `openrouter_response_time_seconds` | Histogram | 모델별 응답 시간 |
+| `openrouter_tokens_total` | Counter | 토큰 사용량 (label: model, type) |
+
+### 엔드포인트
+
+- `GET /metrics` - Prometheus 스크래핑용 엔드포인트
