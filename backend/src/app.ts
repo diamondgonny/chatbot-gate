@@ -12,8 +12,7 @@ import { cookieConfig } from './shared/config';
 // Route imports
 import { gateRoutes } from './features/gate';
 import { authRoutes } from './features/auth';
-import { chatRoutes } from './features/chat';
-import { sessionRoutes } from './features/session';
+import { chatRoutes, sessionRoutes } from './features/chat';
 import { councilRoutes } from './features/council';
 import { metricsRoutes, metricsMiddleware } from './features/metrics';
 
