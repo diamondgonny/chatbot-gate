@@ -6,7 +6,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { CouncilUserMessage } from "@/types";
+import type { CouncilUserMessage } from "../../domain";
 
 interface UserMessageProps {
   message: CouncilUserMessage;

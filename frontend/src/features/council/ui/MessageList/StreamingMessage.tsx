@@ -6,13 +6,11 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useCouncilContext } from "@/hooks/council";
-import {
-  StageProgress,
-  Stage1Panel,
-  Stage2Panel,
-  Stage3Panel,
-} from "@/components/council";
+import { useCouncilContext } from "../../state";
+import { StageProgress } from "../StageProgress";
+import { Stage1Panel } from "../Stage1Panel";
+import { Stage2Panel } from "../Stage2Panel";
+import { Stage3Panel } from "../Stage3Panel";
 
 /**
  * Aborted indicator banner

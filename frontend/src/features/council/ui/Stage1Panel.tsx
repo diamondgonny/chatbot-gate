@@ -2,8 +2,8 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Stage1Response } from "@/types";
-import { formatModelName } from "@/domain/council";
+import type { Stage1Response } from "../domain";
+import { formatModelName } from "../domain";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface Stage1PanelProps {

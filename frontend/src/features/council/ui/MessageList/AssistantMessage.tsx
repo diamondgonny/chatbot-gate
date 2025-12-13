@@ -6,9 +6,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import type { CouncilAssistantMessage } from "@/types";
-import { computeMessageDisplayData } from "@/domain/council";
-import { Stage1Panel, Stage2Panel, Stage3Panel } from "@/components/council";
+import type { CouncilAssistantMessage } from "../../domain";
+import { computeMessageDisplayData } from "../../domain";
+import { Stage1Panel } from "../Stage1Panel";
+import { Stage2Panel } from "../Stage2Panel";
+import { Stage3Panel } from "../Stage3Panel";
 
 interface AssistantMessageProps {
   message: CouncilAssistantMessage;

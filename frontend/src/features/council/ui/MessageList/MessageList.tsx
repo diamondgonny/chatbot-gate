@@ -6,8 +6,8 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
-import { useCouncilContext } from "@/hooks/council";
-import type { CouncilMessage, CouncilAssistantMessage } from "@/types";
+import { useCouncilContext } from "../../state";
+import type { CouncilMessage, CouncilAssistantMessage } from "../../domain";
 import { UserMessage } from "./UserMessage";
 import { AssistantMessage } from "./AssistantMessage";
 import { PendingMessage } from "./PendingMessage";

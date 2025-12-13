@@ -6,7 +6,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useCouncilContext } from "@/hooks/council";
+import { useCouncilContext } from "../../state";
 
 export function ErrorMessage() {
   const { error, clearError } = useCouncilContext();

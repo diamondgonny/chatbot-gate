@@ -1,13 +1,19 @@
-export { CouncilSidebar } from "./CouncilSidebar";
-export { StageProgress } from "./StageProgress";
-export { Stage1Panel } from "./Stage1Panel";
-export { Stage2Panel } from "./Stage2Panel";
-export { Stage3Panel } from "./Stage3Panel";
-export { MarkdownRenderer } from "./MarkdownRenderer";
+/**
+ * @deprecated Import from @/features/council instead
+ *
+ * Council Components - Re-exports for backward compatibility
+ */
 
-// New MessageList components
-export { MessageList } from "./MessageList";
-export { UserMessage, AssistantMessage, StreamingMessage, PendingMessage, ErrorMessage } from "./MessageList";
+export { CouncilSidebar } from "@/features/council/ui";
+export { StageProgress } from "@/features/council/ui";
+export { Stage1Panel } from "@/features/council/ui";
+export { Stage2Panel } from "@/features/council/ui";
+export { Stage3Panel } from "@/features/council/ui";
+export { MarkdownRenderer } from "@/features/council/ui";
 
-// New InputArea components
-export { InputArea } from "./InputArea";
+// MessageList components
+export { MessageList } from "@/features/council/ui";
+export { UserMessage, AssistantMessage, StreamingMessage, PendingMessage, ErrorMessage } from "@/features/council/ui";
+
+// InputArea components
+export { InputArea } from "@/features/council/ui";

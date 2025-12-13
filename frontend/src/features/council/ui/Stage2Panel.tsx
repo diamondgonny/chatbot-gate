@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Stage2Review, AggregateRanking } from "@/types";
-import { formatModelName } from "@/domain/council";
+import type { Stage2Review, AggregateRanking } from "../domain";
+import { formatModelName } from "../domain";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface Stage2PanelProps {

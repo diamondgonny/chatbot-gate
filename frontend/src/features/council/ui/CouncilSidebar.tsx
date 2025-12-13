@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { CouncilSession } from "@/types";
+import type { CouncilSession } from "../domain";
 
 interface CouncilSidebarProps {
   sessions: CouncilSession[];

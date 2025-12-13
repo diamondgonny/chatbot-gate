@@ -6,8 +6,8 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useCouncilContext } from "@/hooks/council";
-import type { CouncilMode } from "@/types";
+import { useCouncilContext } from "../../state";
+import type { CouncilMode } from "../../domain";
 
 interface InputAreaProps {
   sessionId: string;

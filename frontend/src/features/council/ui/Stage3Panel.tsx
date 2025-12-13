@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Stage3Synthesis } from "@/types";
-import { formatModelName } from "@/domain/council";
+import type { Stage3Synthesis } from "../domain";
+import { formatModelName } from "../domain";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface Stage3PanelProps {

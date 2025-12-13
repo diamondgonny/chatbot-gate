@@ -1,5 +1,5 @@
 /**
- * InputArea Components
+ * @deprecated Import from @/features/council instead
  */
 
-export { InputArea } from "./InputArea";
+export { InputArea } from "@/features/council/ui";
