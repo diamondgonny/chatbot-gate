@@ -10,9 +10,9 @@ import type {
   Stage3Synthesis,
   AggregateRanking,
   CouncilAssistantMessage,
-} from "@/types";
-import type { CurrentStage, StreamState } from "@/domain/council";
-import { buildLabelToModel, calculateAggregateRankings } from "@/domain/council";
+} from "../domain";
+import type { CurrentStage, StreamState } from "../domain";
+import { buildLabelToModel, calculateAggregateRankings } from "../domain";
 
 /**
  * Callbacks for stream event processing

@@ -5,7 +5,7 @@
 
 "use client";
 
-import type { SSEEvent, CouncilMode } from "@/types";
+import type { SSEEvent, CouncilMode } from "../domain";
 
 /**
  * Get CSRF token from cookie

@@ -1,7 +1,7 @@
 /**
- * Council Service Layer
+ * @deprecated Import from @/features/council instead
  *
- * Handles API communication and stream processing for the Council feature.
+ * Council Service Layer - Re-exports for backward compatibility
  */
 
 // API functions
@@ -14,14 +14,14 @@ export {
   abortCouncilProcessing,
   getCouncilMessageUrl,
   getReconnectUrl,
-} from "./councilApi";
+} from "@/features/council/services";
 
 // Stream client
-export { streamSSE, reconnectSSE, StreamError } from "./streamClient";
+export { streamSSE, reconnectSSE, StreamError } from "@/features/council/services";
 
 // Stream event processor
-export { StreamEventProcessor } from "./streamEventProcessor";
+export { StreamEventProcessor } from "@/features/council/services";
 export type {
   StreamEventCallbacks,
   StreamEventProcessorOptions,
-} from "./streamEventProcessor";
+} from "@/features/council/services";

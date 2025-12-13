@@ -3,14 +3,13 @@
  * Handles all HTTP communication with the council backend
  */
 
-import apiClient from "@/apis/client";
+import { apiClient } from "@/shared";
 import type {
   CreateCouncilSessionResponse,
   GetCouncilSessionsResponse,
   GetCouncilSessionResponse,
   ProcessingStatus,
-  SSEEvent,
-} from "@/types";
+} from "../domain";
 
 // Re-export streaming utilities
 export { StreamError } from "./streamClient";
