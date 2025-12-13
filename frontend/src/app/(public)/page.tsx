@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { twMerge } from "tailwind-merge";
-import { saveUserId, getUserId } from "@/utils/authUtils";
-import { checkAuthStatus, validateGateCode } from "@/apis";
+import { saveUserId, getUserId, checkAuthStatus, validateGateCode } from "@/shared";
 
 export default function Gate() {
   const [code, setCode] = useState("");
