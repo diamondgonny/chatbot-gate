@@ -7,10 +7,10 @@ import express, { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
 
 // Import routes
-import gateRoutes from '../../src/routes/gateRoutes';
-import authRoutes from '../../src/routes/authRoutes';
-import chatRoutes from '../../src/routes/chatRoutes';
-import sessionRoutes from '../../src/routes/sessionRoutes';
+import { gateRoutes } from '../../src/features/gate';
+import { authRoutes } from '../../src/features/auth';
+import { chatRoutes } from '../../src/features/chat';
+import { sessionRoutes } from '../../src/features/session';
 
 const createTestApp = () => {
   const app = express();

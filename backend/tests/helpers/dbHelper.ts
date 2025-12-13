@@ -4,7 +4,7 @@
  */
 
 import { randomUUID } from 'crypto';
-import { ChatSession } from '../../src/models/ChatSession';
+import { ChatSession } from '../../src/shared';
 
 /**
  * Create a test session for a user

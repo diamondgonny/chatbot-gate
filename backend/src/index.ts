@@ -3,14 +3,12 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import { connectDB, stopActiveSessionsTracking } from './db';
-import { cookieConfig } from './config';
+import { connectDB, stopActiveSessionsTracking, cookieConfig } from './shared';
 import morgan from 'morgan';
 import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import path from 'path';
-import { metricsMiddleware } from './middleware/metricsMiddleware';
-import { processingRegistry } from './services/council-sse';
-import { stopMetricsCollection } from './metrics/metricsRegistry';
+import { metricsMiddleware, stopMetricsCollection } from './features/metrics';
+import { processingRegistry } from './features/council';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -139,12 +137,12 @@ app.use((req, res, next) => {
   next();
 });
 
-import gateRoutes from './routes/gateRoutes';
-import authRoutes from './routes/authRoutes';
-import chatRoutes from './routes/chatRoutes';
-import sessionRoutes from './routes/sessionRoutes';
-import metricsRoutes from './routes/metricsRoutes';
-import councilRoutes from './routes/councilRoutes';
+import { gateRoutes } from './features/gate';
+import { authRoutes } from './features/auth';
+import { chatRoutes } from './features/chat';
+import { sessionRoutes } from './features/session';
+import { metricsRoutes } from './features/metrics';
+import { councilRoutes } from './features/council';
 
 // ... (previous middleware)
 
