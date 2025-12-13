@@ -1,4 +1,4 @@
-import apiClient from "@/apis/client";
+import { apiClient } from "@/shared";
 import type {
   ChatHistoryResponse,
   ChatMessageRequest,

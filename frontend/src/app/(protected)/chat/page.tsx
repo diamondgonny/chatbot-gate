@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useChatPageOrchestration, SessionSidebar } from "@/features/chat";
-import AlertModal from "@/components/common/AlertModal";
+import { AlertModal } from "@/shared";
 
 export default function ChatInterface() {
   const {

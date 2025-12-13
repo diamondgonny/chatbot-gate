@@ -1,4 +1,4 @@
-import apiClient from "@/apis/client";
+import { apiClient } from "@/shared";
 import type { SessionsResponse, CreateSessionResponse } from "../domain";
 
 export async function getSessions(): Promise<SessionsResponse> {

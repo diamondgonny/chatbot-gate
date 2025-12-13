@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup/msw-handlers";
-import { checkAuthStatus, validateGateCode } from "@/apis/auth.api";
+import { checkAuthStatus, validateGateCode } from "@/shared";
 
 describe("auth.api", () => {
   describe("checkAuthStatus", () => {
