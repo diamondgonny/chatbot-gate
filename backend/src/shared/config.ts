@@ -1,6 +1,11 @@
-import dotenv from 'dotenv';
-
-dotenv.config();
+/**
+ * Configuration Module
+ * Pure configuration values without side effects.
+ *
+ * Note: dotenv.config() must be called in the entrypoint (index.ts)
+ * before importing this module, or environment variables must be
+ * set directly (e.g., in test setup).
+ */
 
 export const config = {
   port: process.env.PORT || 4000,
@@ -71,20 +76,26 @@ const getCookieConfig = (): CookieConfig => {
 
 export const cookieConfig = getCookieConfig();
 
-// Security validation warnings
-const environment = getEnvironment();
-if (environment === 'production' && !cookieConfig.secure) {
-  console.warn('⚠️  WARNING: Cookie secure flag disabled in production!');
-}
+/**
+ * Log configuration details (call from entrypoint if needed)
+ */
+export const logCookieConfig = (): void => {
+  const environment = getEnvironment();
 
-if (environment === 'production' && !cookieConfig.domain) {
-  console.warn('⚠️  WARNING: No cookie domain in production - may not work across subdomains');
-}
+  // Security validation warnings
+  if (environment === 'production' && !cookieConfig.secure) {
+    console.warn('⚠️  WARNING: Cookie secure flag disabled in production!');
+  }
 
-// Startup logging
-console.log('Cookie Configuration:', {
-  environment,
-  domain: cookieConfig.domain || '(browser default)',
-  secure: cookieConfig.secure,
-  sameSite: cookieConfig.sameSite,
-});
+  if (environment === 'production' && !cookieConfig.domain) {
+    console.warn('⚠️  WARNING: No cookie domain in production - may not work across subdomains');
+  }
+
+  // Startup logging
+  console.log('Cookie Configuration:', {
+    environment,
+    domain: cookieConfig.domain || '(browser default)',
+    secure: cookieConfig.secure,
+    sameSite: cookieConfig.sameSite,
+  });
+};

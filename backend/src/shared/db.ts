@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { config } from './config';
-import { mongoConnectionState, activeSessions, getDeploymentEnv } from '../features/metrics/metrics.registry';
+import { mongoConnectionState, activeSessions, getDeploymentEnv } from './observability';
 import { ChatSession } from './models/ChatSession';
 
 // Active sessions tracking interval handle

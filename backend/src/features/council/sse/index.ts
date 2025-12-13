@@ -14,7 +14,7 @@ import {
   councilSseConnections,
   councilAbortsTotal,
   getDeploymentEnv,
-} from '../../metrics/metrics.registry';
+} from '../../../shared';
 
 // Re-export ActiveProcessing type
 export type { ActiveProcessing } from './sseJobTracker';

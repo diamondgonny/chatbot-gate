@@ -11,7 +11,7 @@ import type {
   GetSessionResult,
   DeleteSessionResult,
 } from '../../../shared';
-import { councilSessionsTotal, getDeploymentEnv } from '../../metrics/metrics.registry';
+import { councilSessionsTotal, getDeploymentEnv } from '../../../shared';
 
 /**
  * Validate session ID format (UUID v4)

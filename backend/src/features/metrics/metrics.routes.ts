@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { register } from './metrics.registry';
+import { register } from '../../shared/observability';
 
 const router = Router();
 

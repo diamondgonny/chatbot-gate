@@ -4,16 +4,19 @@
  */
 
 import OpenAI from 'openai';
-import { config, ChatSession, SESSION, CHAT } from '../../shared';
-import type { ChatMessageResponse, ChatHistoryResponse, SessionLimitError } from '../../shared';
 import {
+  config,
+  ChatSession,
+  SESSION,
+  CHAT,
   chatMessagesTotal,
   chatMessageDuration,
   openaiApiCalls,
   openaiApiDuration,
   openaiTokensUsed,
   getDeploymentEnv,
-} from '../metrics/metrics.registry';
+} from '../../shared';
+import type { ChatMessageResponse, ChatHistoryResponse, SessionLimitError } from '../../shared';
 
 // System Prompt: Defines the persona of the AI
 const SYSTEM_PROMPT = `

@@ -1,5 +1,5 @@
 // Config
-export { config, cookieConfig } from './config';
+export { config, cookieConfig, logCookieConfig } from './config';
 
 // Database
 export { connectDB, stopActiveSessionsTracking } from './db';
@@ -87,3 +87,34 @@ export type {
   GetSessionResult,
   DeleteSessionResult,
 } from './types/council';
+
+// App Factory
+export { createApp, createTestApp, type AppOptions } from './app';
+
+// Observability (cross-cutting concern)
+export {
+  register,
+  getDeploymentEnv,
+  stopMetricsCollection,
+  httpRequestsTotal,
+  httpRequestDuration,
+  httpRequestsInProgress,
+  gateAuthAttempts,
+  chatMessagesTotal,
+  chatMessageDuration,
+  activeSessions,
+  sessionOperations,
+  mongoConnectionState,
+  openaiApiCalls,
+  openaiApiDuration,
+  openaiTokensUsed,
+  rateLimitHits,
+  councilMessagesTotal,
+  councilSessionsTotal,
+  councilStageDuration,
+  councilSseConnections,
+  councilAbortsTotal,
+  openrouterApiCalls,
+  openrouterResponseTime,
+  openrouterTokensUsed,
+} from './observability';

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { rateLimitHits, getDeploymentEnv } from '../../features/metrics/metrics.registry';
+import { rateLimitHits, getDeploymentEnv } from '../observability';
 
 interface RateLimitConfig {
   windowMs: number;

@@ -11,7 +11,7 @@ import type {
   SessionDetailResponse,
   SessionLimitError,
 } from '../../shared';
-import { sessionOperations, getDeploymentEnv } from '../metrics/metrics.registry';
+import { sessionOperations, getDeploymentEnv } from '../../shared';
 
 /**
  * Validate session ID format (UUID v4)

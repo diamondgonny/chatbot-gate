@@ -1,4 +1,8 @@
-// Re-export from shared/observability for backward compatibility
+/**
+ * Observability (Cross-cutting Concern)
+ * Metrics registry and related utilities.
+ */
+
 export {
   register,
   getDeploymentEnv,
@@ -33,10 +37,4 @@ export {
   openrouterApiCalls,
   openrouterResponseTime,
   openrouterTokensUsed,
-} from '../../shared/observability';
-
-// Middleware
-export { metricsMiddleware } from './metrics.middleware';
-
-// Routes
-export { default as metricsRoutes } from './metrics.routes';
+} from './metrics.registry';

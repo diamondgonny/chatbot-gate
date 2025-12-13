@@ -32,7 +32,7 @@ import {
   openrouterResponseTime,
   openrouterTokensUsed,
   getDeploymentEnv,
-} from '../../metrics/metrics.registry';
+} from '../../../shared';
 
 /**
  * Stage 1: Collect individual responses from all council models (streaming)
