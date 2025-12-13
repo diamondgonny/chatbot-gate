@@ -22,6 +22,7 @@ const eslintConfig = defineConfig([
         {
           patterns: [
             // Prevent deep imports into feature internals
+            // Note: @/features/*/domain is allowed for server components (pure types/functions)
             {
               group: [
                 "@/features/*/domain/*",
@@ -30,7 +31,7 @@ const eslintConfig = defineConfig([
                 "@/features/*/ui/*",
               ],
               message:
-                "Import from feature root (@/features/featureName) instead of internal modules.",
+                "Import from feature root (@/features/featureName) or domain layer (@/features/featureName/domain) instead of internal modules.",
             },
             // Deprecated: Old scattered locations
             {
