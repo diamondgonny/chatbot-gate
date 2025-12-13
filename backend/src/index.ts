@@ -3,23 +3,18 @@
  * Server startup, environment loading, and graceful shutdown.
  */
 
-import dotenv from 'dotenv';
+import 'dotenv/config';
 import mongoose from 'mongoose';
 import morgan from 'morgan';
 import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import path from 'path';
-import { createApp, connectDB, stopActiveSessionsTracking, logCookieConfig } from './shared';
+import { createApp } from './app';
+import { validateEnv, connectDB, stopActiveSessionsTracking, logCookieConfig } from './shared';
 import { stopMetricsCollection } from './features/metrics';
 import { processingRegistry } from './features/council';
 
-// Load environment variables from .env file
-dotenv.config();
-
 // Validate required environment variables
-if (!process.env.JWT_SECRET) {
-  console.error('❌ JWT_SECRET is not set. Refusing to start without a signing secret.');
-  process.exit(1);
-}
+validateEnv();
 
 const PORT = process.env.PORT || 4000;
 

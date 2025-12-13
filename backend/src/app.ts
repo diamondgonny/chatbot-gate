@@ -7,15 +7,15 @@ import express, { Request, Response, NextFunction, Express } from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { randomBytes } from 'crypto';
-import { cookieConfig } from './config';
+import { cookieConfig } from './shared/config';
 
 // Route imports
-import { gateRoutes } from '../features/gate';
-import { authRoutes } from '../features/auth';
-import { chatRoutes } from '../features/chat';
-import { sessionRoutes } from '../features/session';
-import { councilRoutes } from '../features/council';
-import { metricsRoutes, metricsMiddleware } from '../features/metrics';
+import { gateRoutes } from './features/gate';
+import { authRoutes } from './features/auth';
+import { chatRoutes } from './features/chat';
+import { sessionRoutes } from './features/session';
+import { councilRoutes } from './features/council';
+import { metricsRoutes, metricsMiddleware } from './features/metrics';
 
 export interface AppOptions {
   /** Enable Morgan request logging (default: true) */

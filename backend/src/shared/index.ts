@@ -1,3 +1,6 @@
+// Environment
+export { validateEnv, type RequiredEnv } from './env';
+
 // Config
 export { config, cookieConfig, logCookieConfig } from './config';
 
@@ -87,9 +90,6 @@ export type {
   GetSessionResult,
   DeleteSessionResult,
 } from './types/council';
-
-// App Factory
-export { createApp, createTestApp, type AppOptions } from './app';
 
 // Observability (cross-cutting concern)
 export {
