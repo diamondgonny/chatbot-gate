@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { renderHook, act, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { renderHook, act } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup/msw-handlers";
 import { useSessions } from "@/hooks/useSessions";
@@ -143,6 +143,8 @@ describe("useSessions", () => {
     });
 
     it("should return empty array on error", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
       server.use(
         http.get("*/api/sessions", () => {
           return new HttpResponse(null, { status: 500 });
@@ -157,6 +159,7 @@ describe("useSessions", () => {
       });
 
       expect(returnedSessions).toEqual([]);
+      consoleSpy.mockRestore();
     });
   });
 
@@ -176,6 +179,8 @@ describe("useSessions", () => {
     });
 
     it("should set sessionError with limit info on 429 response", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
       server.use(
         http.post("*/api/sessions", () => {
           return HttpResponse.json(
@@ -193,9 +198,12 @@ describe("useSessions", () => {
 
       expect(result.current.sessionError).toContain("5/5");
       expect(result.current.sessionError).toContain("Too many sessions");
+      consoleSpy.mockRestore();
     });
 
     it("should set generic error on non-axios failure", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
       server.use(
         http.post("*/api/sessions", () => {
           return new HttpResponse(null, { status: 500 });
@@ -210,9 +218,12 @@ describe("useSessions", () => {
 
       // Non-429 errors don't set sessionError in the current implementation
       // The error is just logged to console
+      consoleSpy.mockRestore();
     });
 
     it("should return null on error", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
       server.use(
         http.post("*/api/sessions", () => {
           return new HttpResponse(null, { status: 500 });
@@ -227,6 +238,7 @@ describe("useSessions", () => {
       });
 
       expect(newSession).toBeNull();
+      consoleSpy.mockRestore();
     });
   });
 
@@ -242,6 +254,8 @@ describe("useSessions", () => {
     });
 
     it("should throw error on failure", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
       server.use(
         http.delete("*/api/sessions/:sessionId", () => {
           return new HttpResponse(null, { status: 404 });
@@ -255,6 +269,7 @@ describe("useSessions", () => {
           await result.current.handleDeleteSession("nonexistent");
         })
       ).rejects.toThrow();
+      consoleSpy.mockRestore();
     });
   });
 

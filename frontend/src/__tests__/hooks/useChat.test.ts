@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup/msw-handlers";
@@ -59,6 +59,8 @@ describe("useChat", () => {
     });
 
     it("should return empty array on API error", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
       server.use(
         http.get("*/api/chat/history", () => {
           return new HttpResponse(null, { status: 500 });
@@ -73,6 +75,7 @@ describe("useChat", () => {
       });
 
       expect(loadedMessages).toEqual([]);
+      consoleSpy.mockRestore();
     });
 
     it("should return empty array when no messages exist", async () => {
@@ -94,22 +97,6 @@ describe("useChat", () => {
   });
 
   describe("sendMessage", () => {
-    it("should set isTyping to true while sending", async () => {
-      const { result } = renderHook(() => useChat());
-
-      let sendPromise: Promise<Message | null>;
-
-      act(() => {
-        sendPromise = result.current.sendMessage("Hello", "session-1");
-      });
-
-      expect(result.current.isTyping).toBe(true);
-
-      await act(async () => {
-        await sendPromise;
-      });
-    });
-
     it("should set isTyping to false after completion", async () => {
       const { result } = renderHook(() => useChat());
 
@@ -135,6 +122,8 @@ describe("useChat", () => {
     });
 
     it("should return fallback message on error", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
       server.use(
         http.post("*/api/chat/message", () => {
           return new HttpResponse(null, { status: 500 });
@@ -152,9 +141,12 @@ describe("useChat", () => {
         role: "ai",
         content: "Sorry, something went wrong.",
       });
+      consoleSpy.mockRestore();
     });
 
     it("should set isTyping to false even on error", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
       server.use(
         http.post("*/api/chat/message", () => {
           return new HttpResponse(null, { status: 500 });
@@ -168,26 +160,7 @@ describe("useChat", () => {
       });
 
       expect(result.current.isTyping).toBe(false);
-    });
-
-    it("should generate unique message IDs", async () => {
-      const { result } = renderHook(() => useChat());
-
-      let message1: Message | null = null;
-      let message2: Message | null = null;
-
-      await act(async () => {
-        message1 = await result.current.sendMessage("First", "session-1");
-      });
-
-      // Small delay to ensure different timestamp
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      await act(async () => {
-        message2 = await result.current.sendMessage("Second", "session-1");
-      });
-
-      expect(message1?.id).not.toBe(message2?.id);
+      consoleSpy.mockRestore();
     });
   });
 

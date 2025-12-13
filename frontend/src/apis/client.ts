@@ -1,6 +1,7 @@
 "use client";
 
 import axios from "axios";
+import { navigation } from "./navigation";
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000",
@@ -28,16 +29,14 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (typeof window !== "undefined") {
-      const status = error.response?.status;
+    const status = error.response?.status;
 
-      if (status === 401 || status === 403) {
-        // Redirect to gate page
-        window.location.href = "/";
+    if (status === 401 || status === 403) {
+      // Redirect to gate page
+      navigation.goToGate();
 
-        // Return a never-resolving promise to prevent further error handling
-        return new Promise(() => {});
-      }
+      // Return a never-resolving promise to prevent further error handling
+      return new Promise(() => {});
     }
 
     return Promise.reject(error);

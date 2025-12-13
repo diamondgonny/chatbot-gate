@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup/msw-handlers";
+import * as navigationModule from "@/apis/navigation";
 import apiClient from "@/apis/client";
 
 describe("apiClient", () => {
@@ -65,16 +66,19 @@ describe("apiClient", () => {
   });
 
   describe("response interceptor - auth error handling", () => {
+    let goToGateSpy: ReturnType<typeof vi.spyOn>;
+
     beforeEach(() => {
-      // Reset the isRedirecting flag by making a successful request first
-      server.use(
-        http.get("*/api/reset", () => {
-          return HttpResponse.json({ ok: true });
-        })
-      );
+      goToGateSpy = vi
+        .spyOn(navigationModule.navigation, "goToGate")
+        .mockImplementation(() => {});
     });
 
-    it("should redirect to / on 401 response", async () => {
+    afterEach(() => {
+      goToGateSpy.mockRestore();
+    });
+
+    it("should navigate to gate on 401 response", async () => {
       server.use(
         http.get("*/api/unauthorized", () => {
           return new HttpResponse(null, { status: 401 });
@@ -82,17 +86,15 @@ describe("apiClient", () => {
       );
 
       // The promise never resolves due to the interceptor returning new Promise(() => {})
-      const promise = apiClient.get("/api/unauthorized");
+      apiClient.get("/api/unauthorized");
 
-      // Wait a bit for the redirect to happen
+      // Wait a bit for the interceptor to execute
       await new Promise((resolve) => setTimeout(resolve, 50));
 
-      expect(new URL(window.location.href).pathname).toBe("/");
-
-      // Clean up by not awaiting the never-resolving promise
+      expect(goToGateSpy).toHaveBeenCalled();
     });
 
-    it("should redirect to / on 403 response", async () => {
+    it("should navigate to gate on 403 response", async () => {
       server.use(
         http.get("*/api/forbidden", () => {
           return new HttpResponse(null, { status: 403 });
@@ -103,7 +105,7 @@ describe("apiClient", () => {
 
       await new Promise((resolve) => setTimeout(resolve, 50));
 
-      expect(new URL(window.location.href).pathname).toBe("/");
+      expect(goToGateSpy).toHaveBeenCalled();
     });
 
     it("should propagate 429 rate limit errors", async () => {

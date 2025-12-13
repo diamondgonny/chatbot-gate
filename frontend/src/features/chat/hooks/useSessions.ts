@@ -1,8 +1,28 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { getSessions, createSession, deleteSession } from "../services";
-import type { Session } from "../types";
+import {
+  getSessions as defaultGetSessions,
+  createSession as defaultCreateSession,
+  deleteSession as defaultDeleteSession,
+} from "../services";
+import type { Session, SessionsResponse, CreateSessionResponse } from "../types";
+
+/**
+ * Service interface for dependency injection.
+ * Allows testing hooks without MSW by providing mock implementations.
+ */
+export interface SessionServices {
+  getSessions: () => Promise<SessionsResponse>;
+  createSession: () => Promise<CreateSessionResponse>;
+  deleteSession: (sessionId: string) => Promise<void>;
+}
+
+const defaultServices: SessionServices = {
+  getSessions: defaultGetSessions,
+  createSession: defaultCreateSession,
+  deleteSession: defaultDeleteSession,
+};
 
 export interface UseSessionsReturn {
   sessions: Session[];
@@ -19,7 +39,7 @@ export interface UseSessionsReturn {
   sortSessionsByUpdatedAt: (sessionList: Session[]) => Session[];
 }
 
-export function useSessions(): UseSessionsReturn {
+export function useSessions(services: SessionServices = defaultServices): UseSessionsReturn {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
@@ -39,7 +59,7 @@ export function useSessions(): UseSessionsReturn {
 
   const loadSessions = useCallback(async (): Promise<Session[]> => {
     try {
-      const { sessions: fetchedSessions } = await getSessions();
+      const { sessions: fetchedSessions } = await services.getSessions();
       // Sort sessions to ensure consistent order
       const sortedSessions = sortSessionsByUpdatedAt(fetchedSessions);
       setSessions(sortedSessions);
@@ -48,11 +68,11 @@ export function useSessions(): UseSessionsReturn {
       console.error("Error loading sessions:", error);
       return [];
     }
-  }, [sortSessionsByUpdatedAt]);
+  }, [sortSessionsByUpdatedAt, services]);
 
   const handleCreateSession = useCallback(async (): Promise<Session | null> => {
     try {
-      const newSession = await createSession();
+      const newSession = await services.createSession();
       const session: Session = {
         sessionId: newSession.sessionId,
         title: newSession.title || "New Chat",
@@ -79,16 +99,16 @@ export function useSessions(): UseSessionsReturn {
       }
       return null;
     }
-  }, []);
+  }, [services]);
 
   const handleDeleteSession = useCallback(async (sessionId: string): Promise<void> => {
     try {
-      await deleteSession(sessionId);
+      await services.deleteSession(sessionId);
     } catch (error) {
       console.error("Error deleting session:", error);
       throw error;
     }
-  }, []);
+  }, [services]);
 
   return {
     sessions,

@@ -1,8 +1,30 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { getChatHistory, sendChatMessage } from "../services";
-import type { Message } from "../types";
+import {
+  getChatHistory as defaultGetChatHistory,
+  sendChatMessage as defaultSendChatMessage,
+} from "../services";
+import type {
+  Message,
+  ChatHistoryResponse,
+  ChatMessageRequest,
+  ChatMessageResponse,
+} from "../types";
+
+/**
+ * Service interface for dependency injection.
+ * Allows testing hooks without MSW by providing mock implementations.
+ */
+export interface ChatServices {
+  getChatHistory: (sessionId: string) => Promise<ChatHistoryResponse>;
+  sendChatMessage: (data: ChatMessageRequest) => Promise<ChatMessageResponse>;
+}
+
+const defaultServices: ChatServices = {
+  getChatHistory: defaultGetChatHistory,
+  sendChatMessage: defaultSendChatMessage,
+};
 
 export interface UseChatReturn {
   messages: Message[];
@@ -19,7 +41,7 @@ export interface UseChatReturn {
   scrollToBottom: () => void;
 }
 
-export function useChat(): UseChatReturn {
+export function useChat(services: ChatServices = defaultServices): UseChatReturn {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -38,7 +60,7 @@ export function useChat(): UseChatReturn {
 
   const loadChatHistory = useCallback(async (sessionId: string): Promise<Message[]> => {
     try {
-      const { messages: historyMessages } = await getChatHistory(sessionId);
+      const { messages: historyMessages } = await services.getChatHistory(sessionId);
 
       if (historyMessages && historyMessages.length > 0) {
         const loadedMessages: Message[] = historyMessages.map((msg, idx) => ({
@@ -54,7 +76,7 @@ export function useChat(): UseChatReturn {
       console.error("Error loading chat history:", error);
       return [];
     }
-  }, []);
+  }, [services]);
 
   const sendMessage = useCallback(async (
     content: string,
@@ -63,7 +85,7 @@ export function useChat(): UseChatReturn {
     setIsTyping(true);
 
     try {
-      const { response, timestamp } = await sendChatMessage({
+      const { response, timestamp } = await services.sendChatMessage({
         message: content,
         sessionId,
       });
@@ -87,7 +109,7 @@ export function useChat(): UseChatReturn {
     } finally {
       setIsTyping(false);
     }
-  }, []);
+  }, [services]);
 
   return {
     messages,
