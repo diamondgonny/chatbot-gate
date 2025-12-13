@@ -5,6 +5,8 @@
 
 import { config } from '../config';
 import { COUNCIL } from '../constants';
+import { parseSSEStream } from './sseParser';
+import { fetchWithAbort } from './fetchWithAbort';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
@@ -196,23 +198,13 @@ export async function* chatCompletionStream(
   maxTokens: number = COUNCIL.MAX_TOKENS,
   externalSignal?: AbortSignal
 ): AsyncGenerator<StreamEvent> {
-  // Check if already aborted before starting
   if (externalSignal?.aborted) {
     throw new Error(`Request aborted for model ${model}`);
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), COUNCIL.API_TIMEOUT_MS);
-
-  // Listen to external abort signal
-  const abortHandler = () => controller.abort();
-  externalSignal?.addEventListener('abort', abortHandler);
-
-  // Declare reader outside try block for cleanup in finally
-  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
-
-  try {
-    const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+  const { response, cleanup } = await fetchWithAbort(
+    `${OPENROUTER_BASE_URL}/chat/completions`,
+    {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${config.openRouterApiKey}`,
@@ -227,68 +219,42 @@ export async function* chatCompletionStream(
         temperature: 0.7,
         stream: true,
       }),
-      signal: controller.signal,
-    });
+    },
+    { timeoutMs: COUNCIL.API_TIMEOUT_MS, externalSignal }
+  );
 
-    clearTimeout(timeoutId);
-
+  try {
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
     }
 
-    if (!response.body) {
-      throw new Error('Response body is null');
-    }
-
-    reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
     let promptTokens: number | undefined;
     let completionTokens: number | undefined;
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    for await (const jsonStr of parseSSEStream(response)) {
+      try {
+        const data = JSON.parse(jsonStr);
 
-      buffer += decoder.decode(value, { stream: true });
-
-      // Process complete SSE lines
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed === 'data: [DONE]') continue;
-
-        if (trimmed.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(trimmed.slice(6));
-
-            // Extract delta content
-            const content = data.choices?.[0]?.delta?.content;
-            if (content) {
-              yield { delta: content };
-            }
-
-            // Extract usage (usually in the last chunk)
-            if (data.usage) {
-              promptTokens = data.usage.prompt_tokens;
-              completionTokens = data.usage.completion_tokens;
-            }
-          } catch {
-            // Ignore parse errors for malformed chunks
-          }
+        // Extract delta content
+        const content = data.choices?.[0]?.delta?.content;
+        if (content) {
+          yield { delta: content };
         }
+
+        // Extract usage (usually in the last chunk)
+        if (data.usage) {
+          promptTokens = data.usage.prompt_tokens;
+          completionTokens = data.usage.completion_tokens;
+        }
+      } catch {
+        // Ignore parse errors for malformed chunks
       }
     }
 
-    // Yield completion event
     yield { done: true, promptTokens, completionTokens };
   } finally {
-    reader?.releaseLock();
-    clearTimeout(timeoutId);
-    externalSignal?.removeEventListener('abort', abortHandler);
+    cleanup();
   }
 }
 
@@ -302,23 +268,13 @@ export async function* chatCompletionStreamWithReasoning(
   maxTokens: number = COUNCIL.MAX_TOKENS,
   externalSignal?: AbortSignal
 ): AsyncGenerator<StreamEvent> {
-  // Check if already aborted before starting
   if (externalSignal?.aborted) {
     throw new Error(`Request aborted for model ${model}`);
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), COUNCIL.API_TIMEOUT_MS);
-
-  // Listen to external abort signal
-  const abortHandler = () => controller.abort();
-  externalSignal?.addEventListener('abort', abortHandler);
-
-  // Declare reader outside try block for cleanup in finally
-  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
-
-  try {
-    const response = await fetch(`${OPENROUTER_BASE_URL}/chat/completions`, {
+  const { response, cleanup } = await fetchWithAbort(
+    `${OPENROUTER_BASE_URL}/chat/completions`,
+    {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${config.openRouterApiKey}`,
@@ -334,72 +290,46 @@ export async function* chatCompletionStreamWithReasoning(
         stream: true,
         reasoning: { enabled: true },
       }),
-      signal: controller.signal,
-    });
+    },
+    { timeoutMs: COUNCIL.API_TIMEOUT_MS, externalSignal }
+  );
 
-    clearTimeout(timeoutId);
-
+  try {
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
     }
 
-    if (!response.body) {
-      throw new Error('Response body is null');
-    }
-
-    reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
     let promptTokens: number | undefined;
     let completionTokens: number | undefined;
     let reasoningTokens: number | undefined;
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+    for await (const jsonStr of parseSSEStream(response)) {
+      try {
+        const data = JSON.parse(jsonStr);
 
-      buffer += decoder.decode(value, { stream: true });
+        // Extract delta content and reasoning
+        const delta = data.choices?.[0]?.delta;
+        const content = delta?.content;
+        const reasoning = delta?.reasoning;
 
-      // Process complete SSE lines
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // Keep incomplete line in buffer
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed || trimmed === 'data: [DONE]') continue;
-
-        if (trimmed.startsWith('data: ')) {
-          try {
-            const data = JSON.parse(trimmed.slice(6));
-
-            // Extract delta content and reasoning
-            const delta = data.choices?.[0]?.delta;
-            const content = delta?.content;
-            const reasoning = delta?.reasoning;
-
-            if (content || reasoning) {
-              yield { delta: content || '', reasoning };
-            }
-
-            // Extract usage (usually in the last chunk)
-            if (data.usage) {
-              promptTokens = data.usage.prompt_tokens;
-              completionTokens = data.usage.completion_tokens;
-              reasoningTokens = data.usage.completion_tokens_details?.reasoning_tokens;
-            }
-          } catch {
-            // Ignore parse errors for malformed chunks
-          }
+        if (content || reasoning) {
+          yield { delta: content || '', reasoning };
         }
+
+        // Extract usage (usually in the last chunk)
+        if (data.usage) {
+          promptTokens = data.usage.prompt_tokens;
+          completionTokens = data.usage.completion_tokens;
+          reasoningTokens = data.usage.completion_tokens_details?.reasoning_tokens;
+        }
+      } catch {
+        // Ignore parse errors for malformed chunks
       }
     }
 
-    // Yield completion event
     yield { done: true, promptTokens, completionTokens, reasoningTokens };
   } finally {
-    reader?.releaseLock();
-    clearTimeout(timeoutId);
-    externalSignal?.removeEventListener('abort', abortHandler);
+    cleanup();
   }
 }

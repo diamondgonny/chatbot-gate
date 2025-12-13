@@ -9,3 +9,11 @@ export {
   type StreamComplete,
   type StreamEvent,
 } from './openRouter.service';
+
+// SSE and fetch utilities (internal use, exported for testing and reusability)
+export { parseSSEStream } from './sseParser';
+export {
+  fetchWithAbort,
+  type FetchWithAbortOptions,
+  type FetchWithAbortResult,
+} from './fetchWithAbort';
