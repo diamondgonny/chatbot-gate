@@ -2,10 +2,16 @@
 
 import { useEffect, useCallback, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useCouncilSessions, useTitleAlert } from "@/hooks";
-import { CouncilProvider, useCouncilContext } from "@/hooks/council";
-import { CouncilSidebar, MessageList, InputArea } from "@/components/council";
-import AlertModal from "@/components/common/AlertModal";
+import { useTitleAlert } from "@/shared";
+import {
+  useCouncilSessions,
+  CouncilProvider,
+  useCouncilContext,
+  CouncilSidebar,
+  MessageList,
+  InputArea,
+} from "@/features/council";
+import { AlertModal } from "@/shared";
 
 /**
  * Inner component that uses the council context

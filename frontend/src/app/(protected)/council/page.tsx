@@ -3,9 +3,8 @@
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useState, useCallback } from "react";
-import { useCouncilSessions } from "@/hooks";
-import { CouncilSidebar } from "@/components/council";
-import AlertModal from "@/components/common/AlertModal";
+import { useCouncilSessions, CouncilSidebar } from "@/features/council";
+import { AlertModal } from "@/shared";
 
 export default function CouncilPage() {
   const router = useRouter();
