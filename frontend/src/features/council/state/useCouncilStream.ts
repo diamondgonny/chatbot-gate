@@ -6,8 +6,8 @@
 "use client";
 
 import { useCallback, useRef, useEffect } from "react";
-import type { CouncilMessage, CouncilAssistantMessage, CouncilMode } from "@/types";
-import type { CurrentStage, StreamState } from "@/domain/council";
+import type { CouncilAssistantMessage, CouncilMode } from "../domain";
+import type { CurrentStage, StreamState } from "../domain";
 import {
   streamSSE,
   reconnectSSE,
@@ -15,7 +15,7 @@ import {
   StreamEventProcessor,
   getCouncilMessageUrl,
   getReconnectUrl,
-} from "@/services/council";
+} from "../services";
 
 /**
  * Stream callbacks for state updates

@@ -1,20 +1,20 @@
 /**
- * Council Hooks Layer
+ * @deprecated Import from @/features/council instead
  *
- * React hooks for council state management and streaming.
+ * Council Hooks Layer - Re-exports for backward compatibility
  */
 
 // State management
-export { useCouncilState } from "./useCouncilState";
-export type { CouncilState, CouncilStateActions } from "./useCouncilState";
+export { useCouncilState } from "@/features/council/state";
+export type { CouncilState, CouncilStateActions } from "@/features/council/state";
 
 // Stream management
-export { useCouncilStream } from "./useCouncilStream";
+export { useCouncilStream } from "@/features/council/state";
 export type {
   UseCouncilStreamCallbacks,
   UseCouncilStreamReturn,
-} from "./useCouncilStream";
+} from "@/features/council/state";
 
 // Context provider and consumer
-export { CouncilProvider, useCouncilContext } from "./CouncilContext";
-export type { CouncilContextValue } from "./CouncilContext";
+export { CouncilProvider, useCouncilContext } from "@/features/council/state";
+export type { CouncilContextValue } from "@/features/council/state";

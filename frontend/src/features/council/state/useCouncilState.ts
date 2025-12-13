@@ -12,9 +12,9 @@ import type {
   Stage2Review,
   Stage3Synthesis,
   AggregateRanking,
-} from "@/types";
-import type { CurrentStage, StreamState } from "@/domain/council";
-import { createInitialStreamState } from "@/domain/council";
+} from "../domain";
+import type { CurrentStage, StreamState } from "../domain";
+import { createInitialStreamState } from "../domain";
 
 /**
  * Council state shape

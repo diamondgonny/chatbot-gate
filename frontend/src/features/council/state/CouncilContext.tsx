@@ -13,15 +13,15 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import type { CouncilMessage, CouncilAssistantMessage, CouncilMode } from "@/types";
-import type { CurrentStage } from "@/domain/council";
+import type { CouncilMessage, CouncilAssistantMessage, CouncilMode } from "../domain";
+import type { CurrentStage } from "../domain";
 import { useCouncilState, type CouncilState } from "./useCouncilState";
 import { useCouncilStream } from "./useCouncilStream";
 import {
   getCouncilSession,
   getProcessingStatus,
   abortCouncilProcessing,
-} from "@/services/council";
+} from "../services";
 
 // Treat both DOM aborts and axios cancellations as benign
 function isAbortError(error: unknown): boolean {
