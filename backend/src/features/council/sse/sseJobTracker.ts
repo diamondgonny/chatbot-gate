@@ -5,6 +5,7 @@
 
 import { Response } from 'express';
 import type { SSEEvent, AggregateRanking, IStage1Response, IStage2Review } from '../../../shared';
+import { COUNCIL } from '../../../shared';
 
 export interface ActiveProcessing {
   sessionId: string;
@@ -39,6 +40,20 @@ export class SSEJobTracker {
    */
   getKey(userId: string, sessionId: string): string {
     return `${userId}:${sessionId}`;
+  }
+
+  /**
+   * Get current count of active processing sessions
+   */
+  getActiveCount(): number {
+    return this.activeProcessing.size;
+  }
+
+  /**
+   * Check if at maximum capacity
+   */
+  isAtCapacity(): boolean {
+    return this.activeProcessing.size >= COUNCIL.SSE.MAX_CONCURRENT_SESSIONS;
   }
 
   /**

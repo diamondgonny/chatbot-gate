@@ -36,6 +36,18 @@ export type CouncilMode = 'lite' | 'ultra';
 export const COUNCIL = {
   /** Maximum number of council sessions allowed per user */
   MAX_SESSIONS_PER_USER: 50,
+
+  /** SSE (Server-Sent Events) limits for operational stability */
+  SSE: {
+    /** Maximum concurrent processing sessions (memory guard) */
+    MAX_CONCURRENT_SESSIONS: 100,
+    /** Grace period before aborting disconnected client (ms) */
+    GRACE_PERIOD_MS: 30 * 1000,
+    /** Stale session threshold for cleanup (ms) */
+    STALE_THRESHOLD_MS: 10 * 60 * 1000,
+    /** Cleanup interval for stale sessions (ms) */
+    CLEANUP_INTERVAL_MS: 5 * 60 * 1000,
+  },
   /** Ultra council member models (via OpenRouter) */
   ULTRA_MODELS: [
     'anthropic/claude-opus-4.5',

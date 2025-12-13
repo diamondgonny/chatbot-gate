@@ -41,6 +41,20 @@ class ProcessingRegistry {
   }
 
   /**
+   * Check if at maximum capacity for concurrent sessions
+   */
+  isAtCapacity(): boolean {
+    return this.jobTracker.isAtCapacity();
+  }
+
+  /**
+   * Get current count of active processing sessions
+   */
+  getActiveCount(): number {
+    return this.jobTracker.getActiveCount();
+  }
+
+  /**
    * Get active processing for a session
    */
   get(userId: string, sessionId: string): ActiveProcessing | undefined {

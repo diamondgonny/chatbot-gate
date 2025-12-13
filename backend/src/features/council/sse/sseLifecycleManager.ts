@@ -5,6 +5,7 @@
 
 import { SSEJobTracker } from './sseJobTracker';
 import { SSEClientManager } from './sseClientManager';
+import { COUNCIL } from '../../../shared';
 
 export class SSELifecycleManager {
   private gracePeriodTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -14,8 +15,11 @@ export class SSELifecycleManager {
     private jobTracker: SSEJobTracker,
     private clientManager: SSEClientManager
   ) {
-    // Cleanup stale processing every 5 minutes
-    this.cleanupInterval = setInterval(() => this.cleanupStale(), 5 * 60 * 1000);
+    // Cleanup stale processing at configured interval
+    this.cleanupInterval = setInterval(
+      () => this.cleanupStale(),
+      COUNCIL.SSE.CLEANUP_INTERVAL_MS
+    );
     // Don't let this timer prevent process from exiting
     this.cleanupInterval.unref();
   }
@@ -25,9 +29,9 @@ export class SSELifecycleManager {
    */
   startGracePeriod(userId: string, sessionId: string): void {
     const key = this.jobTracker.getKey(userId, sessionId);
-    const GRACE_PERIOD_MS = 30000; // 30 seconds
+    const gracePeriodMs = COUNCIL.SSE.GRACE_PERIOD_MS;
 
-    console.log(`[SSELifecycleManager] Starting ${GRACE_PERIOD_MS / 1000}s grace period for ${key}`);
+    console.log(`[SSELifecycleManager] Starting ${gracePeriodMs / 1000}s grace period for ${key}`);
 
     const timer = setTimeout(() => {
       const processing = this.jobTracker.get(userId, sessionId);
@@ -37,7 +41,7 @@ export class SSELifecycleManager {
         this.jobTracker.remove(userId, sessionId);
       }
       this.gracePeriodTimers.delete(key);
-    }, GRACE_PERIOD_MS);
+    }, gracePeriodMs);
 
     this.gracePeriodTimers.set(key, timer);
   }
@@ -104,14 +108,13 @@ export class SSELifecycleManager {
   }
 
   /**
-   * Cleanup stale processing (older than 10 minutes with no activity)
+   * Cleanup stale processing (no activity within threshold)
    */
   private cleanupStale(): void {
-    const STALE_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
     const now = Date.now();
 
     for (const [key, processing] of this.jobTracker.getAll()) {
-      if (now - processing.lastEventAt.getTime() > STALE_THRESHOLD_MS) {
+      if (now - processing.lastEventAt.getTime() > COUNCIL.SSE.STALE_THRESHOLD_MS) {
         console.log(`[SSELifecycleManager] Cleaning up stale processing: ${key}`);
         this.clientManager.closeAllClients(processing);
         processing.abortController.abort();

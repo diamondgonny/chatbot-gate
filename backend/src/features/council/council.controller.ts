@@ -157,6 +157,15 @@ export const sendMessage = async (req: Request, res: Response) => {
     });
   }
 
+  // Check server capacity - return 503 if at maximum concurrent sessions
+  if (processingRegistry.isAtCapacity()) {
+    console.warn(`[Council] Server at capacity (${processingRegistry.getActiveCount()} sessions)`);
+    return res.status(503).json({
+      error: 'Server is at capacity. Please try again later.',
+      code: 'SERVER_AT_CAPACITY',
+    });
+  }
+
   // Set SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
