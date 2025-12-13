@@ -14,8 +14,13 @@ export {
 } from "./services";
 
 // Hooks
-export { useChat, useSessions } from "./hooks";
-export type { UseChatReturn, UseSessionsReturn } from "./hooks";
+export { useChat, useSessions, useChatPageOrchestration } from "./hooks";
+export type {
+  UseChatReturn,
+  UseSessionsReturn,
+  UseChatPageOrchestrationReturn,
+  OrchestrationServices,
+} from "./hooks";
 
 // Components
 export { SessionSidebar } from "./components";

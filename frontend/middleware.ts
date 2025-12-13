@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const PROTECTED_PATHS = ["/hub", "/chat"];
+const PROTECTED_PATHS = ["/hub", "/chat", "/council"];
 
 /**
  * Verify JWT token signature and expiration
@@ -29,7 +29,7 @@ async function verifyToken(token: string): Promise<boolean> {
   }
 }
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Check if the path is protected
@@ -70,5 +70,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/hub/:path*", "/chat/:path*"],
+  matcher: ["/hub/:path*", "/chat/:path*", "/council/:path*"],
 };
