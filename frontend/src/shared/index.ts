@@ -6,7 +6,13 @@
  */
 
 // APIs
-export { apiClient, checkAuthStatus, validateGateCode, navigation } from "./apis";
+export {
+  apiClient,
+  handleAuthError,
+  checkAuthStatus,
+  validateGateCode,
+  navigation,
+} from "./apis";
 
 // Components
 export { AlertModal } from "./components";
