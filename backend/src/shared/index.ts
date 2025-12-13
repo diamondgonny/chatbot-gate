@@ -43,23 +43,15 @@ export { authMiddleware, createRateLimiter, asyncHandler, errorHandler } from '.
 export {
   signToken,
   verifyToken,
-  generateTitle,
   isOpenRouterConfigured,
   chatCompletion,
-  queryCouncilModels,
-  queryChairman,
   chatCompletionStream,
   chatCompletionStreamWithReasoning,
-  queryCouncilModelsStreaming,
   type JWTPayload,
   type OpenRouterMessage,
-  type ModelResponse,
   type StreamChunk,
   type StreamComplete,
   type StreamEvent,
-  type ModelStreamChunk,
-  type ModelStreamComplete,
-  type ModelStreamEvent,
 } from './services';
 
 // Types

@@ -4,9 +4,8 @@
  */
 
 import { Request, Response } from 'express';
-import { asyncHandler, AppError, ErrorCodes } from '../../shared';
+import { asyncHandler, AppError, ErrorCodes, isOpenRouterConfigured } from '../../shared';
 import * as councilService from './services';
-import { isOpenRouterConfigured } from '../../shared/services/openRouter.service';
 import { processingRegistry } from './sse';
 import type { CouncilMode } from '../../shared';
 

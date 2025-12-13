@@ -14,11 +14,8 @@ import {
   SSEEvent,
   OpenRouterMessage,
 } from '../../../shared';
-import {
-  queryCouncilModelsStreaming,
-  chatCompletionStreamWithReasoning,
-} from '../../../shared/services/openRouter.service';
-import { generateTitle } from '../../../shared/services/title.service';
+import { queryCouncilModelsStreaming, chatCompletionStreamWithReasoning } from './councilApi.service';
+import { generateTitle } from './title.service';
 import {
   buildPartialStage1Responses,
   buildPartialStage2Reviews,

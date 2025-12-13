@@ -25,3 +25,18 @@ export { buildConversationHistory } from './history.service';
 
 // Orchestration
 export { processCouncilMessage } from './orchestrator.service';
+
+// Title generation
+export { generateTitle } from './title.service';
+
+// Council API (OpenRouter multi-model)
+export {
+  queryCouncilModels,
+  queryChairman,
+  queryCouncilModelsStreaming,
+  chatCompletionStreamWithReasoning,
+  type ModelResponse,
+  type ModelStreamChunk,
+  type ModelStreamComplete,
+  type ModelStreamEvent,
+} from './councilApi.service';

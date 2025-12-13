@@ -1,10 +1,10 @@
 /**
  * Title Generation Service
- * Generates concise 3-5 word titles for chat sessions using OpenAI.
+ * Generates concise 3-5 word titles for council sessions using OpenAI.
  */
 
 import OpenAI from 'openai';
-import { config } from '../config';
+import { config } from '../../../shared';
 
 // Use a fast, cheap model for title generation
 const TITLE_MODEL = 'gpt-4o-mini';
