@@ -4,6 +4,7 @@
  */
 
 import { Request, Response } from 'express';
+import { asyncHandler, AppError, ErrorCodes } from '../../shared';
 import * as councilService from './services';
 import { isOpenRouterConfigured } from '../../shared/services/openRouter.service';
 import { processingRegistry } from './sse';
@@ -12,126 +13,106 @@ import type { CouncilMode } from '../../shared';
 /**
  * Create a new council session
  */
-export const createSession = async (req: Request, res: Response) => {
+export const createSession = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.userId;
 
   if (!userId) {
-    return res.status(401).json({ error: 'Authentication required' });
+    throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'Authentication required');
   }
 
-  try {
-    const result = await councilService.createSession(userId);
+  const result = await councilService.createSession(userId);
 
-    if (!result.success) {
-      const statusCode = result.code === 'SESSION_LIMIT_REACHED' ? 429 : 500;
-      return res.status(statusCode).json({ error: result.error, code: result.code });
-    }
-
-    return res.status(201).json({
-      sessionId: result.session.sessionId,
-      title: result.session.title,
-      createdAt: result.session.createdAt,
-    });
-  } catch (error) {
-    console.error('Error creating council session:', error);
-    return res.status(500).json({ error: 'Failed to create session' });
+  if (!result.success) {
+    const statusCode = result.code === 'SESSION_LIMIT_REACHED' ? 429 : 500;
+    return res.status(statusCode).json({ error: result.error, code: result.code });
   }
-};
+
+  return res.status(201).json({
+    sessionId: result.session.sessionId,
+    title: result.session.title,
+    createdAt: result.session.createdAt,
+  });
+});
 
 /**
  * Get all council sessions for the user
  */
-export const getSessions = async (req: Request, res: Response) => {
+export const getSessions = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.userId;
 
   if (!userId) {
-    return res.status(401).json({ error: 'Authentication required' });
+    throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'Authentication required');
   }
 
-  try {
-    const result = await councilService.getSessions(userId);
+  const result = await councilService.getSessions(userId);
 
-    if (!result.success) {
-      return res.status(500).json({ error: result.error });
-    }
-
-    const sessions = result.sessions.map((s) => ({
-      sessionId: s.sessionId,
-      title: s.title,
-      createdAt: s.createdAt,
-      updatedAt: s.updatedAt,
-    }));
-
-    return res.json({ sessions });
-  } catch (error) {
-    console.error('Error fetching council sessions:', error);
-    return res.status(500).json({ error: 'Failed to fetch sessions' });
+  if (!result.success) {
+    throw new AppError(ErrorCodes.INTERNAL_ERROR, 500, result.error!);
   }
-};
+
+  const sessions = result.sessions.map((s) => ({
+    sessionId: s.sessionId,
+    title: s.title,
+    createdAt: s.createdAt,
+    updatedAt: s.updatedAt,
+  }));
+
+  return res.json({ sessions });
+});
 
 /**
  * Get a specific council session with messages
  */
-export const getSession = async (req: Request, res: Response) => {
+export const getSession = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.userId;
   const { sessionId } = req.params;
 
   if (!userId) {
-    return res.status(401).json({ error: 'Authentication required' });
+    throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'Authentication required');
   }
 
   if (!councilService.validateSessionId(sessionId)) {
-    return res.status(400).json({ error: 'Invalid session ID format' });
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 400, 'Invalid session ID format');
   }
 
-  try {
-    const result = await councilService.getSession(userId, sessionId);
+  const result = await councilService.getSession(userId, sessionId);
 
-    if (!result.success) {
-      return res.status(404).json({ error: result.error });
-    }
-
-    return res.json({
-      sessionId: result.session.sessionId,
-      title: result.session.title,
-      messages: result.session.messages,
-      createdAt: result.session.createdAt,
-      updatedAt: result.session.updatedAt,
-    });
-  } catch (error) {
-    console.error('Error fetching council session:', error);
-    return res.status(500).json({ error: 'Failed to fetch session' });
+  if (!result.success) {
+    throw new AppError(ErrorCodes.NOT_FOUND, 404, result.error!);
   }
-};
+
+  return res.json({
+    sessionId: result.session.sessionId,
+    title: result.session.title,
+    messages: result.session.messages,
+    createdAt: result.session.createdAt,
+    updatedAt: result.session.updatedAt,
+  });
+});
 
 /**
  * Delete a council session
  */
-export const deleteSession = async (req: Request, res: Response) => {
+export const deleteSession = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.userId;
   const { sessionId } = req.params;
 
   if (!userId) {
-    return res.status(401).json({ error: 'Authentication required' });
+    throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'Authentication required');
   }
 
   if (!councilService.validateSessionId(sessionId)) {
-    return res.status(400).json({ error: 'Invalid session ID format' });
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 400, 'Invalid session ID format');
   }
 
-  try {
-    const result = await councilService.deleteSession(userId, sessionId);
+  const result = await councilService.deleteSession(userId, sessionId);
 
-    if (!result.success) {
-      return res.status(404).json({ error: result.error });
-    }
-
-    return res.status(204).send();
-  } catch (error) {
-    console.error('Error deleting council session:', error);
-    return res.status(500).json({ error: 'Failed to delete session' });
+  if (!result.success) {
+    throw new AppError(ErrorCodes.NOT_FOUND, 404, result.error!);
   }
-};
+
+  return res.status(204).send();
+});
 
 /**
  * Send a message to the council (SSE streaming response)
@@ -268,16 +249,16 @@ export const sendMessage = async (req: Request, res: Response) => {
  * Get processing status for a session
  * GET /api/council/sessions/:sessionId/status
  */
-export const getProcessingStatus = async (req: Request, res: Response) => {
+export const getProcessingStatus = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.userId;
   const { sessionId } = req.params;
 
   if (!userId) {
-    return res.status(401).json({ error: 'Authentication required' });
+    throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'Authentication required');
   }
 
   if (!councilService.validateSessionId(sessionId)) {
-    return res.status(400).json({ error: 'Invalid session ID format' });
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 400, 'Invalid session ID format');
   }
 
   const processing = processingRegistry.get(userId, sessionId);
@@ -300,7 +281,7 @@ export const getProcessingStatus = async (req: Request, res: Response) => {
       hasStage3: !!processing.stage3Content,
     },
   });
-};
+});
 
 /**
  * Reconnect to existing processing (SSE streaming)
@@ -421,24 +402,24 @@ export const reconnectToProcessing = async (req: Request, res: Response) => {
  * Explicitly abort processing for a session
  * POST /api/council/sessions/:sessionId/abort
  */
-export const abortProcessing = async (req: Request, res: Response) => {
+export const abortProcessing = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.userId;
   const { sessionId } = req.params;
 
   if (!userId) {
-    return res.status(401).json({ error: 'Authentication required' });
+    throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'Authentication required');
   }
 
   if (!councilService.validateSessionId(sessionId)) {
-    return res.status(400).json({ error: 'Invalid session ID format' });
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 400, 'Invalid session ID format');
   }
 
   if (!processingRegistry.isProcessing(userId, sessionId)) {
-    return res.status(404).json({ error: 'No active processing found' });
+    throw new AppError(ErrorCodes.NOT_FOUND, 404, 'No active processing found');
   }
 
   processingRegistry.abort(userId, sessionId);
   console.log(`[Council] Processing explicitly aborted for session ${sessionId}`);
 
   return res.json({ success: true });
-};
+});

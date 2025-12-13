@@ -8,6 +8,7 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { randomBytes } from 'crypto';
 import { cookieConfig } from './shared/config';
+import { errorHandler } from './shared/middleware';
 
 // Route imports
 import { gateRoutes } from './features/gate';
@@ -94,20 +95,6 @@ const securityHeadersMiddleware = (req: Request, res: Response, next: NextFuncti
   next();
 };
 
-/**
- * Error handler middleware
- */
-const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction) => {
-  const statusCode = res.statusCode >= 400 ? res.statusCode : 500;
-  const errorId = Date.now().toString(36);
-
-  console.error(`[${errorId}]`, err);
-
-  res.status(statusCode).json({
-    error: 'Internal server error',
-    requestId: errorId,
-  });
-};
 
 /**
  * Create CORS configuration

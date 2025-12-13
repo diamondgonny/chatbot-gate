@@ -1,6 +1,9 @@
 // Environment
 export { validateEnv, type RequiredEnv } from './env';
 
+// Errors
+export { AppError, ErrorCodes, type ErrorCode } from './errors';
+
 // Config
 export { config, cookieConfig, logCookieConfig } from './config';
 
@@ -34,7 +37,7 @@ export {
 } from './models';
 
 // Middleware
-export { authMiddleware, createRateLimiter } from './middleware';
+export { authMiddleware, createRateLimiter, asyncHandler, errorHandler } from './middleware';
 
 // Services
 export {
