@@ -11,10 +11,6 @@ import type {
   ProcessingStatus,
 } from "../domain";
 
-// Re-export streaming utilities
-export { StreamError } from "./streamClient";
-export { streamSSE, reconnectSSE } from "./streamClient";
-
 /**
  * Base URL for API calls
  */
