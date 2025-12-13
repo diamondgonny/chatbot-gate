@@ -1,9 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useCallback, useMemo } from "react";
 import { useSessions } from "./useSessions";
 import { useChat } from "./useChat";
-import type { Session, Message } from "../domain";
+import { useChatScroll } from "./useChatScroll";
+import { useAutoError } from "./useAutoError";
+import { useDeleteSession } from "./useDeleteSession";
+import { useSyncMessageToSession } from "./useSyncMessageToSession";
+import type { Message } from "../domain";
 import type { SessionServices } from "./useSessions";
 import type { ChatServices } from "./useChat";
 
@@ -22,7 +26,7 @@ export interface UseChatPageOrchestrationReturn {
   loadingSessionId: string | null;
 
   // Session state
-  sessions: Session[];
+  sessions: ReturnType<typeof useSessions>["sessions"];
   currentSessionId: string | null;
   sessionError: string | null;
 
@@ -45,9 +49,14 @@ export interface UseChatPageOrchestrationReturn {
   cancelDeleteSession: () => void;
 }
 
+/**
+ * Orchestrates chat page state by composing focused hooks.
+ * Each hook has a single responsibility.
+ */
 export function useChatPageOrchestration(
   services: OrchestrationServices = {}
 ): UseChatPageOrchestrationReturn {
+  // Session management
   const {
     sessions,
     setSessions,
@@ -59,10 +68,11 @@ export function useChatPageOrchestration(
     setSessionError,
     loadSessions,
     handleCreateSession,
-    handleDeleteSession,
+    handleDeleteSession: deleteSessionApi,
     sortSessionsByUpdatedAt,
   } = useSessions(services.sessionServices);
 
+  // Chat state
   const {
     messages,
     setMessages,
@@ -71,52 +81,28 @@ export function useChatPageOrchestration(
     isTyping,
     isLoading,
     setIsLoading,
-    messagesEndRef,
     intendedSessionRef,
     loadChatHistory,
     sendMessage,
   } = useChat(services.chatServices);
 
-  // Local state for delete modal
-  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  // UI: Scroll management (extracted from useChat)
+  const { messagesEndRef } = useChatScroll({
+    messagesLength: messages.length,
+    isTyping,
+  });
 
-  // Keep sidebar titles in sync with latest message content
-  useEffect(() => {
-    if (messages.length === 0) return;
+  // Side effect: Auto-dismiss errors
+  const clearSessionError = useCallback(() => setSessionError(null), [setSessionError]);
+  useAutoError(sessionError, clearSessionError);
 
-    const targetSessionId = intendedSessionRef.current;
-    if (!targetSessionId) return;
-
-    const latestMessage = messages[messages.length - 1];
-
-    setSessions((prev) => {
-      const updated = prev.map((session) =>
-        session.sessionId === targetSessionId
-          ? {
-              ...session,
-              lastMessage: {
-                content: latestMessage.content,
-                role: latestMessage.role,
-                timestamp: latestMessage.timestamp,
-              },
-              title: latestMessage.content,
-              updatedAt: latestMessage.timestamp,
-            }
-          : session
-      );
-      return sortSessionsByUpdatedAt(updated);
-    });
-  }, [messages, setSessions, sortSessionsByUpdatedAt, intendedSessionRef]);
-
-  // Auto-dismiss session error after 10 seconds
-  useEffect(() => {
-    if (sessionError) {
-      const timer = setTimeout(() => {
-        setSessionError(null);
-      }, 10000);
-      return () => clearTimeout(timer);
-    }
-  }, [sessionError, setSessionError]);
+  // Side effect: Sync messages to session list
+  useSyncMessageToSession({
+    messages,
+    targetSessionId: intendedSessionRef.current,
+    setSessions,
+    sortSessions: sortSessionsByUpdatedAt,
+  });
 
   // Load chat history on mount
   useEffect(() => {
@@ -144,7 +130,8 @@ export function useChatPageOrchestration(
     };
 
     loadOnMount();
-  }, [loadSessions, setCurrentSessionId, setMessages, setIsLoading, loadChatHistory, intendedSessionRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -214,29 +201,17 @@ export function useChatPageOrchestration(
     } finally {
       setLoadingSessionId(null);
     }
-  }, [
-    currentSessionId,
-    setLoadingSessionId,
-    setCurrentSessionId,
-    loadChatHistory,
-    setMessages,
-    intendedSessionRef,
-  ]);
+  }, [currentSessionId, setLoadingSessionId, setCurrentSessionId, loadChatHistory, setMessages, intendedSessionRef]);
 
-  const requestDeleteSession = useCallback((sessionId: string) => {
-    setSessionToDelete(sessionId);
-  }, []);
-
-  const confirmDeleteSession = useCallback(async () => {
-    if (!sessionToDelete) return;
-
-    try {
-      await handleDeleteSession(sessionToDelete);
+  // Delete session with navigation handling
+  const deleteConfig = useMemo(() => ({
+    onDelete: deleteSessionApi,
+    onAfterDelete: async (deletedSessionId: string) => {
       const updatedSessions = await loadSessions();
 
-      if (currentSessionId === sessionToDelete) {
+      if (currentSessionId === deletedSessionId) {
         const remainingSessions = updatedSessions.filter(
-          (s) => s.sessionId !== sessionToDelete
+          (s) => s.sessionId !== deletedSessionId
         );
         if (remainingSessions.length > 0) {
           await handleSessionSelect(remainingSessions[0].sessionId);
@@ -244,23 +219,15 @@ export function useChatPageOrchestration(
           await handleNewChat();
         }
       }
-    } catch (error) {
-      console.error("Error deleting session:", error);
-    } finally {
-      setSessionToDelete(null);
-    }
-  }, [
-    sessionToDelete,
-    handleDeleteSession,
-    loadSessions,
-    currentSessionId,
-    handleSessionSelect,
-    handleNewChat,
-  ]);
+    },
+  }), [deleteSessionApi, loadSessions, currentSessionId, handleSessionSelect, handleNewChat]);
 
-  const cancelDeleteSession = useCallback(() => {
-    setSessionToDelete(null);
-  }, []);
+  const {
+    sessionToDelete,
+    requestDelete: requestDeleteSession,
+    cancelDelete: cancelDeleteSession,
+    confirmDelete: confirmDeleteSession,
+  } = useDeleteSession(deleteConfig);
 
   return {
     // Loading states

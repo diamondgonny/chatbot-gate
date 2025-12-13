@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
   getChatHistory as defaultGetChatHistory,
   sendChatMessage as defaultSendChatMessage,
@@ -34,29 +34,21 @@ export interface UseChatReturn {
   isTyping: boolean;
   isLoading: boolean;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
-  messagesEndRef: React.RefObject<HTMLDivElement | null>;
   intendedSessionRef: React.MutableRefObject<string | null>;
   loadChatHistory: (sessionId: string) => Promise<Message[]>;
   sendMessage: (content: string, sessionId: string) => Promise<Message | null>;
-  scrollToBottom: () => void;
 }
 
+/**
+ * Manages chat message state and API operations.
+ * UI concerns (scrolling) are handled separately by useChatScroll.
+ */
 export function useChat(services: ChatServices = defaultServices): UseChatReturn {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const intendedSessionRef = useRef<string | null>(null);
-
-  const scrollToBottom = useCallback(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, []);
-
-  // Auto-scroll on new messages
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages, isTyping, scrollToBottom]);
 
   const loadChatHistory = useCallback(async (sessionId: string): Promise<Message[]> => {
     try {
@@ -119,10 +111,8 @@ export function useChat(services: ChatServices = defaultServices): UseChatReturn
     isTyping,
     isLoading,
     setIsLoading,
-    messagesEndRef,
     intendedSessionRef,
     loadChatHistory,
     sendMessage,
-    scrollToBottom,
   };
 }
