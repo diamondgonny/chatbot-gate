@@ -3,7 +3,7 @@
  * Handles conversion between model identifiers and display names
  */
 
-import type { Stage1Response } from "@/types/council.types";
+import type { Stage1Response } from "./council.types";
 import type { ModelMapping } from "./types";
 
 /**

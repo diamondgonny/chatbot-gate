@@ -1,35 +1,31 @@
 /**
- * Council Domain Layer
+ * @deprecated Import from @/features/council instead
  *
- * Pure business logic and types for the Council feature.
- * No React dependencies - can be used anywhere.
+ * Council Domain Layer - Re-exports for backward compatibility
  */
 
-// Types
-export type { CurrentStage, ModelMapping, ComputedMessageData, StreamState } from "./types";
-export { createInitialStreamState } from "./types";
-
-// Model mapping utilities
+// Re-export everything from the new location
 export {
+  // Types
+  type CurrentStage,
+  type ModelMapping,
+  type ComputedMessageData,
+  type StreamState,
+  createInitialStreamState,
+  // Model mapping utilities
   formatModelName,
   buildLabelToModel,
   buildModelToLabel,
   buildModelMapping,
   getLabelForModel,
   getModelForLabel,
-} from "./modelMapping";
-
-// Ranking calculation utilities
-export {
+  // Ranking calculation utilities
   parseRankingFromText,
   calculateAggregateRankings,
   getWinner,
   isRankingConclusive,
-} from "./rankingCalculations";
-
-// Message reconstruction utilities
-export {
+  // Message reconstruction utilities
   computeMessageDisplayData,
   isMessageComplete,
   getMessageCompletionStatus,
-} from "./messageReconstruction";
+} from "@/features/council/domain";

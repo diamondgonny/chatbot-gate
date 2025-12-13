@@ -3,7 +3,7 @@
  * Computes derived display data from stored message data
  */
 
-import type { CouncilAssistantMessage } from "@/types/council.types";
+import type { CouncilAssistantMessage } from "./council.types";
 import type { ComputedMessageData } from "./types";
 import { buildLabelToModel } from "./modelMapping";
 import { calculateAggregateRankings } from "./rankingCalculations";

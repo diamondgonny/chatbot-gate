@@ -3,7 +3,7 @@
  * Handles parsing and aggregation of peer review rankings
  */
 
-import type { Stage2Review, AggregateRanking } from "@/types/council.types";
+import type { Stage2Review, AggregateRanking } from "./council.types";
 
 /**
  * Parse ranking labels from review text

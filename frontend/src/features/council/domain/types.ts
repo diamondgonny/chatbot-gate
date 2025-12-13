@@ -6,8 +6,9 @@
 import type {
   Stage1Response,
   Stage2Review,
+  Stage3Synthesis,
   AggregateRanking,
-} from "@/types/council.types";
+} from "./council.types";
 
 /**
  * Current processing stage identifier
@@ -40,7 +41,7 @@ export interface StreamState {
   stage1StreamingContent: Record<string, string>;
   stage2Reviews: Stage2Review[];
   stage2StreamingContent: Record<string, string>;
-  stage3Synthesis: import("@/types/council.types").Stage3Synthesis | null;
+  stage3Synthesis: Stage3Synthesis | null;
   stage3StreamingContent: string;
   stage3ReasoningContent: string;
   labelToModel: Record<string, string>;
