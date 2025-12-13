@@ -17,9 +17,6 @@ export {
 // Components
 export { AlertModal } from "./components";
 
-// Hooks
-export { useTitleAlert } from "./hooks";
-
 // Types
 export type {
   AuthStatusResponse,
@@ -33,5 +30,4 @@ export {
   getUserId,
   clearAuth,
   isAuthenticated,
-  formatTimeAgo,
 } from "./utils";

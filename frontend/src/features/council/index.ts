@@ -86,6 +86,9 @@ export type { CouncilContextValue } from "./state";
 // Sessions management hook
 export { useCouncilSessions } from "./state";
 
+// UI utilities
+export { useTitleAlert } from "./state";
+
 // Internal state hooks (advanced usage)
 export { useCouncilState, useCouncilStream } from "./state";
 export type {

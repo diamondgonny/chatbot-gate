@@ -21,3 +21,6 @@ export type { CouncilContextValue } from "./CouncilContext";
 
 // Sessions hook
 export { useCouncilSessions } from "./useCouncilSessions";
+
+// UI utilities
+export { useTitleAlert } from "./useTitleAlert";

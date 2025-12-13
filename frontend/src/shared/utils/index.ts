@@ -5,4 +5,3 @@
  */
 
 export { saveUserId, getUserId, clearAuth, isAuthenticated } from "./authUtils";
-export { formatTimeAgo } from "./timeUtils";

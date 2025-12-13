@@ -2,7 +2,6 @@
 
 import { useEffect, useCallback, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { useTitleAlert } from "@/shared";
 import {
   useCouncilSessions,
   CouncilProvider,
@@ -10,6 +9,7 @@ import {
   CouncilSidebar,
   MessageList,
   InputArea,
+  useTitleAlert,
 } from "@/features/council";
 import { AlertModal } from "@/shared";
 

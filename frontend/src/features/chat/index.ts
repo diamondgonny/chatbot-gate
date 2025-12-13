@@ -35,3 +35,6 @@ export type {
 
 // UI (Components)
 export { SessionSidebar } from "./ui";
+
+// Utils
+export { formatTimeAgo } from "./utils";
