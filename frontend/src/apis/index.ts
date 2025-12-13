@@ -1,4 +1,10 @@
-export { default as apiClient } from "./client";
-export * from "./auth.api";
-export * from "./session.api";
-export * from "./chat.api";
+/**
+ * @deprecated
+ * - For apiClient, checkAuthStatus, validateGateCode: import from @/shared
+ * - For chat/session APIs: import from @/features/chat
+ */
+
+// Shared APIs - re-export from shared
+export { apiClient as default } from "@/shared";
+export { checkAuthStatus, validateGateCode } from "@/shared";
+export { navigation } from "@/shared";

@@ -10,7 +10,7 @@ import type {
   ChatHistoryResponse,
   ChatMessageRequest,
   ChatMessageResponse,
-} from "../types";
+} from "../domain";
 
 /**
  * Service interface for dependency injection.

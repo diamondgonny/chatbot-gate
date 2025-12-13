@@ -2,8 +2,8 @@ import { describe, it, expect, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup/msw-handlers";
-import { useSessions } from "@/hooks/useSessions";
-import type { Session } from "@/types";
+import { useSessions } from "@/features/chat";
+import type { Session } from "@/features/chat";
 
 describe("useSessions", () => {
   describe("initial state", () => {

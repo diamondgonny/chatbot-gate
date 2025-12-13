@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSessions } from "./useSessions";
 import { useChat } from "./useChat";
-import type { Session, Message } from "../types";
+import type { Session, Message } from "../domain";
 import type { SessionServices } from "./useSessions";
 import type { ChatServices } from "./useChat";
 

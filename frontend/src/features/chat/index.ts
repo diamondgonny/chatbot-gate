@@ -4,6 +4,17 @@
  * Complete chat functionality including messaging and session management.
  */
 
+// Domain (Types and pure logic)
+export type {
+  Message,
+  Session,
+  ChatHistoryResponse,
+  ChatMessageRequest,
+  ChatMessageResponse,
+  SessionsResponse,
+  CreateSessionResponse,
+} from "./domain";
+
 // Services (API layer)
 export {
   getChatHistory,
@@ -13,25 +24,14 @@ export {
   deleteSession,
 } from "./services";
 
-// Hooks
-export { useChat, useSessions, useChatPageOrchestration } from "./hooks";
+// State (Hooks)
+export { useChat, useSessions, useChatPageOrchestration } from "./state";
 export type {
   UseChatReturn,
   UseSessionsReturn,
   UseChatPageOrchestrationReturn,
   OrchestrationServices,
-} from "./hooks";
+} from "./state";
 
-// Components
-export { SessionSidebar } from "./components";
-
-// Types
-export type {
-  Message,
-  Session,
-  ChatHistoryResponse,
-  ChatMessageRequest,
-  ChatMessageResponse,
-  SessionsResponse,
-  CreateSessionResponse,
-} from "./types";
+// UI (Components)
+export { SessionSidebar } from "./ui";

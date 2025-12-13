@@ -1,5 +1,8 @@
-// Common components
-export { default as AlertModal } from "./common/AlertModal";
+/**
+ * @deprecated
+ * - For AlertModal: import from @/shared
+ * - For SessionSidebar: import from @/features/chat
+ */
 
-// Chat components
-export { default as SessionSidebar } from "./chat/SessionSidebar";
+// Common components - deprecated re-export
+export { default as AlertModal } from "./common/AlertModal";

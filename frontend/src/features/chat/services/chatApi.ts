@@ -3,7 +3,7 @@ import type {
   ChatHistoryResponse,
   ChatMessageRequest,
   ChatMessageResponse,
-} from "../types";
+} from "../domain";
 
 export async function getChatHistory(
   sessionId: string

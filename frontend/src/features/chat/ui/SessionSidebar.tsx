@@ -1,8 +1,8 @@
 "use client";
 
-import { formatTimeAgo } from "@/utils/timeUtils";
+import { formatTimeAgo } from "@/shared";
 import { motion } from "framer-motion";
-import type { Session } from "../types";
+import type { Session } from "../domain";
 
 interface SessionSidebarProps {
   sessions?: Session[];

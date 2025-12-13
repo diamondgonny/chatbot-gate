@@ -6,7 +6,7 @@ import {
   createSession as defaultCreateSession,
   deleteSession as defaultDeleteSession,
 } from "../services";
-import type { Session, SessionsResponse, CreateSessionResponse } from "../types";
+import type { Session, SessionsResponse, CreateSessionResponse } from "../domain";
 
 /**
  * Service interface for dependency injection.

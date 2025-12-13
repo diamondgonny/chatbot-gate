@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server, mockMessages } from "../setup/msw-handlers";
-import { getChatHistory, sendChatMessage } from "@/apis/chat.api";
+import { getChatHistory, sendChatMessage } from "@/features/chat";
 
 describe("chat.api", () => {
   describe("getChatHistory", () => {

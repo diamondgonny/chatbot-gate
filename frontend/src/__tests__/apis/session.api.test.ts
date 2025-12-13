@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server, mockSessions } from "../setup/msw-handlers";
-import { getSessions, createSession, deleteSession } from "@/apis/session.api";
+import { getSessions, createSession, deleteSession } from "@/features/chat";
 
 describe("session.api", () => {
   describe("getSessions", () => {

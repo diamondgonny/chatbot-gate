@@ -1,5 +1,5 @@
 import apiClient from "@/apis/client";
-import type { SessionsResponse, CreateSessionResponse } from "../types";
+import type { SessionsResponse, CreateSessionResponse } from "../domain";
 
 export async function getSessions(): Promise<SessionsResponse> {
   const response = await apiClient.get<SessionsResponse>("/api/sessions");
