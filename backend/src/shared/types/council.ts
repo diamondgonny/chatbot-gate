@@ -8,7 +8,7 @@ import {
   IStage1Response,
   IStage2Review,
   IStage3Synthesis,
-} from '../models/CouncilSession';
+} from '../models/councilSession.model';
 
 // Aggregate ranking result from Stage 2
 export interface AggregateRanking {

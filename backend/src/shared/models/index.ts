@@ -1,4 +1,4 @@
-export { ChatSession, type IChatSession, type IMessage } from './ChatSession';
+export { ChatSession, type IChatSession, type IMessage } from './chatSession.model';
 export {
   CouncilSession,
   type ICouncilSession,
@@ -8,4 +8,4 @@ export {
   type IStage1Response,
   type IStage2Review,
   type IStage3Synthesis,
-} from './CouncilSession';
+} from './councilSession.model';

@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { config } from './config';
 import { mongoConnectionState, activeSessions, getDeploymentEnv } from './observability';
-import { ChatSession } from './models/ChatSession';
+import { ChatSession } from './models/chatSession.model';
 
 // Active sessions tracking interval handle
 let activeSessionsInterval: ReturnType<typeof setInterval> | null = null;
