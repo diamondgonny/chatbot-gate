@@ -7,8 +7,10 @@ const apiClient = axios.create({
   withCredentials: true,
 });
 
-// Flag to prevent multiple redirects
-let isRedirecting = false;
+// Ensure baseURL is set (for test environments where env var might be empty string)
+if (!apiClient.defaults.baseURL) {
+  apiClient.defaults.baseURL = "http://localhost:4000";
+}
 
 // Attach CSRF token from cookie to every state-changing request
 apiClient.interceptors.request.use((config) => {
@@ -26,12 +28,10 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (typeof window !== "undefined" && !isRedirecting) {
+    if (typeof window !== "undefined") {
       const status = error.response?.status;
 
       if (status === 401 || status === 403) {
-        isRedirecting = true;
-
         // Redirect to gate page
         window.location.href = "/";
 
