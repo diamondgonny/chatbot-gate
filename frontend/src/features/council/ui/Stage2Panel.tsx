@@ -56,6 +56,7 @@ export function Stage2Panel({
   useEffect(() => {
     // If results are hidden, default to first model tab (index 0 without results tab)
     // Otherwise, default to Results tab (index 0)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on data change
     setActiveTab(0);
   }, [reviews.length, hideResults]);
 

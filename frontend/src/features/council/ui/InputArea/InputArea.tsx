@@ -91,6 +91,7 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
   const [input, setInput] = useState("");
   const [mode, setMode] = useState<CouncilMode>("ultra");
   const [isMultiline, setIsMultiline] = useState(false);
+  const [showScrollbar, setShowScrollbar] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -170,9 +171,15 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
     abortProcessing(sessionId);
   }, [abortProcessing, sessionId]);
 
-  const showScrollbar = textareaRef.current
-    ? textareaRef.current.scrollHeight > LINE_HEIGHT * MAX_ROWS
-    : false;
+  // Update scrollbar visibility based on textarea height
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    const hasScrollbar = textarea
+      ? textarea.scrollHeight > LINE_HEIGHT * MAX_ROWS
+      : false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing DOM measurement to state
+    setShowScrollbar(hasScrollbar);
+  }, [input, isMultiline]);
 
   // Show input form only when no messages exist and not processing
   if (messages.length === 0 && !isProcessing) {

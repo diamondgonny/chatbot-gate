@@ -133,7 +133,7 @@ export interface GetCouncilSessionsResponse {
   sessions: CouncilSession[];
 }
 
-export interface GetCouncilSessionResponse extends CouncilSessionDetail {}
+export type GetCouncilSessionResponse = CouncilSessionDetail;
 
 // Processing status for reconnection
 export interface ProcessingStatus {

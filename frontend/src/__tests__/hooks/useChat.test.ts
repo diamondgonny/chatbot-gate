@@ -199,12 +199,6 @@ describe("useChat", () => {
   });
 
   describe("refs", () => {
-    it("should provide messagesEndRef", () => {
-      const { result } = renderHook(() => useChat());
-      expect(result.current.messagesEndRef).toBeDefined();
-      expect(result.current.messagesEndRef.current).toBeNull();
-    });
-
     it("should provide intendedSessionRef", () => {
       const { result } = renderHook(() => useChat());
       expect(result.current.intendedSessionRef).toBeDefined();
@@ -212,13 +206,5 @@ describe("useChat", () => {
     });
   });
 
-  describe("scrollToBottom", () => {
-    it("should be a callable function", () => {
-      const { result } = renderHook(() => useChat());
-      expect(typeof result.current.scrollToBottom).toBe("function");
-
-      // Should not throw when called
-      expect(() => result.current.scrollToBottom()).not.toThrow();
-    });
-  });
+  // Note: messagesEndRef and scrollToBottom have been moved to useChatScroll hook
 });

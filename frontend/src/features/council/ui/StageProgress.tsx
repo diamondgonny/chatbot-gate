@@ -56,17 +56,11 @@ export function StageProgress({
     return wasAborted && stageIndex === abortedStageIndex;
   };
 
-  // Determine if this stage completed before abort
-  const isCompletedBeforeAbort = (stageIndex: number): boolean => {
-    return wasAborted && stageIndex < abortedStageIndex;
-  };
-
   return (
     <div className="flex items-center justify-center gap-2 py-4">
       {stages.map((stage, index) => {
         const status = getStageStatus(stage.id);
         const aborted = isAbortedStage(index);
-        const completedBeforeAbort = isCompletedBeforeAbort(index);
 
         // Determine background color
         const getBgColor = () => {

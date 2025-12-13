@@ -84,7 +84,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
   const loadAbortControllerRef = useRef<AbortController | null>(null);
 
   // Store onComplete callback for title_complete events
-  let onCompleteCallback: (() => void) | undefined;
+  const onCompleteCallbackRef = useRef<(() => void) | undefined>(undefined);
 
   // Create stream callbacks
   const streamCallbacks = useMemo(
@@ -102,14 +102,14 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       onComplete: (assistantMessage: CouncilAssistantMessage) => {
         actions.setMessages((prev) => [...prev, assistantMessage]);
         actions.setPendingMessage(null); // Clear pending message (including reconnection case)
-        onCompleteCallback?.();
+        onCompleteCallbackRef.current?.();
       },
       onError: (error: string) => {
         actions.setError(error);
         actions.setPendingMessage(null);
       },
       onTitleComplete: () => {
-        onCompleteCallback?.();
+        onCompleteCallbackRef.current?.();
       },
       onReconnected: (stage: CurrentStage, userMessage?: string) => {
         actions.updateStreamState({ currentStage: stage });
@@ -207,7 +207,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
   const sendMessage = useCallback(
     (sessionId: string, content: string, mode: CouncilMode = 'ultra', onComplete?: () => void) => {
       // Store callback for later use
-      onCompleteCallback = onComplete;
+      onCompleteCallbackRef.current = onComplete;
 
       // Reset stream state
       actions.resetStreamState();

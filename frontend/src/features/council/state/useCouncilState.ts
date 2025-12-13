@@ -14,7 +14,6 @@ import type {
   AggregateRanking,
 } from "../domain";
 import type { CurrentStage, StreamState } from "../domain";
-import { createInitialStreamState } from "../domain";
 
 /**
  * Council state shape
@@ -64,24 +63,6 @@ export interface CouncilStateActions {
   setInputExpanded: (isExpanded: boolean) => void;
   resetStreamState: () => void;
   resetAll: () => void;
-}
-
-/**
- * Initial state factory
- */
-function createInitialState(): CouncilState {
-  const streamState = createInitialStreamState();
-  return {
-    messages: [],
-    pendingMessage: null,
-    ...streamState,
-    isProcessing: false,
-    isReconnecting: false,
-    wasAborted: false,
-    isLoading: false,
-    error: null,
-    isInputExpanded: false,
-  };
 }
 
 /**
