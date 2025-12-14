@@ -19,7 +19,14 @@ export type {
 export { CouncilProvider, useCouncilContext } from "./CouncilContext";
 export type { CouncilContextValue } from "./CouncilContext";
 
-// Sessions hook
+// Sessions context (for layout-level persistence)
+export {
+  CouncilSessionsProvider,
+  useCouncilSessionsContext,
+} from "./CouncilSessionsContext";
+export type { CouncilSessionsContextValue } from "./CouncilSessionsContext";
+
+// Sessions hook (for standalone usage)
 export { useCouncilSessions } from "./useCouncilSessions";
 
 // UI utilities

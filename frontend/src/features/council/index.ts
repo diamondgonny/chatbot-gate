@@ -83,7 +83,11 @@ export type { StreamEventCallbacks, StreamEventProcessorOptions } from "./servic
 export { CouncilProvider, useCouncilContext } from "./state";
 export type { CouncilContextValue } from "./state";
 
-// Sessions management hook
+// Sessions context (for layout-level persistence)
+export { CouncilSessionsProvider, useCouncilSessionsContext } from "./state";
+export type { CouncilSessionsContextValue } from "./state";
+
+// Sessions management hook (for standalone usage)
 export { useCouncilSessions } from "./state";
 
 // UI utilities
