@@ -8,10 +8,10 @@ import { Request, Response } from 'express';
 import { asyncHandler, AppError, ErrorCodes } from '../../shared';
 import {
   validateMessage,
-  validateMessageSessionId as validateSessionId,
+  validateSessionId,
   isOpenAIConfigured,
   sendMessage,
-  isMessageSessionLimitError as isSessionLimitError,
+  isSessionLimitError,
   isError,
   getChatHistory as getChatHistoryService,
 } from './services';

@@ -3,25 +3,29 @@
  * Barrel export for chat-related services.
  */
 
+// Validation (single source of truth)
+export {
+  validateMessage,
+  validateSessionId,
+  isSessionLimitError,
+  isError,
+} from './validation.service';
+
 // Session management
 export {
-  validateSessionId,
   checkSessionLimit,
   createSession,
+  findOrCreateSession,
   getUserSessions,
   getSessionById,
   deleteSession,
-  isSessionLimitError,
+  type FindOrCreateResult,
 } from './session.service';
 
-// Message handling
+// Message orchestration
 export {
-  validateMessage,
-  validateSessionId as validateMessageSessionId,
   sendMessage,
   getChatHistory,
-  isSessionLimitError as isMessageSessionLimitError,
-  isError,
   type SendMessageResult,
 } from './message.service';
 

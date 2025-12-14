@@ -4,7 +4,7 @@
  */
 
 import { randomUUID } from 'crypto';
-import { ChatSession, SESSION } from '../../../shared';
+import { ChatSession, SESSION, type IChatSession } from '../../../shared';
 import type {
   SessionResponse,
   SessionListItem,
@@ -14,11 +14,12 @@ import type {
 import { sessionOperations, getDeploymentEnv } from '../../../shared';
 
 /**
- * Validate session ID format (UUID v4)
+ * Result of findOrCreateSession operation
  */
-export const validateSessionId = (sessionId: string): boolean => {
-  return SESSION.ID_PATTERN.test(sessionId);
-};
+export interface FindOrCreateResult {
+  session: IChatSession;
+  isNewSession: boolean;
+}
 
 /**
  * Check if user has reached session limit
@@ -83,6 +84,59 @@ export const createSession = async (
     createdAt: session.createdAt,
     updatedAt: session.updatedAt,
   };
+};
+
+/**
+ * Find existing session or create new one with limit check
+ * Consolidates session lookup, creation, and limit enforcement
+ */
+export const findOrCreateSession = async (
+  userId: string,
+  sessionId: string
+): Promise<FindOrCreateResult | SessionLimitError> => {
+  // Try to find existing session
+  let session = await ChatSession.findOne({ userId, sessionId });
+
+  if (session) {
+    return { session, isNewSession: false };
+  }
+
+  // Check limit before creation
+  const { allowed, count } = await checkSessionLimit(userId);
+  if (!allowed) {
+    return {
+      error: 'Session limit reached. Delete old sessions to continue.',
+      code: 'SESSION_LIMIT_REACHED',
+      limit: SESSION.MAX_PER_USER,
+      count,
+    };
+  }
+
+  // Create new session
+  session = new ChatSession({
+    userId,
+    sessionId,
+    messages: [],
+    title: 'New Chat',
+  });
+  await session.save();
+
+  // Double-check for race condition
+  const finalCount = await ChatSession.countDocuments({ userId });
+  if (finalCount > SESSION.MAX_PER_USER) {
+    await ChatSession.deleteOne({ sessionId });
+    return {
+      error: 'Session limit reached. Delete old sessions to continue.',
+      code: 'SESSION_LIMIT_REACHED',
+      limit: SESSION.MAX_PER_USER,
+      count: finalCount - 1,
+    };
+  }
+
+  // Track metric
+  sessionOperations.labels('create', getDeploymentEnv()).inc();
+
+  return { session, isNewSession: true };
 };
 
 /**
@@ -167,13 +221,4 @@ export const deleteSession = async (
   sessionOperations.labels('delete', getDeploymentEnv()).inc();
 
   return true;
-};
-
-/**
- * Check if session limit error
- */
-export const isSessionLimitError = (
-  result: SessionResponse | SessionLimitError
-): result is SessionLimitError => {
-  return 'code' in result && result.code === 'SESSION_LIMIT_REACHED';
 };
