@@ -22,6 +22,7 @@ import {
 } from '../utils/partialResultBuilder';
 import { parseRankingFromText, calculateAggregateRankings } from './ranking.service';
 import { buildConversationHistory } from './history.service';
+import { saveAbortedMessage, saveCompleteMessage } from './persistence.service';
 import {
   councilMessagesTotal,
   councilStageDuration,
@@ -427,36 +428,13 @@ export async function* processCouncilMessage(
       });
   }
 
-  // Helper to save partial results on abort
-  const saveAbortedResults = async (
+  // Helper to save partial results on abort (delegates to persistence service)
+  const saveAborted = (
     stage1: IStage1Response[],
     stage2: IStage2Review[],
     stage3Content: string | null,
     stage3Reasoning?: string | null
-  ) => {
-    // Only save if we have at least some stage1 results
-    if (stage1.length === 0) {
-      console.log('[Council] No results to save on abort');
-      return;
-    }
-
-    session.messages.push({
-      role: 'assistant',
-      mode,
-      stage1,
-      stage2: stage2.length > 0 ? stage2 : undefined,
-      stage3: stage3Content ? {
-        model: getChairmanForMode(mode),
-        response: stage3Content,
-        reasoning: stage3Reasoning || undefined,
-        responseTimeMs: 0,
-      } : undefined,
-      wasAborted: true,
-      timestamp: new Date(),
-    });
-    await session.save();
-    console.log('[Council] Saved partial results on abort');
-  };
+  ) => saveAbortedMessage(session, mode, stage1, stage2, stage3Content, stage3Reasoning);
 
   try {
     // Check for abort before starting
@@ -474,7 +452,7 @@ export async function* processCouncilMessage(
         if (signal?.aborted) {
           console.log('[Council] Processing aborted during Stage 1');
           const partialStage1 = buildPartialStage1Responses(stage1Results, stage1StreamingContent);
-          await saveAbortedResults(partialStage1, [], null);
+          await saveAborted(partialStage1, [], null);
           return;
         }
         yield event;
@@ -498,7 +476,7 @@ export async function* processCouncilMessage(
       if (signal?.aborted) {
         console.log('[Council] Processing aborted during Stage 1 (caught exception)');
         const partialStage1 = buildPartialStage1Responses(stage1Results, stage1StreamingContent);
-        await saveAbortedResults(partialStage1, [], null);
+        await saveAborted(partialStage1, [], null);
         return;
       }
       throw error;  // Re-throw non-abort errors
@@ -508,7 +486,7 @@ export async function* processCouncilMessage(
     if (signal?.aborted) {
       console.log('[Council] Processing aborted after Stage 1 loop');
       const partialStage1 = buildPartialStage1Responses(stage1Results, stage1StreamingContent);
-      await saveAbortedResults(partialStage1, [], null);
+      await saveAborted(partialStage1, [], null);
       return;
     }
 
@@ -527,7 +505,7 @@ export async function* processCouncilMessage(
         console.log('[Council] Processing aborted during Stage 2');
         // Convert streaming content to partial reviews
         const partialStage2 = buildPartialStage2Reviews(stage2Results, stage2StreamingContent, parseRankingFromText);
-        await saveAbortedResults(stage1Results, partialStage2, null);
+        await saveAborted(stage1Results, partialStage2, null);
         return;
       }
       yield event;
@@ -553,7 +531,7 @@ export async function* processCouncilMessage(
     if (signal?.aborted) {
       console.log('[Council] Processing aborted before Stage 3');
       const partialStage2 = buildPartialStage2Reviews(stage2Results, stage2StreamingContent, parseRankingFromText);
-      await saveAbortedResults(stage1Results, partialStage2, null);
+      await saveAborted(stage1Results, partialStage2, null);
       return;
     }
 
@@ -566,7 +544,7 @@ export async function* processCouncilMessage(
       for await (const event of stage3Gen) {
         if (signal?.aborted) {
           console.log('[Council] Processing aborted during Stage 3');
-          await saveAbortedResults(stage1Results, stage2Results, stage3StreamingContent || null, stage3StreamingReasoning || null);
+          await saveAborted(stage1Results, stage2Results, stage3StreamingContent || null, stage3StreamingReasoning || null);
           return;
         }
         yield event;
@@ -584,7 +562,7 @@ export async function* processCouncilMessage(
       // Catch AbortError thrown by fetch when signal is aborted
       if (signal?.aborted) {
         console.log('[Council] Processing aborted during Stage 3 (caught exception)');
-        await saveAbortedResults(stage1Results, stage2Results, stage3StreamingContent || null, stage3StreamingReasoning || null);
+        await saveAborted(stage1Results, stage2Results, stage3StreamingContent || null, stage3StreamingReasoning || null);
         return;
       }
       throw error;  // Re-throw non-abort errors
@@ -595,19 +573,8 @@ export async function* processCouncilMessage(
       return;
     }
 
-    // Save complete assistant message
-    session.messages.push({
-      role: 'assistant',
-      mode,
-      stage1: stage1Results,
-      stage2: stage2Results,
-      stage3: stage3Result,
-      timestamp: new Date(),
-    });
-
-    // Save both user and assistant messages atomically
-    // Note: Title is saved separately via callback for immediate UI update
-    await session.save();
+    // Save complete message via persistence service
+    await saveCompleteMessage(session, mode, stage1Results, stage2Results, stage3Result);
 
     // Record AI message
     councilMessagesTotal.labels('ai', deploymentEnv).inc();

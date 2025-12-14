@@ -29,6 +29,9 @@ export { processCouncilMessage } from './orchestrator.service';
 // Title generation
 export { generateTitle } from './title.service';
 
+// Persistence
+export { saveAbortedMessage, saveCompleteMessage } from './persistence.service';
+
 // Council API (OpenRouter multi-model)
 export {
   queryCouncilModels,
