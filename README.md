@@ -35,41 +35,56 @@
 
 ```
 chatbot-gate/
-├── .github/workflows/          # CI/CD 파이프라인
+│
+├── .github/workflows/
+│
 ├── backend/
 │   ├── src/
-│   │   ├── controllers/        # HTTP 요청/응답 처리
-│   │   ├── services/           # 비즈니스 로직
-│   │   │   ├── council/        # Council 오케스트레이션
-│   │   │   └── council-sse/    # SSE 인프라
-│   │   ├── middleware/         # auth, rateLimiter, metrics
-│   │   ├── models/             # Mongoose 스키마
-│   │   ├── routes/             # API 엔드포인트
-│   │   ├── types/              # TypeScript 타입
-│   │   ├── constants/          # 공유 상수
-│   │   ├── metrics/            # Prometheus 메트릭
-│   │   └── utils/              # 유틸리티
-│   ├── monitoring-config/      # Prometheus, Grafana 설정
-│   └── docker-compose.yml
+│   │   ├── features/
+│   │   │   ├── auth/
+│   │   │   ├── council/
+│   │   │   │   ├── services/
+│   │   │   │   ├── sse/
+│   │   │   │   └── utils/
+│   │   │   ├── chat/
+│   │   │   │   └── services/
+│   │   │   ├── gate/
+│   │   │   └── metrics/
+│   │   └── shared/
+│   │       ├── constants/
+│   │       ├── errors/
+│   │       ├── middleware/
+│   │       ├── models/
+│   │       ├── observability/
+│   │       ├── services/
+│   │       └── types/
+│   ├── docker-compose*.yml
+│   └── monitoring-config/
+│
 ├── frontend/
 │   └── src/
 │       ├── app/
-│       │   ├── (public)/       # 인증 불필요 라우트 (/)
-│       │   └── (protected)/    # 인증 필요 라우트 (/hub, /chat, /council)
-│       ├── apis/               # API 클라이언트
-│       ├── components/
-│       │   ├── common/         # 공통 컴포넌트
-│       │   ├── chat/           # Chat UI
-│       │   └── council/        # Council UI
-│       ├── hooks/              # React Hooks
-│       │   └── council/        # Council 상태 관리
-│       ├── services/
-│       │   └── council/        # Council 스트리밍
-│       ├── domain/
-│       │   └── council/        # Council 비즈니스 로직
-│       ├── types/              # TypeScript 타입
-│       └── utils/              # 유틸리티
-├── docs/                       # 프로젝트 문서
+│       │   ├── (protected)/
+│       │   └── (public)/
+│       ├── features/           # Feature 모듈 (4-Layer)
+│       │   ├── council/
+│       │   │   ├── domain/     # 순수 비즈니스 로직
+│       │   │   ├── services/   # HTTP/SSE 통신
+│       │   │   ├── state/      # React 상태 관리
+│       │   │   └── ui/         # UI 컴포넌트
+│       │   └── chat/
+│       │       ├── domain/
+│       │       ├── services/
+│       │       ├── state/
+│       │       └── ui/
+│       └── shared/             # 공유 모듈 (leaf)
+│           ├── apis/
+│           ├── components/
+│           ├── hooks/
+│           ├── types/
+│           └── utils/
+│
+├── docs/
 └── README.md
 ```
 
@@ -79,8 +94,8 @@ chatbot-gate/
 |-----------|--------|------|:----:|
 | `/api/gate/validate` | POST | 접근 코드 검증, JWT 발급 | - |
 | `/api/auth/status` | GET | 인증 상태 확인 | - |
-| `/api/chat/message` | POST | AI에게 메시지 전송 | O |
-| `/api/chat/history` | GET | 세션 대화 내역 조회 | O |
+| `/api/chat/sessions/:id/message` | POST | AI에게 메시지 전송 | O |
+| `/api/chat/sessions/:id/history` | GET | 세션 대화 내역 조회 | O |
 | `/api/chat/sessions` | GET | 세션 목록 조회 | O |
 | `/api/chat/sessions` | POST | 세션 생성 | O |
 | `/api/chat/sessions/:id` | GET | 단일 세션 조회 | O |
