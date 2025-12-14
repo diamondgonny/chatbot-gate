@@ -6,7 +6,11 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useCouncilContext } from "../../state";
+import {
+  useCouncilContext,
+  useCouncilMessagesContext,
+  useCouncilStatusContext,
+} from "../../state";
 import type { CouncilMode } from "../../domain";
 
 interface InputAreaProps {
@@ -86,8 +90,11 @@ const MAX_ROWS = 18;
 const INLINE_CONTROLS_WIDTH = 190;
 
 export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
-  const { messages, isProcessing, sendMessage, abortProcessing, setInputExpanded } =
-    useCouncilContext();
+  // State reads → 분리된 context (리렌더 최적화)
+  const { messages } = useCouncilMessagesContext();
+  const { isProcessing } = useCouncilStatusContext();
+  // Actions → 기존 context (비즈니스 로직 유지)
+  const { sendMessage, abortProcessing, setInputExpanded } = useCouncilContext();
   const [input, setInput] = useState("");
   const [mode, setMode] = useState<CouncilMode>("ultra");
   const [isMultiline, setIsMultiline] = useState(false);

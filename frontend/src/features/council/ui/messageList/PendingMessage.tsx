@@ -6,10 +6,12 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useCouncilContext } from "../../state";
+import { useCouncilMessagesContext, useCouncilStatusContext } from "../../state";
 
 export function PendingMessage() {
-  const { pendingMessage, isReconnecting } = useCouncilContext();
+  // State reads → 분리된 context (리렌더 최적화)
+  const { pendingMessage } = useCouncilMessagesContext();
+  const { isReconnecting } = useCouncilStatusContext();
 
   if (!pendingMessage) {
     return null;

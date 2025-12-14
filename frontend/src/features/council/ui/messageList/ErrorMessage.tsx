@@ -6,10 +6,13 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useCouncilContext } from "../../state";
+import { useCouncilContext, useCouncilStatusContext } from "../../state";
 
 export function ErrorMessage() {
-  const { error, clearError } = useCouncilContext();
+  // State reads → 분리된 context (리렌더 최적화)
+  const { error } = useCouncilStatusContext();
+  // Actions → 기존 context (비즈니스 로직 유지)
+  const { clearError } = useCouncilContext();
 
   if (!error) {
     return null;

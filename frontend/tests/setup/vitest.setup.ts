@@ -70,3 +70,6 @@ Object.defineProperty(document, "cookie", {
 beforeEach(() => {
   cookieValue = "";
 });
+
+// Mock Element.scrollIntoView (not implemented in JSDOM)
+Element.prototype.scrollIntoView = vi.fn();
