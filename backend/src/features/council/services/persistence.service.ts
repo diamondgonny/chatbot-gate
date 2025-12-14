@@ -12,15 +12,6 @@ import {
   getChairmanForMode,
 } from '../../../shared';
 
-export interface SaveMessageOptions {
-  session: ICouncilSession;
-  mode: CouncilMode;
-  stage1: IStage1Response[];
-  stage2?: IStage2Review[];
-  stage3?: IStage3Synthesis | null;
-  wasAborted?: boolean;
-}
-
 /**
  * Save an aborted council message with partial results
  * Only saves if at least some stage1 results exist

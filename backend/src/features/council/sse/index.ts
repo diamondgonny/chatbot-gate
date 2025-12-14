@@ -108,10 +108,12 @@ class ProcessingRegistry {
     const processing = this.jobTracker.get(userId, sessionId);
     if (!processing) return;
 
-    this.clientManager.removeClient(processing, client);
+    const wasRemoved = this.clientManager.removeClient(processing, client);
 
-    // Record SSE disconnection
-    councilSseConnections.labels(getDeploymentEnv()).dec();
+    // Only decrement gauge if client was actually removed
+    if (wasRemoved) {
+      councilSseConnections.labels(getDeploymentEnv()).dec();
+    }
 
     // If all clients disconnected, start grace period
     if (!this.clientManager.hasClients(processing)) {

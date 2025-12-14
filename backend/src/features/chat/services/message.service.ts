@@ -4,6 +4,7 @@
  */
 
 import {
+  ChatSession,
   chatMessagesTotal,
   chatMessageDuration,
   getDeploymentEnv,
@@ -98,7 +99,6 @@ export const getChatHistory = async (
   userId: string,
   sessionId: string
 ): Promise<ChatHistoryResponse> => {
-  const { ChatSession } = await import('../../../shared');
   const session = await ChatSession.findOne({ userId, sessionId });
 
   if (!session) {

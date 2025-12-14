@@ -89,7 +89,7 @@ const replayStage2 = (res: Response, processing: ActiveProcessing): void => {
  * Replay Stage 3 accumulated state
  */
 const replayStage3 = (res: Response, processing: ActiveProcessing): void => {
-  const hasData = !!processing.stage3Content;
+  const hasData = !!processing.stage3Content || !!processing.stage3Reasoning;
 
   if (!hasData && processing.currentStage !== 'stage3') {
     return;
@@ -97,7 +97,12 @@ const replayStage3 = (res: Response, processing: ActiveProcessing): void => {
 
   writeEvent(res, { type: 'stage3_start' });
 
-  // Send accumulated content as a single chunk
+  // Send accumulated reasoning first
+  if (processing.stage3Reasoning) {
+    writeEvent(res, { type: 'stage3_reasoning_chunk', delta: processing.stage3Reasoning });
+  }
+
+  // Send accumulated content
   if (processing.stage3Content) {
     writeEvent(res, { type: 'stage3_chunk', delta: processing.stage3Content });
   }
