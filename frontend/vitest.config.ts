@@ -10,8 +10,8 @@ export default defineConfig({
     env: {
       NEXT_PUBLIC_API_URL: "http://localhost:4000",
     },
-    setupFiles: ["./src/__tests__/setup/vitest.setup.ts"],
-    include: ["src/**/*.test.{ts,tsx}"],
+    setupFiles: ["./tests/setup/vitest.setup.ts"],
+    include: ["tests/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],
