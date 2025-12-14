@@ -203,7 +203,7 @@ jobs:
 
           if [ "$HEALTH" != "healthy" ]; then
             echo "❌ Backend failed to become healthy"
-            docker compose --profile db -f backend/docker-compose.yml -f backend/docker-compose.ci.yml logs backend
+            docker compose --profile db -f backend/docker-compose.yml -f backend/docker-compose.ci.yml --env-file backend/.env.test logs backend
             exit 1
           fi
 
