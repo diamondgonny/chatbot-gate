@@ -58,6 +58,7 @@ export function MessageList() {
     isProcessing,
     isLoading,
     isInputExpanded,
+    error,
     stage1Responses,
     stage2Reviews,
     stage3Synthesis,
@@ -88,6 +89,14 @@ export function MessageList() {
 
   // Show empty state (hide when input is expanded/multiline)
   const isEmpty = messages.length === 0 && !pendingMessage && !isProcessing;
+  if (isEmpty && error) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <ErrorMessage />
+      </div>
+    );
+  }
+
   if (isEmpty && !isInputExpanded) {
     return <EmptyState />;
   }

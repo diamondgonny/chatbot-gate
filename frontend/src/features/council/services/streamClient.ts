@@ -94,10 +94,17 @@ export async function* streamSSE(
   });
 
   if (!response.ok) {
-    throw new StreamError(
-      `HTTP ${response.status}: ${response.statusText}`,
-      response.status
-    );
+    let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+    try {
+      const errorBody = await response.json();
+      if (errorBody?.error) {
+        errorMessage = errorBody.error;
+      }
+    } catch {
+      // ignore - response body may not be JSON
+    }
+
+    throw new StreamError(errorMessage, response.status);
   }
 
   if (!response.body) {
