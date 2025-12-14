@@ -44,9 +44,12 @@ export async function createCouncilSession(): Promise<CreateCouncilSessionRespon
 /**
  * Get all council sessions for the current user
  */
-export async function getCouncilSessions(): Promise<GetCouncilSessionsResponse> {
+export async function getCouncilSessions(
+  signal?: AbortSignal
+): Promise<GetCouncilSessionsResponse> {
   const response = await apiClient.get<GetCouncilSessionsResponse>(
-    "/api/council/sessions"
+    "/api/council/sessions",
+    { signal }
   );
   return response.data;
 }

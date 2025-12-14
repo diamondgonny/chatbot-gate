@@ -58,9 +58,8 @@ export function useCouncilStream(
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
     };
   }, []);
 
@@ -141,6 +140,10 @@ export function useCouncilStream(
             callbacks.onError("Connection lost");
           }
           callbacks.onProcessingEnd();
+        } finally {
+          if (abortControllerRef.current === abortController) {
+            abortControllerRef.current = null;
+          }
         }
       };
 
@@ -154,6 +157,9 @@ export function useCouncilStream(
    */
   const reconnectStream = useCallback(
     async (sessionId: string) => {
+      // Abort any existing request to prevent multiple concurrent streams
+      abortControllerRef.current?.abort();
+
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
 
@@ -221,6 +227,10 @@ export function useCouncilStream(
           callbacks.onError("Failed to reconnect");
         }
         callbacks.onProcessingEnd();
+      } finally {
+        if (abortControllerRef.current === abortController) {
+          abortControllerRef.current = null;
+        }
       }
     },
     [callbacks]

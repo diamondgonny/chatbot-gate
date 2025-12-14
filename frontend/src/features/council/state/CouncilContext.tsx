@@ -11,6 +11,7 @@ import {
   useCallback,
   useMemo,
   useRef,
+  useEffect,
   type ReactNode,
 } from "react";
 import type { CouncilMessage, CouncilAssistantMessage, CouncilMode } from "../domain";
@@ -133,6 +134,17 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
 
   const { startStream, reconnectStream, abortStream } =
     useCouncilStream(streamCallbacks);
+
+  // Cleanup in-flight requests/streams on unmount
+  useEffect(() => {
+    return () => {
+      loadAbortControllerRef.current?.abort();
+      loadAbortControllerRef.current = null;
+      loadSessionIdRef.current = null;
+      onCompleteCallbackRef.current = undefined;
+      abortStream();
+    };
+  }, [abortStream]);
 
   /**
    * Load a council session

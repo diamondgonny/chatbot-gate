@@ -15,22 +15,37 @@ export default function Gate() {
 
   // If already authenticated (jwt cookie present), skip gate and go to hub
   useEffect(() => {
-    let isMounted = true;
+    let isActive = true;
+    const controller = new AbortController();
 
     const checkAuth = async () => {
       try {
-        const { authenticated, userId: userIdFromServer } = await checkAuthStatus();
+        const { authenticated, userId: userIdFromServer } = await checkAuthStatus(
+          controller.signal
+        );
 
         if (authenticated) {
           if (userIdFromServer) {
             saveUserId(userIdFromServer);
           }
 
-          if (isMounted) {
+          if (isActive) {
             router.replace("/hub");
           }
         }
-      } catch {
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        if (err instanceof Error && (err.name === "CanceledError" || err.name === "AbortError")) {
+          return;
+        }
+        if (
+          err &&
+          typeof err === "object" &&
+          "code" in err &&
+          (err as { code?: string }).code === "ERR_CANCELED"
+        ) {
+          return;
+        }
         // Unauthenticated: stay on gate
       }
     };
@@ -38,7 +53,8 @@ export default function Gate() {
     checkAuth();
 
     return () => {
-      isMounted = false;
+      isActive = false;
+      controller.abort();
     };
   }, [router]);
 

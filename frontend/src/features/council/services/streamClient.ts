@@ -7,6 +7,21 @@
 
 import type { SSEEvent, CouncilMode } from "../domain";
 
+async function cleanupReader(
+  reader: ReadableStreamDefaultReader<Uint8Array>
+): Promise<void> {
+  try {
+    await reader.cancel();
+  } catch {
+    // ignore
+  }
+  try {
+    reader.releaseLock();
+  } catch {
+    // ignore
+  }
+}
+
 /**
  * Get CSRF token from cookie
  */
@@ -127,7 +142,7 @@ export async function* streamSSE(
     }
     throw error;
   } finally {
-    reader.cancel();
+    await cleanupReader(reader);
   }
 }
 
@@ -204,6 +219,6 @@ export async function* reconnectSSE(
     }
     throw error;
   } finally {
-    reader.cancel();
+    await cleanupReader(reader);
   }
 }

@@ -8,6 +8,25 @@ import {
 } from "../services";
 import type { CouncilSession } from "../domain";
 
+function isAbortError(error: unknown): boolean {
+  if (error instanceof Error) {
+    if (error.name === "AbortError" || error.name === "CanceledError") {
+      return true;
+    }
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "ERR_CANCELED"
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 interface UseCouncilSessionsReturn {
   sessions: CouncilSession[];
   isLoading: boolean;
@@ -24,21 +43,30 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
 
   // Track if component is still mounted to prevent state updates after unmount
   const isMountedRef = useRef(true);
+  const loadAbortControllerRef = useRef<AbortController | null>(null);
 
   const loadSessions = useCallback(async () => {
+    loadAbortControllerRef.current?.abort();
+    const controller = new AbortController();
+    loadAbortControllerRef.current = controller;
+
     setIsLoading(true);
     setError(null);
     try {
-      const { sessions: fetchedSessions } = await getCouncilSessions();
+      const { sessions: fetchedSessions } = await getCouncilSessions(controller.signal);
       if (!isMountedRef.current) return;
       setSessions(fetchedSessions);
     } catch (err) {
       if (!isMountedRef.current) return;
+      if (isAbortError(err)) return;
       console.error("Error loading council sessions:", err);
       setError("Failed to load sessions");
     } finally {
       if (isMountedRef.current) {
         setIsLoading(false);
+      }
+      if (loadAbortControllerRef.current === controller) {
+        loadAbortControllerRef.current = null;
       }
     }
   }, []);
@@ -88,6 +116,8 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
     loadSessions();
     return () => {
       isMountedRef.current = false;
+      loadAbortControllerRef.current?.abort();
+      loadAbortControllerRef.current = null;
     };
   }, [loadSessions]);
 
