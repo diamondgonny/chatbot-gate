@@ -56,6 +56,9 @@ export async function* parseSSEStream(response: Response): AsyncGenerator<string
       }
     }
   } finally {
+    // Cancel any pending reads and release the lock
+    // This ensures the underlying connection is properly closed on early exit
+    await reader.cancel();
     reader.releaseLock();
   }
 }

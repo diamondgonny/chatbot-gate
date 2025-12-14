@@ -71,6 +71,9 @@ export const connectDB = async () => {
     await updateActiveSessions();
     console.log('[Metrics] Active sessions tracking started (5-minute window, 30s interval)');
 
+    // Clear existing interval before creating new one (prevents accumulation on reconnect)
+    stopActiveSessionsTracking();
+
     // Periodic updates (store handle for cleanup on shutdown)
     activeSessionsInterval = setInterval(updateActiveSessions, UPDATE_INTERVAL_MS);
     activeSessionsInterval.unref();
