@@ -5,7 +5,7 @@
 
 import { SSEJobTracker } from './sseJobTracker';
 import { SSEClientManager } from './sseClientManager';
-import { COUNCIL } from '../../../shared';
+import { COUNCIL, councilSseConnections, getDeploymentEnv } from '../../../shared';
 
 export class SSELifecycleManager {
   private gracePeriodTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -87,7 +87,8 @@ export class SSELifecycleManager {
     }
 
     // Close all connected clients before removing
-    this.clientManager.closeAllClients(processing);
+    const closedCount = this.clientManager.closeAllClients(processing);
+    this.decrementConnectionGauge(closedCount);
 
     this.jobTracker.remove(userId, sessionId);
     console.log(`[SSELifecycleManager] Completed processing for ${key}`);
@@ -116,7 +117,8 @@ export class SSELifecycleManager {
     for (const [key, processing] of this.jobTracker.getAll()) {
       if (now - processing.lastEventAt.getTime() > COUNCIL.SSE.STALE_THRESHOLD_MS) {
         console.log(`[SSELifecycleManager] Cleaning up stale processing: ${key}`);
-        this.clientManager.closeAllClients(processing);
+        const closedCount = this.clientManager.closeAllClients(processing);
+        this.decrementConnectionGauge(closedCount);
         processing.abortController.abort();
         this.jobTracker.remove(processing.userId, processing.sessionId);
 
@@ -145,9 +147,20 @@ export class SSELifecycleManager {
     // Close all clients and abort all active processing
     for (const [key, processing] of this.jobTracker.getAll()) {
       console.log(`[SSELifecycleManager] Shutting down processing: ${key}`);
-      this.clientManager.closeAllClients(processing);
+      const closedCount = this.clientManager.closeAllClients(processing);
+      this.decrementConnectionGauge(closedCount);
       processing.abortController.abort();
     }
     this.jobTracker.clear();
+  }
+
+  /**
+   * Decrement connection gauge for closed clients
+   */
+  private decrementConnectionGauge(count: number): void {
+    const env = getDeploymentEnv();
+    for (let i = 0; i < count; i++) {
+      councilSseConnections.labels(env).dec();
+    }
   }
 }

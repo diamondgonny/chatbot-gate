@@ -374,6 +374,7 @@ export async function* processCouncilMessage(
   onTitleGenerated?: (title: string) => void
 ): AsyncGenerator<SSEEvent> {
   const deploymentEnv = getDeploymentEnv();
+  const chairmanModel = getChairmanForMode(mode);
 
   // Find session
   const session = await CouncilSession.findOne({ userId, sessionId });
@@ -434,7 +435,7 @@ export async function* processCouncilMessage(
     stage2: IStage2Review[],
     stage3Content: string | null,
     stage3Reasoning?: string | null
-  ) => saveAbortedMessage(session, mode, stage1, stage2, stage3Content, stage3Reasoning);
+  ) => saveAbortedMessage(session, mode, chairmanModel, stage1, stage2, stage3Content, stage3Reasoning);
 
   try {
     // Check for abort before starting

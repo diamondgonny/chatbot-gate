@@ -9,7 +9,6 @@ import {
   IStage2Review,
   IStage3Synthesis,
   CouncilMode,
-  getChairmanForMode,
 } from '../../../shared';
 
 /**
@@ -19,6 +18,7 @@ import {
 export const saveAbortedMessage = async (
   session: ICouncilSession,
   mode: CouncilMode,
+  chairmanModel: string,
   stage1: IStage1Response[],
   stage2: IStage2Review[],
   stage3Content: string | null,
@@ -37,7 +37,7 @@ export const saveAbortedMessage = async (
     stage2: stage2.length > 0 ? stage2 : undefined,
     stage3: stage3Content
       ? {
-          model: getChairmanForMode(mode),
+          model: chairmanModel,
           response: stage3Content,
           reasoning: stage3Reasoning || undefined,
           responseTimeMs: 0,

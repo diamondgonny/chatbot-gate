@@ -32,14 +32,17 @@ export class SSEClientManager {
 
   /**
    * Close all connected clients
+   * @returns Number of clients that were closed
    */
-  closeAllClients(processing: ActiveProcessing): void {
+  closeAllClients(processing: ActiveProcessing): number {
+    const count = processing.clients.size;
     for (const client of processing.clients) {
       if (!client.writableEnded) {
         client.end();
       }
     }
     processing.clients.clear();
+    return count;
   }
 
   /**
