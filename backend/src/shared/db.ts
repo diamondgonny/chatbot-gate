@@ -6,6 +6,9 @@ import { ChatSession } from './models/chatSession.model';
 // Active sessions tracking interval handle
 let activeSessionsInterval: ReturnType<typeof setInterval> | null = null;
 
+// Prevent duplicate listener registration on multiple connectDB() calls
+let listenersRegistered = false;
+
 /**
  * Stop active sessions tracking (for graceful shutdown)
  */
@@ -24,26 +27,30 @@ export const connectDB = async () => {
     await mongoose.connect(config.mongoUri);
     console.log('✅ MongoDB connected successfully');
 
-    // Set up MongoDB connection state metrics
+    // Set up MongoDB connection state metrics (only once to prevent listener accumulation)
     const deploymentEnv = getDeploymentEnv();
 
-    mongoose.connection.on('connected', () => {
-      mongoConnectionState.labels(deploymentEnv).set(1);
-    });
+    if (!listenersRegistered) {
+      mongoose.connection.on('connected', () => {
+        mongoConnectionState.labels(deploymentEnv).set(1);
+      });
 
-    mongoose.connection.on('disconnected', () => {
-      mongoConnectionState.labels(deploymentEnv).set(0);
-    });
+      mongoose.connection.on('disconnected', () => {
+        mongoConnectionState.labels(deploymentEnv).set(0);
+      });
 
-    mongoose.connection.on('connecting', () => {
-      mongoConnectionState.labels(deploymentEnv).set(2);
-    });
+      mongoose.connection.on('connecting', () => {
+        mongoConnectionState.labels(deploymentEnv).set(2);
+      });
 
-    mongoose.connection.on('disconnecting', () => {
-      mongoConnectionState.labels(deploymentEnv).set(3);
-    });
+      mongoose.connection.on('disconnecting', () => {
+        mongoConnectionState.labels(deploymentEnv).set(3);
+      });
 
-    // Set initial state
+      listenersRegistered = true;
+    }
+
+    // Set initial state (always update on connect)
     mongoConnectionState.labels(deploymentEnv).set(mongoose.connection.readyState);
 
     // Start periodic active sessions tracking (sessions with activity in last 5 minutes)

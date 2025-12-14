@@ -9,6 +9,12 @@ export const getDeploymentEnv = (): string => {
 };
 
 // Add default Node.js metrics (memory, CPU, event loop, GC, etc.)
+// Note: prom-client v15 internally creates an interval timer that cannot be stopped
+// via public API. register.clear() only removes metrics, not the internal timer.
+// This is acceptable because:
+// 1. In production, the process runs indefinitely
+// 2. In tests, the timer doesn't block process exit (vitest handles this gracefully)
+// 3. The overhead is minimal (10s interval for metric collection)
 client.collectDefaultMetrics({
   register,
   prefix: 'chatbot_gate_',

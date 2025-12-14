@@ -42,6 +42,8 @@ export class SSELifecycleManager {
       }
       this.gracePeriodTimers.delete(key);
     }, gracePeriodMs);
+    // Don't let grace period timers prevent process exit during shutdown
+    timer.unref();
 
     this.gracePeriodTimers.set(key, timer);
   }

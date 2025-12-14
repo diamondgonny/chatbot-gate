@@ -110,6 +110,9 @@ export const chatCompletion = async (
 
         // Retry on 5xx errors
         if (response.status >= 500 && attempt < MAX_RETRIES) {
+          // Cleanup listener before retry to prevent accumulation
+          externalSignal?.removeEventListener('abort', abortHandler);
+
           console.warn(`[Retry ${attempt + 1}/${MAX_RETRIES}] ${model}: ${response.status} error, retrying...`);
           const backoff = INITIAL_BACKOFF_MS * Math.pow(2, attempt);
           await sleep(backoff);
