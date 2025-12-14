@@ -1,3 +1,4 @@
+import { vi, beforeAll, afterAll, afterEach } from 'vitest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 
@@ -33,31 +34,27 @@ afterEach(async () => {
 });
 
 // Mock OpenAI API
-jest.mock('openai', () => {
-  return jest.fn().mockImplementation(() => ({
-    chat: {
-      completions: {
-        create: jest.fn().mockResolvedValue({
-          choices: [
-            {
-              message: {
-                content: 'This is a mock AI response for testing.',
+vi.mock('openai', () => {
+  const MockOpenAI = function() {
+    return {
+      chat: {
+        completions: {
+          create: vi.fn().mockResolvedValue({
+            choices: [
+              {
+                message: {
+                  content: 'This is a mock AI response for testing.',
+                },
               },
+            ],
+            usage: {
+              prompt_tokens: 10,
+              completion_tokens: 20,
             },
-          ],
-          usage: {
-            prompt_tokens: 10,
-            completion_tokens: 20,
-          },
-        }),
+          }),
+        },
       },
-    },
-  }));
+    };
+  };
+  return { default: MockOpenAI };
 });
-
-// Suppress console logs during tests (optional)
-// Uncomment if you want cleaner test output
-// beforeAll(() => {
-//   jest.spyOn(console, 'log').mockImplementation(() => {});
-//   jest.spyOn(console, 'error').mockImplementation(() => {});
-// });
