@@ -11,19 +11,31 @@ type Bucket = { count: number; expiresAt: number };
 
 const CLEANUP_INTERVAL_MS = 1 * 60 * 1000; // Clean up expired buckets every 1 minute
 
+// Singleton cleanup: track all bucket maps and run single interval
+const allBuckets: Map<string, Bucket>[] = [];
+let cleanupStarted = false;
+
+function ensureCleanupInterval(): void {
+  if (cleanupStarted) return;
+  cleanupStarted = true;
+
+  setInterval(() => {
+    const now = Date.now();
+    for (const buckets of allBuckets) {
+      for (const [key, bucket] of buckets) {
+        if (bucket.expiresAt < now) {
+          buckets.delete(key);
+        }
+      }
+    }
+  }, CLEANUP_INTERVAL_MS).unref();
+}
+
 export const createRateLimiter = ({ windowMs, max, routeName = 'unknown' }: RateLimitConfig) => {
   // Per-limiter buckets to avoid cross-talk between different routes
   const buckets = new Map<string, Bucket>();
-
-  // Periodic cleanup to prevent memory leaks from high IP churn
-  setInterval(() => {
-    const now = Date.now();
-    for (const [key, bucket] of buckets) {
-      if (bucket.expiresAt < now) {
-        buckets.delete(key);
-      }
-    }
-  }, CLEANUP_INTERVAL_MS).unref(); // unref() allows process to exit cleanly
+  allBuckets.push(buckets);
+  ensureCleanupInterval();
 
   return (req: Request, res: Response, next: NextFunction) => {
     const key = req.ip || 'global';

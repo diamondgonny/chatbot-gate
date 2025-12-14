@@ -10,6 +10,7 @@ import { COUNCIL, councilSseConnections, getDeploymentEnv } from '../../../share
 export class SSELifecycleManager {
   private gracePeriodTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private cleanupInterval: ReturnType<typeof setInterval>;
+  private isShuttingDown = false;
 
   constructor(
     private jobTracker: SSEJobTracker,
@@ -28,6 +29,8 @@ export class SSELifecycleManager {
    * Start grace period before aborting (allows reconnection)
    */
   startGracePeriod(userId: string, sessionId: string): void {
+    if (this.isShuttingDown) return;
+
     const key = this.jobTracker.getKey(userId, sessionId);
     const gracePeriodMs = COUNCIL.SSE.GRACE_PERIOD_MS;
 
@@ -138,6 +141,7 @@ export class SSELifecycleManager {
    * Shutdown lifecycle manager (cleanup)
    */
   shutdown(): void {
+    this.isShuttingDown = true;
     clearInterval(this.cleanupInterval);
 
     // Clear all grace period timers

@@ -57,10 +57,10 @@ export const metricsMiddleware = (req: Request, res: Response, next: NextFunctio
   };
 
   // 'finish' fires when response sent successfully
-  res.on('finish', () => recordMetrics(true));
+  res.once('finish', () => recordMetrics(true));
 
   // 'close' fires if connection terminated before finish (client disconnect)
-  res.on('close', () => recordMetrics(false));
+  res.once('close', () => recordMetrics(false));
 
   next();
 };
