@@ -46,7 +46,7 @@ describe('Chat API', () => {
 
         // Verify session was created
         const sessionResponse = await request(app)
-          .get(`/api/sessions/${newSessionId}`)
+          .get(`/api/chat/sessions/${newSessionId}`)
           .set(withAuth(userId));
 
         expect(sessionResponse.status).toBe(200);

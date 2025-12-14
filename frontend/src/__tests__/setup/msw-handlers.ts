@@ -42,11 +42,11 @@ export const handlers = [
   }),
 
   // Session endpoints
-  http.get("*/api/sessions", () => {
+  http.get("*/api/chat/sessions", () => {
     return HttpResponse.json({ sessions: mockSessions });
   }),
 
-  http.post("*/api/sessions", () => {
+  http.post("*/api/chat/sessions", () => {
     return HttpResponse.json({
       sessionId: "new-session-id",
       title: "New Chat",
@@ -55,7 +55,7 @@ export const handlers = [
     });
   }),
 
-  http.delete("*/api/sessions/:sessionId", () => {
+  http.delete("*/api/chat/sessions/:sessionId", () => {
     return new HttpResponse(null, { status: 204 });
   }),
 

@@ -1,6 +1,6 @@
 /**
  * Session API Integration Tests
- * Tests for /api/sessions endpoints
+ * Tests for /api/chat/sessions endpoints
  */
 
 import request from 'supertest';
@@ -14,12 +14,12 @@ import {
 } from '../helpers/dbHelper';
 
 describe('Session API', () => {
-  describe('POST /api/sessions - Create Session', () => {
+  describe('POST /api/chat/sessions - Create Session', () => {
     it('should create a new session with valid auth', async () => {
       const userId = generateUserId();
 
       const response = await request(app)
-        .post('/api/sessions')
+        .post('/api/chat/sessions')
         .set(withAuth(userId));
 
       expect(response.status).toBe(200);
@@ -37,7 +37,7 @@ describe('Session API', () => {
     it('should return 401 without authentication', async () => {
       // Provide CSRF token but no JWT to test auth middleware
       const response = await request(app)
-        .post('/api/sessions')
+        .post('/api/chat/sessions')
         .set('Cookie', 'csrfToken=test-csrf-token')
         .set('x-csrf-token', 'test-csrf-token');
 
@@ -55,7 +55,7 @@ describe('Session API', () => {
 
       // Try to create one more
       const response = await request(app)
-        .post('/api/sessions')
+        .post('/api/chat/sessions')
         .set(withAuth(userId));
 
       expect(response.status).toBe(429);
@@ -67,7 +67,7 @@ describe('Session API', () => {
     }, 60000); // Extended timeout for this test
   });
 
-  describe('GET /api/sessions - List Sessions', () => {
+  describe('GET /api/chat/sessions - List Sessions', () => {
     it('should return list of sessions', async () => {
       const userId = generateUserId();
 
@@ -76,7 +76,7 @@ describe('Session API', () => {
       await createTestSession(userId, { title: 'Session 2' });
 
       const response = await request(app)
-        .get('/api/sessions')
+        .get('/api/chat/sessions')
         .set(withAuth(userId));
 
       expect(response.status).toBe(200);
@@ -89,7 +89,7 @@ describe('Session API', () => {
       const userId = generateUserId();
 
       const response = await request(app)
-        .get('/api/sessions')
+        .get('/api/chat/sessions')
         .set(withAuth(userId));
 
       expect(response.status).toBe(200);
@@ -98,7 +98,7 @@ describe('Session API', () => {
 
     it('should return 401 without authentication', async () => {
       const response = await request(app)
-        .get('/api/sessions')
+        .get('/api/chat/sessions')
         .set('Cookie', 'csrfToken=test-csrf-token');
 
       expect(response.status).toBe(401);
@@ -114,7 +114,7 @@ describe('Session API', () => {
 
       // Get sessions for user1
       const response = await request(app)
-        .get('/api/sessions')
+        .get('/api/chat/sessions')
         .set(withAuth(userId1));
 
       expect(response.status).toBe(200);
@@ -123,7 +123,7 @@ describe('Session API', () => {
     });
   });
 
-  describe('GET /api/sessions/:sessionId - Get Session', () => {
+  describe('GET /api/chat/sessions/:sessionId - Get Session', () => {
     it('should return session details', async () => {
       const userId = generateUserId();
       const sessionId = await createTestSession(userId, {
@@ -135,7 +135,7 @@ describe('Session API', () => {
       });
 
       const response = await request(app)
-        .get(`/api/sessions/${sessionId}`)
+        .get(`/api/chat/sessions/${sessionId}`)
         .set(withAuth(userId));
 
       expect(response.status).toBe(200);
@@ -152,7 +152,7 @@ describe('Session API', () => {
       const nonExistentSessionId = generateSessionId();
 
       const response = await request(app)
-        .get(`/api/sessions/${nonExistentSessionId}`)
+        .get(`/api/chat/sessions/${nonExistentSessionId}`)
         .set(withAuth(userId));
 
       expect(response.status).toBe(404);
@@ -164,7 +164,7 @@ describe('Session API', () => {
       const invalidSessionId = generateInvalidSessionId();
 
       const response = await request(app)
-        .get(`/api/sessions/${invalidSessionId}`)
+        .get(`/api/chat/sessions/${invalidSessionId}`)
         .set(withAuth(userId));
 
       expect(response.status).toBe(400);
@@ -180,7 +180,7 @@ describe('Session API', () => {
 
       // Try to access with user2
       const response = await request(app)
-        .get(`/api/sessions/${sessionId}`)
+        .get(`/api/chat/sessions/${sessionId}`)
         .set(withAuth(userId2));
 
       // Should return 404 (not 403) to not reveal session existence
@@ -191,20 +191,20 @@ describe('Session API', () => {
       const sessionId = generateSessionId();
 
       const response = await request(app)
-        .get(`/api/sessions/${sessionId}`)
+        .get(`/api/chat/sessions/${sessionId}`)
         .set('Cookie', 'csrfToken=test-csrf-token');
 
       expect(response.status).toBe(401);
     });
   });
 
-  describe('DELETE /api/sessions/:sessionId - Delete Session', () => {
+  describe('DELETE /api/chat/sessions/:sessionId - Delete Session', () => {
     it('should delete session successfully', async () => {
       const userId = generateUserId();
       const sessionId = await createTestSession(userId);
 
       const response = await request(app)
-        .delete(`/api/sessions/${sessionId}`)
+        .delete(`/api/chat/sessions/${sessionId}`)
         .set(withAuth(userId));
 
       expect(response.status).toBe(200);
@@ -212,7 +212,7 @@ describe('Session API', () => {
 
       // Verify session is actually deleted
       const getResponse = await request(app)
-        .get(`/api/sessions/${sessionId}`)
+        .get(`/api/chat/sessions/${sessionId}`)
         .set(withAuth(userId));
 
       expect(getResponse.status).toBe(404);
@@ -223,7 +223,7 @@ describe('Session API', () => {
       const nonExistentSessionId = generateSessionId();
 
       const response = await request(app)
-        .delete(`/api/sessions/${nonExistentSessionId}`)
+        .delete(`/api/chat/sessions/${nonExistentSessionId}`)
         .set(withAuth(userId));
 
       expect(response.status).toBe(404);
@@ -234,7 +234,7 @@ describe('Session API', () => {
       const invalidSessionId = generateInvalidSessionId();
 
       const response = await request(app)
-        .delete(`/api/sessions/${invalidSessionId}`)
+        .delete(`/api/chat/sessions/${invalidSessionId}`)
         .set(withAuth(userId));
 
       expect(response.status).toBe(400);
@@ -244,7 +244,7 @@ describe('Session API', () => {
       const sessionId = generateSessionId();
 
       const response = await request(app)
-        .delete(`/api/sessions/${sessionId}`)
+        .delete(`/api/chat/sessions/${sessionId}`)
         .set('Cookie', 'csrfToken=test-csrf-token')
         .set('x-csrf-token', 'test-csrf-token');
 

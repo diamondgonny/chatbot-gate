@@ -14,7 +14,7 @@ describe("session.api", () => {
 
     it("should return empty array when no sessions", async () => {
       server.use(
-        http.get("*/api/sessions", () => {
+        http.get("*/api/chat/sessions", () => {
           return HttpResponse.json({ sessions: [] });
         })
       );
@@ -38,7 +38,7 @@ describe("session.api", () => {
 
     it("should throw error on 429 rate limit response", async () => {
       server.use(
-        http.post("*/api/sessions", () => {
+        http.post("*/api/chat/sessions", () => {
           return HttpResponse.json(
             { error: "Too many sessions", limit: 5, count: 5 },
             { status: 429 }
@@ -68,7 +68,7 @@ describe("session.api", () => {
       let capturedSessionId: string | undefined;
 
       server.use(
-        http.delete("*/api/sessions/:sessionId", ({ params }) => {
+        http.delete("*/api/chat/sessions/:sessionId", ({ params }) => {
           capturedSessionId = params.sessionId as string;
           return new HttpResponse(null, { status: 204 });
         })
@@ -81,7 +81,7 @@ describe("session.api", () => {
 
     it("should throw error on 404", async () => {
       server.use(
-        http.delete("*/api/sessions/:sessionId", () => {
+        http.delete("*/api/chat/sessions/:sessionId", () => {
           return new HttpResponse(null, { status: 404 });
         })
       );

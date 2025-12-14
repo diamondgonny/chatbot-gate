@@ -146,7 +146,7 @@ describe("useSessions", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       server.use(
-        http.get("*/api/sessions", () => {
+        http.get("*/api/chat/sessions", () => {
           return new HttpResponse(null, { status: 500 });
         })
       );
@@ -182,7 +182,7 @@ describe("useSessions", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       server.use(
-        http.post("*/api/sessions", () => {
+        http.post("*/api/chat/sessions", () => {
           return HttpResponse.json(
             { error: "Too many sessions", limit: 5, count: 5 },
             { status: 429 }
@@ -205,7 +205,7 @@ describe("useSessions", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       server.use(
-        http.post("*/api/sessions", () => {
+        http.post("*/api/chat/sessions", () => {
           return new HttpResponse(null, { status: 500 });
         })
       );
@@ -225,7 +225,7 @@ describe("useSessions", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       server.use(
-        http.post("*/api/sessions", () => {
+        http.post("*/api/chat/sessions", () => {
           return new HttpResponse(null, { status: 500 });
         })
       );
@@ -257,7 +257,7 @@ describe("useSessions", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       server.use(
-        http.delete("*/api/sessions/:sessionId", () => {
+        http.delete("*/api/chat/sessions/:sessionId", () => {
           return new HttpResponse(null, { status: 404 });
         })
       );

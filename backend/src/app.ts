@@ -195,7 +195,7 @@ export const createApp = (options?: AppOptions): Express => {
   app.use('/api/gate', gateRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/chat', chatRoutes);
-  app.use('/api/sessions', sessionRoutes);
+  app.use('/api/chat/sessions', sessionRoutes);
 
   // Council routes (SSE, complex state)
   if (enableCouncil) {
