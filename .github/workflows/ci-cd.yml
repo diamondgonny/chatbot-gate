@@ -171,18 +171,18 @@ jobs:
           echo "Using GITHUB_REPO=${{ github.repository }}"
           echo "Using VERSION=$VERSION"
 
-          # Create test .env file (no indentation to avoid spaces in variable names)
+          # Create test .env file
           cat > backend/.env.test << EOF
-MONGO_INITDB_ROOT_USERNAME=test
-MONGO_INITDB_ROOT_PASSWORD=test
-MONGO_INITDB_DATABASE=test
-JWT_SECRET=test-secret-key-for-ci-only
-OPENAI_API_KEY=sk-test-fake-key
-OPENROUTER_API_KEY=sk-test-fake-router-key
-FRONTEND_URLS=http://localhost:3000
-GITHUB_REPO=${{ github.repository }}
-VERSION=$VERSION
-EOF
+          MONGO_INITDB_ROOT_USERNAME=test
+          MONGO_INITDB_ROOT_PASSWORD=test
+          MONGO_INITDB_DATABASE=test
+          JWT_SECRET=test-secret-key-for-ci-only
+          OPENAI_API_KEY=sk-test-fake-key
+          OPENROUTER_API_KEY=sk-test-fake-router-key
+          FRONTEND_URLS=http://localhost:3000
+          GITHUB_REPO=${{ github.repository }}
+          VERSION=$VERSION
+          EOF
 
           # Start services using CI compose configuration
           docker compose --profile db -f backend/docker-compose.yml -f backend/docker-compose.ci.yml --env-file backend/.env.test up -d mongodb backend
