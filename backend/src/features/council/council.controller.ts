@@ -195,14 +195,14 @@ export const sendMessage = async (req: Request, res: Response) => {
   );
 
   // Register processing with registry
-  const processing = processingRegistry.register(
+  processingRegistry.register(
     userId,
     sessionId,
     content,
     generator,
     abortController
   );
-  processing.clients.add(res);
+  processingRegistry.addClient(userId, sessionId, res);
 
   // Detect client disconnect - let grace period handle cleanup (allows reconnection)
   res.on('close', () => {
