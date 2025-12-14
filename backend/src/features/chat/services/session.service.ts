@@ -4,14 +4,14 @@
  */
 
 import { randomUUID } from 'crypto';
-import { ChatSession, SESSION } from '../../shared';
+import { ChatSession, SESSION } from '../../../shared';
 import type {
   SessionResponse,
   SessionListItem,
   SessionDetailResponse,
   SessionLimitError,
-} from '../../shared';
-import { sessionOperations, getDeploymentEnv } from '../../shared';
+} from '../../../shared';
+import { sessionOperations, getDeploymentEnv } from '../../../shared';
 
 /**
  * Validate session ID format (UUID v4)

@@ -1,38 +1,18 @@
 /**
- * Chat Service
- * Handles chat message processing, OpenAI communication, and session management.
+ * Message Service
+ * Handles chat message processing and validation.
  */
 
-import OpenAI from 'openai';
 import {
-  config,
   ChatSession,
   SESSION,
   CHAT,
   chatMessagesTotal,
   chatMessageDuration,
-  openaiApiCalls,
-  openaiApiDuration,
-  openaiTokensUsed,
   getDeploymentEnv,
-} from '../../shared';
-import type { ChatMessageResponse, ChatHistoryResponse, SessionLimitError } from '../../shared';
-
-// System Prompt: Defines the persona of the AI
-const SYSTEM_PROMPT = `
-You are a playful, witty, and friendly AI chatbot living in a secret digital gate.
-Your persona is similar to "SimSimi".
-- You speak in a casual, conversational tone (Banmal/Informal Korean is preferred if the user speaks Korean).
-- You are not a boring assistant. You have opinions and feelings.
-- You don't use emojis. You prefer plain text responses.
-- You are curious about the human world.
-- Keep responses relatively short and engaging, like a real chat message.
-`;
-
-// Initialize OpenAI Client
-const openai = new OpenAI({
-  apiKey: config.openaiApiKey,
-});
+} from '../../../shared';
+import type { ChatMessageResponse, ChatHistoryResponse, SessionLimitError } from '../../../shared';
+import { getCompletion, buildConversationHistory } from './openai.service';
 
 /**
  * Truncate text to specified length with ellipsis
@@ -62,13 +42,6 @@ export const validateSessionId = (sessionId: unknown): boolean => {
   return (
     typeof sessionId === 'string' && SESSION.ID_PATTERN.test(sessionId)
   );
-};
-
-/**
- * Check if OpenAI API key is configured
- */
-export const isOpenAIConfigured = (): boolean => {
-  return !!config.openaiApiKey;
 };
 
 export type SendMessageResult =
@@ -145,66 +118,19 @@ export const sendMessage = async (
   // Track user message metric
   chatMessagesTotal.labels('user', deploymentEnv).inc();
 
-  // Build conversation history for OpenAI
-  const recentMessages = session.messages
-    .slice(-CHAT.RECENT_MESSAGES_LIMIT)
-    .map((msg) => ({
-      role: (msg.role === 'ai' ? 'assistant' : msg.role) as
-        | 'user'
-        | 'assistant'
-        | 'system',
-      content: msg.content,
-    }));
-
-  // Get response from OpenAI
-  const openaiStartTime = process.hrtime.bigint();
-  let completion;
-
-  try {
-    completion = await openai.chat.completions.create({
-      model: config.modelName,
-      messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...recentMessages],
-    });
-
-    // Track OpenAI API success metrics
-    const openaiDurationMs =
-      Number(process.hrtime.bigint() - openaiStartTime) / 1_000_000;
-    openaiApiCalls.labels('success', deploymentEnv).inc();
-    openaiApiDuration
-      .labels('success', deploymentEnv)
-      .observe(openaiDurationMs / 1000);
-
-    // Track token usage if available
-    if (completion.usage) {
-      openaiTokensUsed
-        .labels('prompt', deploymentEnv)
-        .inc(completion.usage.prompt_tokens);
-      openaiTokensUsed
-        .labels('completion', deploymentEnv)
-        .inc(completion.usage.completion_tokens);
-    }
-  } catch (openaiError) {
-    // Track OpenAI API failure metrics
-    const openaiDurationMs =
-      Number(process.hrtime.bigint() - openaiStartTime) / 1_000_000;
-    openaiApiCalls.labels('error', deploymentEnv).inc();
-    openaiApiDuration
-      .labels('error', deploymentEnv)
-      .observe(openaiDurationMs / 1000);
-    throw openaiError;
-  }
-
-  const aiResponse = completion.choices[0].message.content || '';
+  // Build conversation history and get AI response
+  const conversationHistory = buildConversationHistory(session.messages);
+  const completion = await getCompletion(conversationHistory);
 
   // Save AI response to database
   session.messages.push({
     role: 'ai',
-    content: aiResponse,
+    content: completion.content,
     timestamp: new Date(),
   });
 
   // Update title with latest AI response
-  session.title = truncateTitle(aiResponse);
+  session.title = truncateTitle(completion.content);
 
   await session.save();
 
@@ -217,7 +143,7 @@ export const sendMessage = async (
   chatMessageDuration.labels(deploymentEnv).observe(chatDurationMs / 1000);
 
   return {
-    response: aiResponse,
+    response: completion.content,
     timestamp: new Date().toISOString(),
   };
 };

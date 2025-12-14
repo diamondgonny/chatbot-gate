@@ -6,7 +6,15 @@
 
 import { Request, Response } from 'express';
 import { asyncHandler, AppError, ErrorCodes } from '../../shared';
-import * as chatService from './chat.service';
+import {
+  validateMessage,
+  validateMessageSessionId as validateSessionId,
+  isOpenAIConfigured,
+  sendMessage,
+  isMessageSessionLimitError as isSessionLimitError,
+  isError,
+  getChatHistory as getChatHistoryService,
+} from './services';
 
 /**
  * Send a message to the AI and get a response
@@ -16,7 +24,7 @@ export const chatWithAI = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.userId;
 
   // Validate message
-  const messageValidation = chatService.validateMessage(message);
+  const messageValidation = validateMessage(message);
   if (!messageValidation.valid) {
     const statusCode = messageValidation.error === 'Message too long' ? 413 : 400;
     const code = statusCode === 413 ? ErrorCodes.PAYLOAD_TOO_LARGE : ErrorCodes.VALIDATION_ERROR;
@@ -29,25 +37,25 @@ export const chatWithAI = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // Validate session ID
-  if (!chatService.validateSessionId(sessionId)) {
+  if (!validateSessionId(sessionId)) {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 400, 'Valid session ID is required');
   }
 
   // Check OpenAI configuration
-  if (!chatService.isOpenAIConfigured()) {
+  if (!isOpenAIConfigured()) {
     console.error('OPENAI_API_KEY is missing');
     throw new AppError(ErrorCodes.SERVICE_UNAVAILABLE, 500, 'Server misconfiguration: API Key missing');
   }
 
-  const result = await chatService.sendMessage(userId, sessionId, message);
+  const result = await sendMessage(userId, sessionId, message);
 
   // Handle session limit error
-  if (chatService.isSessionLimitError(result)) {
+  if (isSessionLimitError(result)) {
     return res.status(429).json(result);
   }
 
   // Handle general error
-  if (chatService.isError(result)) {
+  if (isError(result)) {
     return res.status(500).json(result);
   }
 
@@ -65,10 +73,10 @@ export const getChatHistory = asyncHandler(async (req: Request, res: Response) =
     throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'User ID not found. Authentication required.');
   }
 
-  if (!chatService.validateSessionId(sessionId)) {
+  if (!validateSessionId(sessionId)) {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 400, 'Valid session ID is required');
   }
 
-  const history = await chatService.getChatHistory(userId, sessionId as string);
+  const history = await getChatHistoryService(userId, sessionId as string);
   return res.json(history);
 });

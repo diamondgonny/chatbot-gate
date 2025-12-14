@@ -6,7 +6,14 @@
 
 import { Request, Response } from 'express';
 import { asyncHandler, AppError, ErrorCodes } from '../../shared';
-import * as sessionService from './session.service';
+import {
+  createSession as createSessionService,
+  isSessionLimitError,
+  getUserSessions as getUserSessionsService,
+  validateSessionId,
+  getSessionById as getSessionByIdService,
+  deleteSession as deleteSessionService,
+} from './services';
 
 /**
  * Create a new chat session for the current user
@@ -18,9 +25,9 @@ export const createSession = asyncHandler(async (req: Request, res: Response) =>
     throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'User ID not found. Authentication required.');
   }
 
-  const result = await sessionService.createSession(userId);
+  const result = await createSessionService(userId);
 
-  if (sessionService.isSessionLimitError(result)) {
+  if (isSessionLimitError(result)) {
     return res.status(429).json(result);
   }
 
@@ -37,7 +44,7 @@ export const getUserSessions = asyncHandler(async (req: Request, res: Response) 
     throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'User ID not found. Authentication required.');
   }
 
-  const sessions = await sessionService.getUserSessions(userId);
+  const sessions = await getUserSessionsService(userId);
   return res.json({ sessions });
 });
 
@@ -52,11 +59,11 @@ export const getSessionById = asyncHandler(async (req: Request, res: Response) =
     throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'Authentication required');
   }
 
-  if (!sessionId || !sessionService.validateSessionId(sessionId)) {
+  if (!sessionId || !validateSessionId(sessionId)) {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 400, 'Valid session ID is required');
   }
 
-  const session = await sessionService.getSessionById(userId, sessionId);
+  const session = await getSessionByIdService(userId, sessionId);
 
   if (!session) {
     throw new AppError(ErrorCodes.NOT_FOUND, 404, 'Session not found');
@@ -76,11 +83,11 @@ export const deleteSession = asyncHandler(async (req: Request, res: Response) =>
     throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'Authentication required');
   }
 
-  if (!sessionId || !sessionService.validateSessionId(sessionId)) {
+  if (!sessionId || !validateSessionId(sessionId)) {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 400, 'Valid session ID is required');
   }
 
-  const deleted = await sessionService.deleteSession(userId, sessionId);
+  const deleted = await deleteSessionService(userId, sessionId);
 
   if (!deleted) {
     throw new AppError(ErrorCodes.NOT_FOUND, 404, 'Session not found');
