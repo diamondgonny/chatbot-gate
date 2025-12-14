@@ -7,6 +7,8 @@ import { Request, Response } from 'express';
 import { asyncHandler, AppError, ErrorCodes, isOpenRouterConfigured } from '../../shared';
 import * as councilService from './services';
 import { processingRegistry } from './sse';
+import { streamCouncilMessage, setupSSEHeaders } from './sse/sseStreamHandler';
+import { replayAccumulatedState } from './sse/sseReplayService';
 import type { CouncilMode } from '../../shared';
 
 /**
@@ -129,6 +131,7 @@ export const sendMessage = async (req: Request, res: Response) => {
     ? (modeParam as CouncilMode)
     : 'ultra';
 
+  // Validation
   if (!userId) {
     return res.status(401).json({ error: 'Authentication required' });
   }
@@ -165,92 +168,8 @@ export const sendMessage = async (req: Request, res: Response) => {
     });
   }
 
-  // Set SSE headers
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
-
-  // Flush headers immediately
-  res.flushHeaders();
-
-  // Create abort controller for client disconnect handling
-  const abortController = new AbortController();
-
-  // Create title callback for immediate broadcast
-  const onTitleGenerated = (title: string) => {
-    const titleEvent = { type: 'title_complete' as const, data: { title } };
-    processingRegistry.recordEvent(userId, sessionId, titleEvent);
-    processingRegistry.broadcast(userId, sessionId, titleEvent);
-  };
-
-  // Create generator
-  const generator = councilService.processCouncilMessage(
-    userId,
-    sessionId,
-    content,
-    mode,
-    abortController.signal,
-    onTitleGenerated
-  );
-
-  // Register processing with registry
-  processingRegistry.register(
-    userId,
-    sessionId,
-    content,
-    generator,
-    abortController
-  );
-  processingRegistry.addClient(userId, sessionId, res);
-
-  // Detect client disconnect - let grace period handle cleanup (allows reconnection)
-  res.on('close', () => {
-    if (!res.writableEnded) {
-      console.log(`[Council] Client disconnected for session ${sessionId}`);
-      processingRegistry.removeClient(userId, sessionId, res);
-      // Grace period (30s) will abort if no reconnection
-    }
-  });
-
-  try {
-    for await (const event of generator) {
-      // Check if aborted
-      if (abortController.signal.aborted) {
-        break;
-      }
-
-      // Record event in registry for replay on reconnection
-      processingRegistry.recordEvent(userId, sessionId, event);
-
-      // Broadcast to all connected clients
-      processingRegistry.broadcast(userId, sessionId, event);
-
-      // Mark complete on final events
-      if (event.type === 'complete' || event.type === 'error') {
-        processingRegistry.complete(userId, sessionId, abortController);
-        break;
-      }
-    }
-  } catch (error) {
-    // Ignore abort errors - these are expected when client disconnects
-    if (error instanceof Error && error.name === 'AbortError') {
-      console.log(`[Council] Processing aborted for session ${sessionId}`);
-      processingRegistry.complete(userId, sessionId, abortController);
-      return;
-    }
-    console.error('Council message error:', error);
-    if (!abortController.signal.aborted) {
-      const errorEvent = { type: 'error' as const, error: 'Processing failed' };
-      processingRegistry.broadcast(userId, sessionId, errorEvent);
-    }
-    processingRegistry.complete(userId, sessionId, abortController);
-  } finally {
-    // Close this client's connection
-    if (!res.writableEnded) {
-      res.end();
-    }
-  }
+  // Delegate SSE streaming to handler
+  await streamCouncilMessage(res, { userId, sessionId, content, mode });
 };
 
 /**
@@ -299,6 +218,7 @@ export const reconnectToProcessing = async (req: Request, res: Response) => {
   const userId = req.userId;
   const { sessionId } = req.params;
 
+  // Validation
   if (!userId) {
     return res.status(401).json({ error: 'Authentication required' });
   }
@@ -316,81 +236,9 @@ export const reconnectToProcessing = async (req: Request, res: Response) => {
     });
   }
 
-  // Set SSE headers
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.flushHeaders();
-
-  // Replay accumulated state based on current stage
-  const hasStage1Data = processing.stage1Results.length > 0 || Object.keys(processing.stage1StreamingContent).length > 0;
-  const hasStage2Data = processing.stage2Results.length > 0 || Object.keys(processing.stage2StreamingContent).length > 0;
-  const hasStage3Data = !!processing.stage3Content;
-
-  // 1. Stage 1 replay
-  if (hasStage1Data || processing.currentStage === 'stage1') {
-    res.write(`data: ${JSON.stringify({ type: 'stage1_start' })}\n\n`);
-    // Send completed responses
-    for (const result of processing.stage1Results) {
-      res.write(`data: ${JSON.stringify({ type: 'stage1_response', data: result })}\n\n`);
-    }
-    // Send streaming content for models still in progress
-    if (processing.currentStage === 'stage1') {
-      for (const [model, content] of Object.entries(processing.stage1StreamingContent)) {
-        if (content) {
-          res.write(`data: ${JSON.stringify({ type: 'stage1_chunk', model, delta: content })}\n\n`);
-        }
-      }
-    }
-    // Only send complete if Stage 1 is actually done
-    if (processing.currentStage !== 'stage1') {
-      res.write(`data: ${JSON.stringify({ type: 'stage1_complete' })}\n\n`);
-    }
-  }
-
-  // 2. Stage 2 replay
-  if (hasStage2Data || processing.currentStage === 'stage2') {
-    res.write(`data: ${JSON.stringify({ type: 'stage2_start' })}\n\n`);
-    // Send completed responses
-    for (const result of processing.stage2Results) {
-      res.write(`data: ${JSON.stringify({ type: 'stage2_response', data: result })}\n\n`);
-    }
-    // Send streaming content for models still in progress
-    if (processing.currentStage === 'stage2') {
-      for (const [model, content] of Object.entries(processing.stage2StreamingContent)) {
-        if (content) {
-          res.write(`data: ${JSON.stringify({ type: 'stage2_chunk', model, delta: content })}\n\n`);
-        }
-      }
-    }
-    // Only send complete if Stage 2 is actually done (has labelToModel data)
-    if (processing.currentStage !== 'stage2' && Object.keys(processing.labelToModel).length > 0) {
-      res.write(`data: ${JSON.stringify({
-        type: 'stage2_complete',
-        data: {
-          labelToModel: processing.labelToModel,
-          aggregateRankings: processing.aggregateRankings,
-        },
-      })}\n\n`);
-    }
-  }
-
-  // 3. Stage 3 replay
-  if (hasStage3Data || processing.currentStage === 'stage3') {
-    res.write(`data: ${JSON.stringify({ type: 'stage3_start' })}\n\n`);
-    // Send accumulated content as a single chunk
-    if (processing.stage3Content) {
-      res.write(`data: ${JSON.stringify({ type: 'stage3_chunk', delta: processing.stage3Content })}\n\n`);
-    }
-  }
-
-  // 4. Send reconnection marker with current stage
-  res.write(`data: ${JSON.stringify({
-    type: 'reconnected',
-    stage: processing.currentStage,
-    userMessage: processing.userMessage,
-  })}\n\n`);
+  // Setup SSE and replay accumulated state
+  setupSSEHeaders(res);
+  replayAccumulatedState(res, processing);
 
   // Add this client to receive future events
   processingRegistry.addClient(userId, sessionId, res);
