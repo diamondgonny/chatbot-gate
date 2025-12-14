@@ -60,21 +60,21 @@ export const handlers = [
   }),
 
   // Chat endpoints
-  http.get("*/api/chat/history", ({ request }) => {
-    const url = new URL(request.url);
-    const sessionId = url.searchParams.get("sessionId");
+  http.get("*/api/chat/sessions/:sessionId/history", ({ params }) => {
+    const { sessionId } = params;
     if (sessionId) {
       return HttpResponse.json({ messages: mockMessages });
     }
     return HttpResponse.json({ messages: [] });
   }),
 
-  http.post("*/api/chat/message", async ({ request }) => {
-    const body = (await request.json()) as { message: string; sessionId: string };
+  http.post("*/api/chat/sessions/:sessionId/message", async ({ request, params }) => {
+    const body = (await request.json()) as { message: string };
+    const { sessionId } = params;
     return HttpResponse.json({
       response: `Echo: ${body.message}`,
       timestamp: new Date().toISOString(),
-      sessionId: body.sessionId,
+      sessionId: sessionId,
     });
   }),
 ];

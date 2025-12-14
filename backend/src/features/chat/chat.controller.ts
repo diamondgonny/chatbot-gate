@@ -1,7 +1,7 @@
 /**
  * Chat Controller
- * Handles HTTP request/response for chat functionality.
- * Business logic delegated to chatService.
+ * Handles HTTP request/response for chat and session functionality.
+ * Business logic delegated to services.
  */
 
 import { Request, Response } from 'express';
@@ -14,13 +14,107 @@ import {
   isSessionLimitError,
   isError,
   getChatHistory as getChatHistoryService,
+  createSession as createSessionService,
+  getUserSessions as getUserSessionsService,
+  getSessionById as getSessionByIdService,
+  deleteSession as deleteSessionService,
 } from './services';
+
+// ============================================================================
+// Session Management
+// ============================================================================
+
+/**
+ * Create a new chat session for the current user
+ */
+export const createSession = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.userId;
+
+  if (!userId) {
+    throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'User ID not found. Authentication required.');
+  }
+
+  const result = await createSessionService(userId);
+
+  if (isSessionLimitError(result)) {
+    return res.status(429).json(result);
+  }
+
+  return res.json(result);
+});
+
+/**
+ * Get all sessions for the current user
+ */
+export const getSessions = asyncHandler(async (req: Request, res: Response) => {
+  const userId = req.userId;
+
+  if (!userId) {
+    throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'User ID not found. Authentication required.');
+  }
+
+  const sessions = await getUserSessionsService(userId);
+  return res.json({ sessions });
+});
+
+/**
+ * Get a specific session by ID
+ */
+export const getSession = asyncHandler(async (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+  const userId = req.userId;
+
+  if (!userId) {
+    throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'Authentication required');
+  }
+
+  if (!sessionId || !validateSessionId(sessionId)) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 400, 'Valid session ID is required');
+  }
+
+  const session = await getSessionByIdService(userId, sessionId);
+
+  if (!session) {
+    throw new AppError(ErrorCodes.NOT_FOUND, 404, 'Session not found');
+  }
+
+  return res.json(session);
+});
+
+/**
+ * Delete a session
+ */
+export const deleteSession = asyncHandler(async (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+  const userId = req.userId;
+
+  if (!userId) {
+    throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'Authentication required');
+  }
+
+  if (!sessionId || !validateSessionId(sessionId)) {
+    throw new AppError(ErrorCodes.VALIDATION_ERROR, 400, 'Valid session ID is required');
+  }
+
+  const deleted = await deleteSessionService(userId, sessionId);
+
+  if (!deleted) {
+    throw new AppError(ErrorCodes.NOT_FOUND, 404, 'Session not found');
+  }
+
+  return res.json({ message: 'Session deleted successfully' });
+});
+
+// ============================================================================
+// Chat Operations
+// ============================================================================
 
 /**
  * Send a message to the AI and get a response
  */
-export const chatWithAI = asyncHandler(async (req: Request, res: Response) => {
-  const { message, sessionId } = req.body;
+export const sendChatMessage = asyncHandler(async (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+  const { message } = req.body;
   const userId = req.userId;
 
   // Validate message
@@ -66,7 +160,7 @@ export const chatWithAI = asyncHandler(async (req: Request, res: Response) => {
  * Get chat history for a session
  */
 export const getChatHistory = asyncHandler(async (req: Request, res: Response) => {
-  const { sessionId } = req.query;
+  const { sessionId } = req.params;
   const userId = req.userId;
 
   if (!userId) {
@@ -77,6 +171,6 @@ export const getChatHistory = asyncHandler(async (req: Request, res: Response) =
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 400, 'Valid session ID is required');
   }
 
-  const history = await getChatHistoryService(userId, sessionId as string);
+  const history = await getChatHistoryService(userId, sessionId);
   return res.json(history);
 });

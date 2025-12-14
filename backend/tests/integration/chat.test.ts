@@ -14,16 +14,16 @@ import {
 } from '../helpers/dbHelper';
 
 describe('Chat API', () => {
-  describe('POST /api/chat/message - Send Message', () => {
+  describe('POST /api/chat/sessions/:sessionId/message - Send Message', () => {
     describe('Successful Message', () => {
       it('should send message to existing session', async () => {
         const userId = generateUserId();
         const sessionId = await createTestSession(userId);
 
         const response = await request(app)
-          .post('/api/chat/message')
+          .post(`/api/chat/sessions/${sessionId}/message`)
           .set(withAuth(userId))
-          .send({ message: 'Hello, AI!', sessionId });
+          .send({ message: 'Hello, AI!' });
 
         expect(response.status).toBe(200);
         expect(response.body).toMatchObject({
@@ -37,9 +37,9 @@ describe('Chat API', () => {
         const newSessionId = generateSessionId();
 
         const response = await request(app)
-          .post('/api/chat/message')
+          .post(`/api/chat/sessions/${newSessionId}/message`)
           .set(withAuth(userId))
-          .send({ message: 'Hello!', sessionId: newSessionId });
+          .send({ message: 'Hello!' });
 
         expect(response.status).toBe(200);
         expect(response.body.response).toBeDefined();
@@ -59,9 +59,9 @@ describe('Chat API', () => {
         const sessionId = generateSessionId();
 
         const response = await request(app)
-          .post('/api/chat/message')
+          .post(`/api/chat/sessions/${sessionId}/message`)
           .set(withAuth(userId))
-          .send({ sessionId });
+          .send({});
 
         expect(response.status).toBe(400);
         expect(response.body.error).toContain('Message');
@@ -72,9 +72,9 @@ describe('Chat API', () => {
         const sessionId = generateSessionId();
 
         const response = await request(app)
-          .post('/api/chat/message')
+          .post(`/api/chat/sessions/${sessionId}/message`)
           .set(withAuth(userId))
-          .send({ message: '', sessionId });
+          .send({ message: '' });
 
         expect(response.status).toBe(400);
         expect(response.body.error).toBeDefined();
@@ -86,24 +86,12 @@ describe('Chat API', () => {
         const longMessage = 'a'.repeat(4001);
 
         const response = await request(app)
-          .post('/api/chat/message')
+          .post(`/api/chat/sessions/${sessionId}/message`)
           .set(withAuth(userId))
-          .send({ message: longMessage, sessionId });
+          .send({ message: longMessage });
 
         expect(response.status).toBe(413);
         expect(response.body.error).toContain('too long');
-      });
-
-      it('should return 400 when sessionId is missing', async () => {
-        const userId = generateUserId();
-
-        const response = await request(app)
-          .post('/api/chat/message')
-          .set(withAuth(userId))
-          .send({ message: 'Hello' });
-
-        expect(response.status).toBe(400);
-        expect(response.body.error).toContain('session ID');
       });
 
       it('should return 400 for invalid sessionId format', async () => {
@@ -111,9 +99,9 @@ describe('Chat API', () => {
         const invalidSessionId = generateInvalidSessionId();
 
         const response = await request(app)
-          .post('/api/chat/message')
+          .post(`/api/chat/sessions/${invalidSessionId}/message`)
           .set(withAuth(userId))
-          .send({ message: 'Hello', sessionId: invalidSessionId });
+          .send({ message: 'Hello' });
 
         expect(response.status).toBe(400);
         expect(response.body.error).toContain('session ID');
@@ -125,10 +113,10 @@ describe('Chat API', () => {
         const sessionId = generateSessionId();
 
         const response = await request(app)
-          .post('/api/chat/message')
+          .post(`/api/chat/sessions/${sessionId}/message`)
           .set('Cookie', 'csrfToken=test-csrf-token')
           .set('x-csrf-token', 'test-csrf-token')
-          .send({ message: 'Hello', sessionId });
+          .send({ message: 'Hello' });
 
         expect(response.status).toBe(401);
       });
@@ -145,9 +133,9 @@ describe('Chat API', () => {
         // Try to send message to a new session
         const newSessionId = generateSessionId();
         const response = await request(app)
-          .post('/api/chat/message')
+          .post(`/api/chat/sessions/${newSessionId}/message`)
           .set(withAuth(userId))
-          .send({ message: 'Hello', sessionId: newSessionId });
+          .send({ message: 'Hello' });
 
         expect(response.status).toBe(429);
         expect(response.body).toMatchObject({
@@ -158,7 +146,7 @@ describe('Chat API', () => {
     });
   });
 
-  describe('GET /api/chat/history - Get Chat History', () => {
+  describe('GET /api/chat/sessions/:sessionId/history - Get Chat History', () => {
     describe('Successful Retrieval', () => {
       it('should return chat history for session', async () => {
         const userId = generateUserId();
@@ -170,8 +158,7 @@ describe('Chat API', () => {
         });
 
         const response = await request(app)
-          .get('/api/chat/history')
-          .query({ sessionId })
+          .get(`/api/chat/sessions/${sessionId}/history`)
           .set(withAuth(userId));
 
         expect(response.status).toBe(200);
@@ -189,8 +176,7 @@ describe('Chat API', () => {
         const sessionId = await createTestSession(userId);
 
         const response = await request(app)
-          .get('/api/chat/history')
-          .query({ sessionId })
+          .get(`/api/chat/sessions/${sessionId}/history`)
           .set(withAuth(userId));
 
         expect(response.status).toBe(200);
@@ -202,8 +188,7 @@ describe('Chat API', () => {
         const nonExistentSessionId = generateSessionId();
 
         const response = await request(app)
-          .get('/api/chat/history')
-          .query({ sessionId: nonExistentSessionId })
+          .get(`/api/chat/sessions/${nonExistentSessionId}/history`)
           .set(withAuth(userId));
 
         expect(response.status).toBe(200);
@@ -212,24 +197,12 @@ describe('Chat API', () => {
     });
 
     describe('Validation Errors', () => {
-      it('should return 400 when sessionId is missing', async () => {
-        const userId = generateUserId();
-
-        const response = await request(app)
-          .get('/api/chat/history')
-          .set(withAuth(userId));
-
-        expect(response.status).toBe(400);
-        expect(response.body.error).toContain('session ID');
-      });
-
       it('should return 400 for invalid sessionId format', async () => {
         const userId = generateUserId();
         const invalidSessionId = generateInvalidSessionId();
 
         const response = await request(app)
-          .get('/api/chat/history')
-          .query({ sessionId: invalidSessionId })
+          .get(`/api/chat/sessions/${invalidSessionId}/history`)
           .set(withAuth(userId));
 
         expect(response.status).toBe(400);
@@ -241,8 +214,7 @@ describe('Chat API', () => {
         const sessionId = generateSessionId();
 
         const response = await request(app)
-          .get('/api/chat/history')
-          .query({ sessionId })
+          .get(`/api/chat/sessions/${sessionId}/history`)
           .set('Cookie', 'csrfToken=test-csrf-token');
 
         expect(response.status).toBe(401);

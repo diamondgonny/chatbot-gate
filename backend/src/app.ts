@@ -13,7 +13,7 @@ import { errorHandler } from './shared/middleware';
 // Route imports
 import { gateRoutes } from './features/gate';
 import { authRoutes } from './features/auth';
-import { chatRoutes, sessionRoutes } from './features/chat';
+import { chatRoutes } from './features/chat';
 import { councilRoutes } from './features/council';
 import { metricsRoutes, metricsMiddleware } from './features/metrics';
 
@@ -195,7 +195,6 @@ export const createApp = (options?: AppOptions): Express => {
   app.use('/api/gate', gateRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/chat', chatRoutes);
-  app.use('/api/chat/sessions', sessionRoutes);
 
   // Council routes (SSE, complex state)
   if (enableCouncil) {

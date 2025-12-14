@@ -9,8 +9,7 @@ export async function getChatHistory(
   sessionId: string
 ): Promise<ChatHistoryResponse> {
   const response = await apiClient.get<ChatHistoryResponse>(
-    "/api/chat/history",
-    { params: { sessionId } }
+    `/api/chat/sessions/${sessionId}/history`
   );
   return response.data;
 }
@@ -18,9 +17,10 @@ export async function getChatHistory(
 export async function sendChatMessage(
   data: ChatMessageRequest
 ): Promise<ChatMessageResponse> {
+  const { sessionId, message } = data;
   const response = await apiClient.post<ChatMessageResponse>(
-    "/api/chat/message",
-    data
+    `/api/chat/sessions/${sessionId}/message`,
+    { message }
   );
   return response.data;
 }

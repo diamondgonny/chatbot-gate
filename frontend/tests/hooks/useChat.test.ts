@@ -62,7 +62,7 @@ describe("useChat", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       server.use(
-        http.get("*/api/chat/history", () => {
+        http.get("*/api/chat/sessions/:sessionId/history", () => {
           return new HttpResponse(null, { status: 500 });
         })
       );
@@ -80,7 +80,7 @@ describe("useChat", () => {
 
     it("should return empty array when no messages exist", async () => {
       server.use(
-        http.get("*/api/chat/history", () => {
+        http.get("*/api/chat/sessions/:sessionId/history", () => {
           return HttpResponse.json({ messages: [] });
         })
       );
@@ -125,7 +125,7 @@ describe("useChat", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       server.use(
-        http.post("*/api/chat/message", () => {
+        http.post("*/api/chat/sessions/:sessionId/message", () => {
           return new HttpResponse(null, { status: 500 });
         })
       );
@@ -148,7 +148,7 @@ describe("useChat", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       server.use(
-        http.post("*/api/chat/message", () => {
+        http.post("*/api/chat/sessions/:sessionId/message", () => {
           return new HttpResponse(null, { status: 500 });
         })
       );

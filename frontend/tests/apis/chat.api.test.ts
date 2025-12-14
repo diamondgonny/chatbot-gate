@@ -14,7 +14,7 @@ describe("chat.api", () => {
 
     it("should return empty array for session with no messages", async () => {
       server.use(
-        http.get("*/api/chat/history", () => {
+        http.get("*/api/chat/sessions/:sessionId/history", () => {
           return HttpResponse.json({ messages: [] });
         })
       );
@@ -24,13 +24,12 @@ describe("chat.api", () => {
       expect(result.messages).toEqual([]);
     });
 
-    it("should pass sessionId as query parameter", async () => {
-      let capturedSessionId: string | null = null;
+    it("should pass sessionId as URL path parameter", async () => {
+      let capturedSessionId: string | readonly string[] | undefined;
 
       server.use(
-        http.get("*/api/chat/history", ({ request }) => {
-          const url = new URL(request.url);
-          capturedSessionId = url.searchParams.get("sessionId");
+        http.get("*/api/chat/sessions/:sessionId/history", ({ params }) => {
+          capturedSessionId = params.sessionId;
           return HttpResponse.json({ messages: [] });
         })
       );
@@ -55,16 +54,18 @@ describe("chat.api", () => {
       });
     });
 
-    it("should send message and sessionId in request body", async () => {
-      let capturedBody: { message: string; sessionId: string } | null = null;
+    it("should send message in request body and sessionId in URL", async () => {
+      let capturedBody: { message: string } | null = null;
+      let capturedSessionId: string | readonly string[] | undefined;
 
       server.use(
-        http.post("*/api/chat/message", async ({ request }) => {
-          capturedBody = (await request.json()) as { message: string; sessionId: string };
+        http.post("*/api/chat/sessions/:sessionId/message", async ({ request, params }) => {
+          capturedBody = (await request.json()) as { message: string };
+          capturedSessionId = params.sessionId;
           return HttpResponse.json({
             response: "AI response",
             timestamp: new Date().toISOString(),
-            sessionId: capturedBody.sessionId,
+            sessionId: capturedSessionId,
           });
         })
       );
@@ -74,15 +75,13 @@ describe("chat.api", () => {
         sessionId: "test-session",
       });
 
-      expect(capturedBody).toEqual({
-        message: "Test message",
-        sessionId: "test-session",
-      });
+      expect(capturedBody).toEqual({ message: "Test message" });
+      expect(capturedSessionId).toBe("test-session");
     });
 
     it("should throw error on server failure", async () => {
       server.use(
-        http.post("*/api/chat/message", () => {
+        http.post("*/api/chat/sessions/:sessionId/message", () => {
           return new HttpResponse(null, { status: 500 });
         })
       );
