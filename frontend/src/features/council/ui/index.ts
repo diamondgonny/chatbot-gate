@@ -13,8 +13,8 @@ export { Stage3Panel } from "./Stage3Panel";
 export { MarkdownRenderer } from "./MarkdownRenderer";
 
 // MessageList components
-export { MessageList } from "./MessageList";
-export { UserMessage, AssistantMessage, StreamingMessage, PendingMessage, ErrorMessage } from "./MessageList";
+export { MessageList } from "./messageList";
+export { UserMessage, AssistantMessage, StreamingMessage, PendingMessage, ErrorMessage } from "./messageList";
 
 // InputArea components
-export { InputArea } from "./InputArea";
+export { InputArea } from "./inputArea";
