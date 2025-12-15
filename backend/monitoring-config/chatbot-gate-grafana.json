@@ -364,10 +364,9 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "round(sum(increase(chatbot_gate_council_messages_total{deployment_env=~\"$deployment_env\"}[$__range])))",
-          "instant": false,
+          "expr": "sum(chatbot_gate_council_messages_total{deployment_env=~\"$deployment_env\"})",
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
           "refId": "A"
         }
       ],
@@ -402,10 +401,9 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "round(sum(increase(chatbot_gate_openrouter_tokens_total{deployment_env=~\"$deployment_env\"}[$__range])))",
-          "instant": false,
+          "expr": "sum(chatbot_gate_openrouter_tokens_total{deployment_env=~\"$deployment_env\"})",
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
           "refId": "A"
         }
       ],
@@ -1429,10 +1427,9 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "round(sum(increase(chatbot_gate_council_messages_total{deployment_env=~\"$deployment_env\"}[$__range])))",
-          "instant": false,
+          "expr": "sum(chatbot_gate_council_messages_total{deployment_env=~\"$deployment_env\"})",
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
           "refId": "A"
         }
       ],
@@ -1467,10 +1464,9 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "round(sum(increase(chatbot_gate_openrouter_tokens_total{deployment_env=~\"$deployment_env\"}[$__range])))",
-          "instant": false,
+          "expr": "sum(chatbot_gate_openrouter_tokens_total{deployment_env=~\"$deployment_env\"})",
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
           "refId": "A"
         }
       ],
@@ -1543,10 +1539,9 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "round(sum(increase(chatbot_gate_council_aborts_total{deployment_env=~\"$deployment_env\"}[$__range])))",
-          "instant": false,
+          "expr": "sum(chatbot_gate_council_aborts_total{deployment_env=~\"$deployment_env\"})",
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
           "refId": "A"
         }
       ],
@@ -1559,6 +1554,7 @@
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
+          "min": 0,
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
@@ -1597,7 +1593,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(rate(chatbot_gate_openrouter_tokens_total{deployment_env=~\"$deployment_env\"}[$interval])) by (model, type)",
+          "expr": "sum(increase(chatbot_gate_openrouter_tokens_total{deployment_env=~\"$deployment_env\"}[$interval])) by (model, type)",
           "instant": false,
           "legendFormat": "{{model}} ({{type}})",
           "range": true,
@@ -1613,6 +1609,7 @@
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
+          "min": 0,
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
@@ -1652,7 +1649,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(chatbot_gate_council_stage_duration_seconds_bucket{deployment_env=~\"$deployment_env\"}[$interval])) by (le, stage))",
+          "expr": "histogram_quantile(0.95, sum(increase(chatbot_gate_council_stage_duration_seconds_bucket{deployment_env=~\"$deployment_env\"}[$interval])) by (le, stage))",
           "instant": false,
           "legendFormat": "Stage {{stage}}",
           "range": true,
@@ -1668,6 +1665,7 @@
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
+          "min": 0,
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
@@ -1707,7 +1705,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, sum(rate(chatbot_gate_openrouter_response_time_seconds_bucket{deployment_env=~\"$deployment_env\"}[$interval])) by (le, model))",
+          "expr": "histogram_quantile(0.95, sum(increase(chatbot_gate_openrouter_response_time_seconds_bucket{deployment_env=~\"$deployment_env\"}[$interval])) by (le, model))",
           "instant": false,
           "legendFormat": "{{model}}",
           "range": true,
@@ -1723,6 +1721,7 @@
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "palette-classic" },
+          "min": 0,
           "custom": {
             "axisBorderShow": false,
             "axisCenteredZero": false,
