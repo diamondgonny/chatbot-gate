@@ -65,9 +65,45 @@ export class StreamEventProcessor {
   private stage3StreamingContent = "";
   private stage3ReasoningContent = "";
 
+  // rAF batching for streaming updates
+  private pendingStateUpdate: Partial<StreamState> = {};
+  private rafId: number | null = null;
+
   constructor(callbacks: StreamEventCallbacks, options: StreamEventProcessorOptions = {}) {
     this.callbacks = callbacks;
     this.isReconnection = options.isReconnection ?? false;
+  }
+
+  /**
+   * Schedule state update with rAF batching
+   * Batches multiple chunk updates into a single frame for better performance
+   */
+  private scheduleStateUpdate(partial: Partial<StreamState>): void {
+    // Merge pending updates
+    this.pendingStateUpdate = { ...this.pendingStateUpdate, ...partial };
+
+    // Schedule rAF if not already scheduled
+    if (!this.rafId) {
+      this.rafId = requestAnimationFrame(() => {
+        this.callbacks.onStateChange(this.pendingStateUpdate);
+        this.pendingStateUpdate = {};
+        this.rafId = null;
+      });
+    }
+  }
+
+  /**
+   * Flush any pending batched updates immediately
+   */
+  private flushPendingUpdates(): void {
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    if (Object.keys(this.pendingStateUpdate).length > 0) {
+      this.callbacks.onStateChange(this.pendingStateUpdate);
+      this.pendingStateUpdate = {};
+    }
   }
 
   /**
@@ -145,6 +181,13 @@ export class StreamEventProcessor {
    * Reset processor state for a new message
    */
   reset(): void {
+    // Cancel any pending rAF
+    if (this.rafId) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    this.pendingStateUpdate = {};
+
     this.tempStage1 = [];
     this.tempStage2 = [];
     this.tempStage3 = null;
@@ -219,7 +262,8 @@ export class StreamEventProcessor {
     if (event.model && event.delta) {
       this.stage1StreamingContent[event.model] =
         (this.stage1StreamingContent[event.model] || "") + event.delta;
-      this.callbacks.onStateChange({
+      // Use rAF batching for streaming chunks
+      this.scheduleStateUpdate({
         stage1StreamingContent: { ...this.stage1StreamingContent },
       });
     }
@@ -227,6 +271,9 @@ export class StreamEventProcessor {
 
   private handleStage1Response(event: SSEEvent): void {
     if (event.data) {
+      // Flush pending streaming updates before response
+      this.flushPendingUpdates();
+
       const response = event.data as Stage1Response;
       this.tempStage1 = [...this.tempStage1, response];
 
@@ -254,7 +301,8 @@ export class StreamEventProcessor {
     if (event.model && event.delta) {
       this.stage2StreamingContent[event.model] =
         (this.stage2StreamingContent[event.model] || "") + event.delta;
-      this.callbacks.onStateChange({
+      // Use rAF batching for streaming chunks
+      this.scheduleStateUpdate({
         stage2StreamingContent: { ...this.stage2StreamingContent },
       });
     }
@@ -262,6 +310,9 @@ export class StreamEventProcessor {
 
   private handleStage2Response(event: SSEEvent): void {
     if (event.data) {
+      // Flush pending streaming updates before response
+      this.flushPendingUpdates();
+
       const review = event.data as Stage2Review;
       this.tempStage2 = [...this.tempStage2, review];
 
@@ -302,7 +353,8 @@ export class StreamEventProcessor {
 
     if (event.delta) {
       this.stage3ReasoningContent += event.delta;
-      this.callbacks.onStateChange({
+      // Use rAF batching for streaming chunks
+      this.scheduleStateUpdate({
         stage3ReasoningContent: this.stage3ReasoningContent,
       });
     }
@@ -314,13 +366,17 @@ export class StreamEventProcessor {
 
     if (event.delta) {
       this.stage3StreamingContent += event.delta;
-      this.callbacks.onStateChange({
+      // Use rAF batching for streaming chunks
+      this.scheduleStateUpdate({
         stage3StreamingContent: this.stage3StreamingContent,
       });
     }
   }
 
   private handleStage3Response(event: SSEEvent): void {
+    // Flush pending streaming updates before response
+    this.flushPendingUpdates();
+
     this.stage3StreamingContent = "";
     this.stage3ReasoningContent = "";
 
@@ -341,6 +397,9 @@ export class StreamEventProcessor {
   }
 
   private handleComplete(): void {
+    // Flush any pending updates before completing
+    this.flushPendingUpdates();
+
     this.currentStage = "idle";
     this.callbacks.onStateChange({ currentStage: "idle" });
 

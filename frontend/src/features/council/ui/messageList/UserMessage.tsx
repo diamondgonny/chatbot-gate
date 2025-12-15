@@ -5,6 +5,7 @@
 
 "use client";
 
+import { memo } from "react";
 import { motion } from "framer-motion";
 import type { CouncilUserMessage } from "../../domain";
 
@@ -12,7 +13,7 @@ interface UserMessageProps {
   message: CouncilUserMessage;
 }
 
-export function UserMessage({ message }: UserMessageProps) {
+export const UserMessage = memo(function UserMessage({ message }: UserMessageProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -24,4 +25,4 @@ export function UserMessage({ message }: UserMessageProps) {
       </div>
     </motion.div>
   );
-}
+});

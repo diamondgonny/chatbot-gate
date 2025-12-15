@@ -5,6 +5,7 @@
 
 "use client";
 
+import { memo } from "react";
 import { motion } from "framer-motion";
 import type { CouncilAssistantMessage } from "../../domain";
 import { computeMessageDisplayData } from "../../domain";
@@ -42,7 +43,7 @@ function AbortedIndicator() {
   );
 }
 
-export function AssistantMessage({ message }: AssistantMessageProps) {
+export const AssistantMessage = memo(function AssistantMessage({ message }: AssistantMessageProps) {
   // Compute display data from message using domain layer
   const { labelToModel, aggregateRankings } = computeMessageDisplayData(message);
 
@@ -72,4 +73,4 @@ export function AssistantMessage({ message }: AssistantMessageProps) {
       {message.stage3 && <Stage3Panel synthesis={message.stage3} />}
     </motion.div>
   );
-}
+});
