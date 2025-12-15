@@ -6,7 +6,7 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { useCouncilContext } from "../../state";
+import { useCouncilStreamContext, useCouncilStatusContext } from "../../state";
 import { StageProgress } from "../StageProgress";
 import { Stage1Panel } from "../Stage1Panel";
 import { Stage2Panel } from "../Stage2Panel";
@@ -39,6 +39,7 @@ function AbortedIndicator() {
 }
 
 export function StreamingMessage() {
+  // Stream state → 분리된 context (리렌더 최적화)
   const {
     currentStage,
     stage1Responses,
@@ -50,9 +51,10 @@ export function StreamingMessage() {
     stage3ReasoningContent,
     labelToModel,
     aggregateRankings,
-    isProcessing,
-    wasAborted,
-  } = useCouncilContext();
+  } = useCouncilStreamContext();
+
+  // Status state → 분리된 context
+  const { isProcessing, wasAborted } = useCouncilStatusContext();
 
   // Only render if processing or was just aborted
   if (!isProcessing && !wasAborted) {

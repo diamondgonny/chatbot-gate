@@ -5,6 +5,9 @@ import { useRouter, useParams } from "next/navigation";
 import {
   CouncilSidebar,
   CouncilSessionsProvider,
+  CouncilMessagesProvider,
+  CouncilStreamProvider,
+  CouncilStatusProvider,
   useCouncilSessionsContext,
 } from "@/features/council";
 import { AlertModal } from "@/shared";
@@ -112,7 +115,13 @@ export default function CouncilLayout({
 }) {
   return (
     <CouncilSessionsProvider>
-      <CouncilLayoutInner>{children}</CouncilLayoutInner>
+      <CouncilMessagesProvider>
+        <CouncilStreamProvider>
+          <CouncilStatusProvider>
+            <CouncilLayoutInner>{children}</CouncilLayoutInner>
+          </CouncilStatusProvider>
+        </CouncilStreamProvider>
+      </CouncilMessagesProvider>
     </CouncilSessionsProvider>
   );
 }
