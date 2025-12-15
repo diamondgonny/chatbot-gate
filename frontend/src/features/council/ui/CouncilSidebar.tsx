@@ -198,7 +198,7 @@ export function CouncilSidebar({
       <div className="px-4 py-[30px] border-t border-slate-800">
         <a
           href="/hub"
-          className="flex items-center gap-2 text-slate-400 hover:text-slate-200 transition-colors text-sm"
+          className="flex items-center gap-2 text-slate-400 hover:text-slate-200 transition-colors text-sm w-3/5 -my-3 py-3"
         >
           <svg
             className="w-4 h-4"
