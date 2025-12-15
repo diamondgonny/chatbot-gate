@@ -27,6 +27,7 @@ export function Stage3Panel({
   const isThinking = !synthesis && !!streamingReasoning;
   const displayContent = synthesis?.response || streamingContent;
   const displayReasoning = synthesis?.reasoning || streamingReasoning;
+  const isComplete = !!synthesis;
 
   if (!synthesis && !streamingContent && !streamingReasoning && !isLoading) {
     return null;
@@ -36,29 +37,26 @@ export function Stage3Panel({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-br from-green-900/20 to-slate-800/50 rounded-xl border border-green-700/30 overflow-hidden"
+      className={`rounded-xl border overflow-hidden ${
+        isComplete
+          ? "bg-gradient-to-br from-green-900/20 to-slate-800/50 border-green-700/30"
+          : "bg-slate-800/50 border-slate-700"
+      }`}
     >
-      <div className="px-4 py-3 border-b border-green-700/30 bg-green-900/10">
-        <h3 className="text-sm font-medium text-green-400 flex items-center gap-2">
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
+      <div className={`px-4 py-3 border-b ${
+        isComplete
+          ? "border-green-700/30 bg-green-900/10"
+          : "border-slate-700"
+      }`}>
+        <h3 className={`text-sm font-medium flex items-center gap-2 ${
+          isComplete ? "text-green-400" : "text-slate-300"
+        }`}>
           Stage 3: Council&apos;s Final Answer
           {isThinking && !isStreaming && !wasAborted && (
             <span className="ml-2 text-xs text-blue-400/70">● Thinking...</span>
           )}
           {isStreaming && !wasAborted && (
-            <span className="ml-2 text-xs text-green-500/70">● Streaming...</span>
+            <span className="ml-2 text-xs text-slate-400">● Streaming...</span>
           )}
         </h3>
       </div>
@@ -126,7 +124,7 @@ export function Stage3Panel({
         ) : displayContent ? (
           <>
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-green-500/70">
+              <span className={`text-xs ${isComplete ? "text-green-500/70" : "text-slate-500"}`}>
                 Chairman: {synthesis ? formatModelName(synthesis.model) : "🤖"}
               </span>
               {synthesis && (
