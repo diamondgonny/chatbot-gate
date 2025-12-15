@@ -321,7 +321,7 @@ describe("Council Session Switch", () => {
         expect(contextRef.messages).toHaveLength(0);
       });
 
-      // 빈 상태 메시지 표시
+      // 빈 세션 로드 완료 → EmptyState 표시
       expect(screen.getByText("Start by asking a question.")).toBeInTheDocument();
     });
   });

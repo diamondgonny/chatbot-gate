@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import {
   CouncilProvider,
@@ -24,7 +24,8 @@ function CouncilSessionContent() {
   const prevProcessingRef = useRef(isProcessing);
 
   // Load session on mount or sessionId change
-  useEffect(() => {
+  // Using useLayoutEffect to prevent flash of previous session content during navigation
+  useLayoutEffect(() => {
     if (sessionId) {
       loadSession(sessionId);
     }

@@ -78,7 +78,7 @@ describe("Council Message Flow", () => {
 
   describe("시나리오 3: Stage 표시 테스트", () => {
     it("isProcessing이 true일 때 Stop Generation 버튼이 표시된다", async () => {
-      let contextRef: ReturnType<typeof useCouncilContext>;
+      let contextRef!: ReturnType<typeof useCouncilContext>;
 
       // Setup: 세션 데이터 반환
       server.use(
@@ -132,7 +132,7 @@ describe("Council Message Flow", () => {
         })
       );
 
-      let contextRef: ReturnType<typeof useCouncilContext>;
+      let contextRef!: ReturnType<typeof useCouncilContext>;
 
       render(
         <TestWrapper>
@@ -209,7 +209,7 @@ describe("Council Message Flow", () => {
         })
       );
 
-      let contextRef: ReturnType<typeof useCouncilContext>;
+      let contextRef!: ReturnType<typeof useCouncilContext>;
 
       render(
         <TestWrapper>
@@ -285,7 +285,7 @@ describe("Council Message Flow", () => {
         })
       );
 
-      let contextRef: ReturnType<typeof useCouncilContext>;
+      let contextRef!: ReturnType<typeof useCouncilContext>;
 
       render(
         <TestWrapper>

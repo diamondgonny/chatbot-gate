@@ -15,7 +15,11 @@ const mockSessions: Session[] = [
   {
     sessionId: "session-2",
     title: "Second Chat",
-    lastMessage: { role: "user", content: "Hello there" },
+    lastMessage: {
+      role: "user",
+      content: "Hello there",
+      timestamp: "2024-01-02T00:00:00Z",
+    },
     updatedAt: "2024-01-02T00:00:00Z",
     createdAt: "2024-01-02T00:00:00Z",
   },

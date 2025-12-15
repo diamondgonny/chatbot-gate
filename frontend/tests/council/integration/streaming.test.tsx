@@ -97,17 +97,13 @@ function StreamStateInjector({
       streamContext.updateStreamState({ stage1Responses });
     }
     if (stage1Content) {
-      Object.entries(stage1Content).forEach(([label, content]) => {
-        streamContext.updateStreamContent("stage1", label, content);
-      });
+      streamContext.updateStreamState({ stage1StreamingContent: stage1Content });
     }
     if (stage2Content) {
-      Object.entries(stage2Content).forEach(([label, content]) => {
-        streamContext.updateStreamContent("stage2", label, content);
-      });
+      streamContext.updateStreamState({ stage2StreamingContent: stage2Content });
     }
     if (stage3Content) {
-      streamContext.updateStreamContent("stage3", "synthesis", stage3Content);
+      streamContext.updateStreamState({ stage3StreamingContent: stage3Content });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

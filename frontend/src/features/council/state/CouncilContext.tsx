@@ -104,7 +104,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
   const onCompleteCallbackRef = useRef<(() => void) | undefined>(undefined);
 
   // Destructure stable setters from split contexts to avoid dependency issues
-  const { setMessages, setPendingMessage, clearMessages } = messagesContext;
+  const { setMessages, setPendingMessage } = messagesContext;
   const { updateStreamState, resetStreamState } = streamContext;
   const {
     setProcessing,
@@ -113,7 +113,6 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
     setLoading,
     setError,
     setInputExpanded,
-    resetStatus,
   } = statusContext;
 
   // Create stream callbacks using stable setter references
@@ -184,15 +183,6 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
   }, [abortStream]);
 
   /**
-   * Reset all state across split contexts
-   */
-  const resetAll = useCallback(() => {
-    clearMessages();
-    resetStreamState();
-    resetStatus();
-  }, [clearMessages, resetStreamState, resetStatus]);
-
-  /**
    * Load a council session
    */
   const loadSession = useCallback(
@@ -208,9 +198,21 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       // Abort any in-flight SSE stream
       abortStream();
 
-      // Reset all state
-      resetAll();
+      // Set loading state - LoadingState will hide any existing content
       setLoading(true);
+
+      // Reset stream state (no visual impact while loading)
+      resetStreamState();
+
+      // Reset status flags
+      setProcessing(false);
+      setReconnecting(false);
+      setAborted(false);
+      setError(null);
+      setInputExpanded(false);
+
+      // NOTE: Don't clear messages here - they're hidden by LoadingState anyway
+      // Clearing causes a flash of EmptyState due to split context update timing
 
       try {
         const session = await getCouncilSession(sessionId, controller.signal);
@@ -220,6 +222,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
           return;
         }
 
+        // Replace messages directly (handles both empty and non-empty sessions)
         setMessages(session.messages);
 
         // Check for active processing and reconnect if needed
@@ -256,7 +259,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
         }
       }
     },
-    [abortStream, reconnectStream, resetAll, setMessages, setLoading, setReconnecting, setError]
+    [abortStream, reconnectStream, resetStreamState, setMessages, setLoading, setProcessing, setReconnecting, setAborted, setError, setInputExpanded]
   );
 
   /**

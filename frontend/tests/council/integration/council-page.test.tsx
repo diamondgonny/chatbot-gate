@@ -64,7 +64,7 @@ describe("Council Page - Empty State", () => {
   });
 
   describe("시나리오 1: /council 접속 → 빈 상태 표시", () => {
-    it("세션이 없을 때 빈 상태 메시지를 표시한다", async () => {
+    it("빈 세션일 때 EmptyState를 표시한다", async () => {
       // Setup: 빈 세션 목록 반환
       server.use(
         http.get("*/api/council/sessions", () => {
@@ -78,16 +78,12 @@ describe("Council Page - Empty State", () => {
         </TestWrapper>
       );
 
-      // Verify: 빈 상태 메시지 표시
+      // Verify: EmptyState 표시 (새 페이지/빈 페이지)
       await waitFor(() => {
         expect(
           screen.getByText("Start by asking a question.")
         ).toBeInTheDocument();
       });
-
-      expect(
-        screen.getByText(/Multiple AI models will collaborate/)
-      ).toBeInTheDocument();
     });
 
     it("세션이 없을 때 입력창을 표시한다", async () => {

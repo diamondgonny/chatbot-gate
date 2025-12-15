@@ -41,14 +41,10 @@ function EmptyState() {
 }
 
 /**
- * Loading state component
+ * Loading state component - returns null for clean UX during brief loading
  */
 function LoadingState() {
-  return (
-    <div className="flex items-center justify-center h-full text-slate-400">
-      <span className="animate-spin mr-2">⏳</span> Loading session...
-    </div>
-  );
+  return null;
 }
 
 export function MessageList() {
@@ -97,11 +93,12 @@ export function MessageList() {
     );
   }
 
+  // Show empty state only for new/empty sessions (not during input expansion)
   if (isEmpty && !isInputExpanded) {
     return <EmptyState />;
   }
 
-  // Return null when empty but input is expanded
+  // Return null when empty but input is expanded (user typing multiline)
   if (isEmpty) {
     return null;
   }
