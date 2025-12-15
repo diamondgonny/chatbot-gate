@@ -35,7 +35,7 @@ export type CouncilMode = 'lite' | 'ultra';
 /** Council-related constants */
 export const COUNCIL = {
   /** Maximum number of council sessions allowed per user */
-  MAX_SESSIONS_PER_USER: 50,
+  MAX_SESSIONS_PER_USER: 300,
 
   /** SSE (Server-Sent Events) limits for operational stability */
   SSE: {
