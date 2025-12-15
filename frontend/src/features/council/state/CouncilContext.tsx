@@ -96,7 +96,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
   const messagesContext = useCouncilMessagesContext();
   const streamContext = useCouncilStreamContext();
   const statusContext = useCouncilStatusContext();
-  const { updateSessionTitle } = useCouncilSessionsContext();
+  const { updateSessionTitle, updateSessionTimestamp } = useCouncilSessionsContext();
 
   // Track current session for race condition prevention
   const loadSessionIdRef = useRef<string | null>(null);
@@ -133,6 +133,11 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       onComplete: (assistantMessage: CouncilAssistantMessage) => {
         setMessages((prev) => [...prev, assistantMessage]);
         setPendingMessage(null); // Clear pending message (including reconnection case)
+        // Update session timestamp for recency ordering
+        const sessionId = loadSessionIdRef.current;
+        if (sessionId) {
+          updateSessionTimestamp(sessionId);
+        }
         onCompleteCallbackRef.current?.();
       },
       onError: (error: string) => {
@@ -171,6 +176,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       setProcessing,
       setAborted,
       updateSessionTitle,
+      updateSessionTimestamp,
     ]
   );
 

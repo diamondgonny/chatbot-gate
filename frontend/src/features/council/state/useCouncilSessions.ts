@@ -35,6 +35,7 @@ interface UseCouncilSessionsReturn {
   createSession: () => Promise<string | null>;
   removeSession: (sessionId: string) => Promise<boolean>;
   updateSessionTitle: (sessionId: string, title: string) => void;
+  updateSessionTimestamp: (sessionId: string) => void;
 }
 
 export function useCouncilSessions(): UseCouncilSessionsReturn {
@@ -113,13 +114,34 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
 
   const updateSessionTitle = useCallback(
     (sessionId: string, title: string): void => {
-      setSessions((prev) =>
-        prev.map((s) =>
+      setSessions((prev) => {
+        const updated = prev.map((s) =>
           s.sessionId === sessionId
             ? { ...s, title, updatedAt: new Date().toISOString() }
             : s
-        )
-      );
+        );
+        // Sort by updatedAt descending (most recent first)
+        return updated.sort(
+          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+      });
+    },
+    []
+  );
+
+  const updateSessionTimestamp = useCallback(
+    (sessionId: string): void => {
+      setSessions((prev) => {
+        const updated = prev.map((s) =>
+          s.sessionId === sessionId
+            ? { ...s, updatedAt: new Date().toISOString() }
+            : s
+        );
+        // Sort by updatedAt descending (most recent first)
+        return updated.sort(
+          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+      });
     },
     []
   );
@@ -143,5 +165,6 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
     createSession,
     removeSession,
     updateSessionTitle,
+    updateSessionTimestamp,
   };
 }

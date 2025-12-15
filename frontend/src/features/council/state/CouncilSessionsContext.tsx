@@ -21,6 +21,7 @@ export interface CouncilSessionsContextValue {
   createSession: () => Promise<string | null>;
   removeSession: (sessionId: string) => Promise<boolean>;
   updateSessionTitle: (sessionId: string, title: string) => void;
+  updateSessionTimestamp: (sessionId: string) => void;
 }
 
 // Create context with undefined default (must be used within provider)
