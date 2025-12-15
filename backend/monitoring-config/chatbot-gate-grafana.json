@@ -224,7 +224,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Peak concurrent active sessions in the selected time range",
+      "description": "Peak total concurrent sessions (Chat + AI Council combined at same point in time)",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "fixed" },
@@ -250,7 +250,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "max(max_over_time(chatbot_gate_active_sessions{deployment_env=~\"$deployment_env\"}[$__range]))",
+          "expr": "max_over_time(((sum(chatbot_gate_active_sessions{deployment_env=~\"$deployment_env\"}) or vector(0)) + (sum(chatbot_gate_council_sse_connections{deployment_env=~\"$deployment_env\"}) or vector(0)))[$__range:1m])",
           "instant": false,
           "legendFormat": "",
           "range": true,
@@ -364,13 +364,13 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(chatbot_gate_council_messages_total{deployment_env=~\"$deployment_env\"})",
+          "expr": "sum(chatbot_gate_council_messages_total{deployment_env=~\"$deployment_env\", direction=\"user\"})",
           "instant": true,
           "legendFormat": "__auto",
           "refId": "A"
         }
       ],
-      "title": "Council Messages",
+      "title": "Council Questions",
       "type": "stat"
     },
     {
@@ -438,14 +438,13 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "round(sum(increase(chatbot_gate_chat_messages_total{deployment_env=~\"$deployment_env\"}[$__range])))",
-          "instant": false,
+          "expr": "sum(chatbot_gate_chat_messages_total{deployment_env=~\"$deployment_env\", direction=\"user\"})",
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
           "refId": "A"
         }
       ],
-      "title": "Chat Messages",
+      "title": "Chat Messages (User)",
       "type": "stat"
     },
     {
@@ -476,10 +475,9 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "round(sum(increase(chatbot_gate_openai_tokens_total{deployment_env=~\"$deployment_env\"}[$__range])))",
-          "instant": false,
+          "expr": "sum(chatbot_gate_openai_tokens_total{deployment_env=~\"$deployment_env\"})",
+          "instant": true,
           "legendFormat": "__auto",
-          "range": true,
           "refId": "A"
         }
       ],
@@ -1427,13 +1425,13 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(chatbot_gate_council_messages_total{deployment_env=~\"$deployment_env\"})",
+          "expr": "sum(chatbot_gate_council_messages_total{deployment_env=~\"$deployment_env\", direction=\"user\"})",
           "instant": true,
           "legendFormat": "__auto",
           "refId": "A"
         }
       ],
-      "title": "Council Messages",
+      "title": "Council Questions",
       "type": "stat"
     },
     {
