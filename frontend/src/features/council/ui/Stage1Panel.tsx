@@ -10,9 +10,10 @@ interface Stage1PanelProps {
   responses: Stage1Response[];
   streamingContent?: Record<string, string>;
   isLoading?: boolean;
+  wasAborted?: boolean;
 }
 
-export function Stage1Panel({ responses, streamingContent = {}, isLoading }: Stage1PanelProps) {
+export function Stage1Panel({ responses, streamingContent = {}, isLoading, wasAborted }: Stage1PanelProps) {
   const [activeTab, setActiveTab] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -65,7 +66,7 @@ export function Stage1Panel({ responses, streamingContent = {}, isLoading }: Sta
               }`}
             >
               {formatModelName(model)}
-              {isModelStreaming && (
+              {isModelStreaming && !wasAborted && (
                 <span className="ml-1 inline-block w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
               )}
             </button>
@@ -91,7 +92,7 @@ export function Stage1Panel({ responses, streamingContent = {}, isLoading }: Sta
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs text-slate-500">
                 {formatModelName(activeModel)}
-                {isStreaming && (
+                {isStreaming && !wasAborted && (
                   <span className="ml-2 text-green-400">● Streaming...</span>
                 )}
               </span>

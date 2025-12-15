@@ -13,6 +13,7 @@ interface Stage2PanelProps {
   aggregateRankings: AggregateRanking[];
   isLoading?: boolean;
   hideResults?: boolean;
+  wasAborted?: boolean;
 }
 
 /**
@@ -39,6 +40,7 @@ export function Stage2Panel({
   aggregateRankings,
   isLoading,
   hideResults = false,
+  wasAborted,
 }: Stage2PanelProps) {
   // Tab index: 0 = Results, 1+ = individual reviews
   const [activeTab, setActiveTab] = useState(0);
@@ -117,7 +119,7 @@ export function Stage2Panel({
               }`}
             >
               {formatModelName(model)}
-              {isModelStreaming && (
+              {isModelStreaming && !wasAborted && (
                 <span className="ml-1 inline-block w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
               )}
             </button>
@@ -207,7 +209,7 @@ export function Stage2Panel({
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs text-slate-500">
                   Reviewed by: {formatModelName(activeModel)}
-                  {isStreaming && (
+                  {isStreaming && !wasAborted && (
                     <span className="ml-2 text-green-400">● Streaming...</span>
                   )}
                 </span>

@@ -102,6 +102,7 @@ export function StreamingMessage() {
             responses={stage1Responses}
             streamingContent={stage1StreamingContent}
             isLoading={currentStage === "stage1"}
+            wasAborted={wasAborted}
           />
         )}
 
@@ -114,6 +115,7 @@ export function StreamingMessage() {
             labelToModel={labelToModel}
             aggregateRankings={aggregateRankings}
             isLoading={currentStage === "stage2"}
+            wasAborted={wasAborted}
           />
         )}
 
