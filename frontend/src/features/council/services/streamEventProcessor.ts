@@ -26,8 +26,8 @@ export interface StreamEventCallbacks {
   onComplete: (assistantMessage: CouncilAssistantMessage) => void;
   /** Called when an error occurs */
   onError: (error: string) => void;
-  /** Called when title generation completes */
-  onTitleComplete: () => void;
+  /** Called when title generation completes with the new title */
+  onTitleComplete: (title: string) => void;
   /** Called when reconnection is established */
   onReconnected: (stage: CurrentStage, userMessage?: string) => void;
 }
@@ -166,7 +166,9 @@ export class StreamEventProcessor {
         this.handleReconnected(event);
         break;
       case "title_complete":
-        this.callbacks.onTitleComplete();
+        if (event.data && typeof event.data === "object" && "title" in event.data) {
+          this.callbacks.onTitleComplete((event.data as { title: string }).title);
+        }
         break;
       case "complete":
         this.handleComplete();

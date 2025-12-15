@@ -31,6 +31,7 @@ import {
 import { useCouncilMessagesContext } from "./CouncilMessagesContext";
 import { useCouncilStreamContext } from "./CouncilStreamContext";
 import { useCouncilStatusContext } from "./CouncilStatusContext";
+import { useCouncilSessionsContext } from "./CouncilSessionsContext";
 
 // Treat both DOM aborts and axios cancellations as benign
 function isAbortError(error: unknown): boolean {
@@ -95,6 +96,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
   const messagesContext = useCouncilMessagesContext();
   const streamContext = useCouncilStreamContext();
   const statusContext = useCouncilStatusContext();
+  const { updateSessionTitle } = useCouncilSessionsContext();
 
   // Track current session for race condition prevention
   const loadSessionIdRef = useRef<string | null>(null);
@@ -137,8 +139,12 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
         setError(error);
         setPendingMessage(null);
       },
-      onTitleComplete: () => {
-        onCompleteCallbackRef.current?.();
+      onTitleComplete: (title: string) => {
+        // Update session title in sidebar without full refetch
+        const sessionId = loadSessionIdRef.current;
+        if (sessionId && title) {
+          updateSessionTitle(sessionId, title);
+        }
       },
       onReconnected: (stage: CurrentStage) => {
         updateStreamState({ currentStage: stage });
@@ -164,6 +170,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       setReconnecting,
       setProcessing,
       setAborted,
+      updateSessionTitle,
     ]
   );
 

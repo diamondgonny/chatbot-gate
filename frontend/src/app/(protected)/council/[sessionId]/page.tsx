@@ -5,7 +5,6 @@ import { useParams } from "next/navigation";
 import {
   CouncilProvider,
   useCouncilContext,
-  useCouncilSessionsContext,
   MessageList,
   InputArea,
   useTitleAlert,
@@ -18,7 +17,6 @@ function CouncilSessionContent() {
   const params = useParams();
   const sessionId = params.sessionId as string;
 
-  const { loadSessions } = useCouncilSessionsContext();
   const { loadSession, stage3Synthesis, isProcessing } = useCouncilContext();
   const { startAlert } = useTitleAlert();
   const prevProcessingRef = useRef(isProcessing);
@@ -42,10 +40,6 @@ function CouncilSessionContent() {
     prevProcessingRef.current = isProcessing;
   }, [isProcessing, stage3Synthesis, startAlert]);
 
-  const handleMessageSent = () => {
-    loadSessions();
-  };
-
   return (
     <>
       {/* Messages area */}
@@ -54,7 +48,7 @@ function CouncilSessionContent() {
       </div>
 
       {/* Input area */}
-      <InputArea sessionId={sessionId} onMessageSent={handleMessageSent} />
+      <InputArea sessionId={sessionId} />
     </>
   );
 }

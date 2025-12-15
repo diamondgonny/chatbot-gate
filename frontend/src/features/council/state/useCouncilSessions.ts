@@ -34,6 +34,7 @@ interface UseCouncilSessionsReturn {
   loadSessions: () => Promise<void>;
   createSession: () => Promise<string | null>;
   removeSession: (sessionId: string) => Promise<boolean>;
+  updateSessionTitle: (sessionId: string, title: string) => void;
 }
 
 export function useCouncilSessions(): UseCouncilSessionsReturn {
@@ -110,6 +111,19 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
     []
   );
 
+  const updateSessionTitle = useCallback(
+    (sessionId: string, title: string): void => {
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.sessionId === sessionId
+            ? { ...s, title, updatedAt: new Date().toISOString() }
+            : s
+        )
+      );
+    },
+    []
+  );
+
   // Load sessions on mount and cleanup on unmount
   useEffect(() => {
     isMountedRef.current = true;
@@ -128,5 +142,6 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
     loadSessions,
     createSession,
     removeSession,
+    updateSessionTitle,
   };
 }

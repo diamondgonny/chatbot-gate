@@ -1,9 +1,128 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { memo, useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { CouncilSession } from "../domain";
 import { formatTimeAgo } from "@/shared/utils";
+
+/**
+ * Memoized session item component
+ * Only re-renders when its own props change
+ */
+interface SessionItemProps {
+  session: CouncilSession;
+  isSelected: boolean;
+  onSelect: (sessionId: string) => void;
+  onDelete: (sessionId: string) => void;
+}
+
+const SessionItem = memo(
+  function SessionItem({ session, isSelected, onSelect, onDelete }: SessionItemProps) {
+    const [showTooltip, setShowTooltip] = useState(false);
+    const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const handleMouseEnter = useCallback(() => {
+      hoverTimeoutRef.current = setTimeout(() => {
+        setShowTooltip(true);
+      }, 1000);
+    }, []);
+
+    const handleMouseLeave = useCallback(() => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+      setShowTooltip(false);
+    }, []);
+
+    useEffect(() => {
+      return () => {
+        if (hoverTimeoutRef.current) {
+          clearTimeout(hoverTimeoutRef.current);
+        }
+      };
+    }, []);
+
+    const handleSelect = useCallback(() => {
+      onSelect(session.sessionId);
+    }, [onSelect, session.sessionId]);
+
+    const handleDelete = useCallback(
+      (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onDelete(session.sessionId);
+      },
+      [onDelete, session.sessionId]
+    );
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, x: -10 }}
+        animate={{ opacity: 1, x: 0 }}
+        className={`group relative rounded-lg transition-colors ${
+          isSelected ? "bg-slate-700" : "hover:bg-slate-800"
+        }`}
+      >
+        {/* Tooltip - appears after 1 second of hover */}
+        <AnimatePresence>
+          {showTooltip && (
+            <motion.div
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="absolute top-full left-0 mt-1 bg-slate-800 text-slate-100 text-xs px-3 py-2 rounded-lg whitespace-normal max-w-xs z-50 border border-slate-600 shadow-lg"
+            >
+              {session.title}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <button
+          onClick={handleSelect}
+          className="w-full text-left p-3"
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          <div className="text-sm text-slate-200 truncate">{session.title}</div>
+          <div className="text-xs text-slate-500 mt-1">
+            {formatTimeAgo(session.updatedAt)}
+          </div>
+        </button>
+
+        {/* Delete button */}
+        <button
+          onClick={handleDelete}
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-slate-500 hover:text-red-400 hover:bg-slate-700 opacity-0 group-hover:opacity-100 transition-opacity"
+          title="Delete session"
+        >
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+            />
+          </svg>
+        </button>
+      </motion.div>
+    );
+  },
+  (prevProps, nextProps) => {
+    // Custom comparison: only re-render if these specific props change
+    return (
+      prevProps.session.sessionId === nextProps.session.sessionId &&
+      prevProps.session.title === nextProps.session.title &&
+      prevProps.session.updatedAt === nextProps.session.updatedAt &&
+      prevProps.isSelected === nextProps.isSelected &&
+      prevProps.onSelect === nextProps.onSelect &&
+      prevProps.onDelete === nextProps.onDelete
+    );
+  }
+);
 
 interface CouncilSidebarProps {
   sessions: CouncilSession[];
@@ -22,29 +141,6 @@ export function CouncilSidebar({
   onNewSession,
   onDeleteSession,
 }: CouncilSidebarProps) {
-  const [hoveredSessionId, setHoveredSessionId] = useState<string | null>(null);
-  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const handleTitleMouseEnter = (sessionId: string) => {
-    hoverTimeoutRef.current = setTimeout(() => {
-      setHoveredSessionId(sessionId);
-    }, 1000);
-  };
-
-  const handleTitleMouseLeave = () => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-    }
-    setHoveredSessionId(null);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-      }
-    };
-  }, []);
 
   return (
     <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-full min-h-0 overflow-hidden">
@@ -86,68 +182,13 @@ export function CouncilSidebar({
         ) : (
           <div className="space-y-1">
             {sessions.map((session) => (
-              <motion.div
+              <SessionItem
                 key={session.sessionId}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className={`group relative rounded-lg transition-colors ${
-                  currentSessionId === session.sessionId
-                    ? "bg-slate-700"
-                    : "hover:bg-slate-800"
-                }`}
-              >
-                {/* Tooltip - appears after 1 second of hover */}
-                <AnimatePresence>
-                  {hoveredSessionId === session.sessionId && (
-                    <motion.div
-                      initial={{ opacity: 0, y: -4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute top-full left-0 mt-1 bg-slate-800 text-slate-100 text-xs px-3 py-2 rounded-lg whitespace-normal max-w-xs z-50 border border-slate-600 shadow-lg"
-                    >
-                      {session.title}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <button
-                  onClick={() => onSelectSession(session.sessionId)}
-                  className="w-full text-left p-3"
-                  onMouseEnter={() => handleTitleMouseEnter(session.sessionId)}
-                  onMouseLeave={handleTitleMouseLeave}
-                >
-                  <div className="text-sm text-slate-200 truncate">
-                    {session.title}
-                  </div>
-                  <div className="text-xs text-slate-500 mt-1">
-                    {formatTimeAgo(session.updatedAt)}
-                  </div>
-                </button>
-
-                {/* Delete button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteSession(session.sessionId);
-                  }}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-slate-500 hover:text-red-400 hover:bg-slate-700 opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Delete session"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                    />
-                  </svg>
-                </button>
-              </motion.div>
+                session={session}
+                isSelected={currentSessionId === session.sessionId}
+                onSelect={onSelectSession}
+                onDelete={onDeleteSession}
+              />
             ))}
           </div>
         )}

@@ -25,7 +25,7 @@ export interface UseCouncilStreamCallbacks {
   onUserMessageConfirmed: (content: string) => void;
   onComplete: (assistantMessage: CouncilAssistantMessage) => void;
   onError: (error: string) => void;
-  onTitleComplete: () => void;
+  onTitleComplete: (title: string) => void;
   onReconnected: (stage: CurrentStage, userMessage?: string) => void;
   onProcessingStart: () => void;
   onProcessingEnd: () => void;
@@ -106,9 +106,9 @@ export function useCouncilStream(
               callbacks.onProcessingEnd();
             }
           },
-          onTitleComplete: () => {
+          onTitleComplete: (title: string) => {
             if (isMountedRef.current) {
-              callbacks.onTitleComplete();
+              callbacks.onTitleComplete(title);
             }
           },
           onReconnected: () => {
@@ -188,9 +188,9 @@ export function useCouncilStream(
               callbacks.onProcessingEnd();
             }
           },
-          onTitleComplete: () => {
+          onTitleComplete: (title: string) => {
             if (isMountedRef.current) {
-              callbacks.onTitleComplete();
+              callbacks.onTitleComplete(title);
             }
           },
           onReconnected: (stage, userMessage) => {
