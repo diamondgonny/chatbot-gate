@@ -1,6 +1,11 @@
 /**
  * Council Context Provider
  * Provides council state and actions to all child components
+ *
+ * Uses split contexts for state management to enable render optimization:
+ * - CouncilMessagesContext for messages
+ * - CouncilStreamContext for stream state
+ * - CouncilStatusContext for status flags
  */
 
 "use client";
@@ -16,13 +21,16 @@ import {
 } from "react";
 import type { CouncilMessage, CouncilAssistantMessage, CouncilMode } from "../domain";
 import type { CurrentStage } from "../domain";
-import { useCouncilState, type CouncilState } from "./useCouncilState";
+import type { CouncilState } from "./useCouncilState";
 import { useCouncilStream } from "./useCouncilStream";
 import {
   getCouncilSession,
   getProcessingStatus,
   abortCouncilProcessing,
 } from "../services";
+import { useCouncilMessagesContext } from "./CouncilMessagesContext";
+import { useCouncilStreamContext } from "./CouncilStreamContext";
+import { useCouncilStatusContext } from "./CouncilStatusContext";
 
 // Treat both DOM aborts and axios cancellations as benign
 function isAbortError(error: unknown): boolean {
@@ -76,9 +84,17 @@ interface CouncilProviderProps {
 /**
  * Council Provider component
  * Wraps children with council state and actions
+ *
+ * Uses split contexts for state management - must be nested inside:
+ * - CouncilMessagesProvider
+ * - CouncilStreamProvider
+ * - CouncilStatusProvider
  */
 export function CouncilProvider({ children }: CouncilProviderProps) {
-  const [state, actions] = useCouncilState();
+  // Use split contexts for state management (render optimization)
+  const messagesContext = useCouncilMessagesContext();
+  const streamContext = useCouncilStreamContext();
+  const statusContext = useCouncilStatusContext();
 
   // Track current session for race condition prevention
   const loadSessionIdRef = useRef<string | null>(null);
@@ -87,49 +103,70 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
   // Store onComplete callback for title_complete events
   const onCompleteCallbackRef = useRef<(() => void) | undefined>(undefined);
 
-  // Create stream callbacks
+  // Destructure stable setters from split contexts to avoid dependency issues
+  const { setMessages, setPendingMessage, clearMessages } = messagesContext;
+  const { updateStreamState, resetStreamState } = streamContext;
+  const {
+    setProcessing,
+    setReconnecting,
+    setAborted,
+    setLoading,
+    setError,
+    setInputExpanded,
+    resetStatus,
+  } = statusContext;
+
+  // Create stream callbacks using stable setter references
   const streamCallbacks = useMemo(
     () => ({
-      onStateChange: actions.updateStreamState,
+      onStateChange: updateStreamState,
       onUserMessageConfirmed: (content: string) => {
         const userMessage: CouncilMessage = {
           role: "user",
           content,
           timestamp: new Date().toISOString(),
         };
-        actions.setMessages((prev) => [...prev, userMessage]);
-        actions.setPendingMessage(null);
+        setMessages((prev) => [...prev, userMessage]);
+        setPendingMessage(null);
       },
       onComplete: (assistantMessage: CouncilAssistantMessage) => {
-        actions.setMessages((prev) => [...prev, assistantMessage]);
-        actions.setPendingMessage(null); // Clear pending message (including reconnection case)
+        setMessages((prev) => [...prev, assistantMessage]);
+        setPendingMessage(null); // Clear pending message (including reconnection case)
         onCompleteCallbackRef.current?.();
       },
       onError: (error: string) => {
-        actions.setError(error);
-        actions.setPendingMessage(null);
+        setError(error);
+        setPendingMessage(null);
       },
       onTitleComplete: () => {
         onCompleteCallbackRef.current?.();
       },
       onReconnected: (stage: CurrentStage, userMessage?: string) => {
-        actions.updateStreamState({ currentStage: stage });
+        updateStreamState({ currentStage: stage });
         if (userMessage) {
-          actions.setPendingMessage(userMessage);
+          setPendingMessage(userMessage);
         }
-        actions.setReconnecting(false);
+        setReconnecting(false);
       },
       onProcessingStart: () => {
-        actions.setProcessing(true);
-        actions.setAborted(false);
-        actions.setError(null);
+        setProcessing(true);
+        setAborted(false);
+        setError(null);
       },
       onProcessingEnd: () => {
-        actions.setProcessing(false);
-        actions.setReconnecting(false);
+        setProcessing(false);
+        setReconnecting(false);
       },
     }),
-    [actions]
+    [
+      updateStreamState,
+      setMessages,
+      setPendingMessage,
+      setError,
+      setReconnecting,
+      setProcessing,
+      setAborted,
+    ]
   );
 
   const { startStream, reconnectStream, abortStream } =
@@ -145,6 +182,15 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       abortStream();
     };
   }, [abortStream]);
+
+  /**
+   * Reset all state across split contexts
+   */
+  const resetAll = useCallback(() => {
+    clearMessages();
+    resetStreamState();
+    resetStatus();
+  }, [clearMessages, resetStreamState, resetStatus]);
 
   /**
    * Load a council session
@@ -163,8 +209,8 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       abortStream();
 
       // Reset all state
-      actions.resetAll();
-      actions.setLoading(true);
+      resetAll();
+      setLoading(true);
 
       try {
         const session = await getCouncilSession(sessionId, controller.signal);
@@ -174,7 +220,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
           return;
         }
 
-        actions.setMessages(session.messages);
+        setMessages(session.messages);
 
         // Check for active processing and reconnect if needed
         const status = await getProcessingStatus(sessionId, controller.signal);
@@ -188,7 +234,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
           console.log(
             `[Council] Active processing found for session ${sessionId}, reconnecting...`
           );
-          actions.setReconnecting(true);
+          setReconnecting(true);
           reconnectStream(sessionId);
         }
       } catch (err) {
@@ -201,16 +247,16 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
 
         // Only set error if still on the same session
         if (loadSessionIdRef.current === sessionId) {
-          actions.setError("Failed to load session");
+          setError("Failed to load session");
         }
       } finally {
         // Only update loading state if still on the same session
         if (loadSessionIdRef.current === sessionId) {
-          actions.setLoading(false);
+          setLoading(false);
         }
       }
     },
-    [abortStream, reconnectStream, actions]
+    [abortStream, reconnectStream, resetAll, setMessages, setLoading, setReconnecting, setError]
   );
 
   /**
@@ -222,13 +268,13 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       onCompleteCallbackRef.current = onComplete;
 
       // Reset stream state
-      actions.resetStreamState();
-      actions.setPendingMessage(content);
+      resetStreamState();
+      setPendingMessage(content);
 
       // Start streaming with mode
       startStream(sessionId, content, mode);
     },
-    [startStream, actions]
+    [startStream, resetStreamState, setPendingMessage]
   );
 
   /**
@@ -247,20 +293,83 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       }
 
       // 3. Update UI state
-      actions.updateStreamState({ currentStage: "idle" });
-      actions.setProcessing(false);
-      actions.setAborted(true);
-      actions.setPendingMessage(null);
+      updateStreamState({ currentStage: "idle" });
+      setProcessing(false);
+      setAborted(true);
+      setPendingMessage(null);
     },
-    [abortStream, actions]
+    [abortStream, updateStreamState, setProcessing, setAborted, setPendingMessage]
   );
 
   /**
    * Clear error state
    */
   const clearError = useCallback(() => {
-    actions.setError(null);
-  }, [actions]);
+    setError(null);
+  }, [setError]);
+
+  // Build state object from split contexts (use individual values, not context objects)
+  const { messages, pendingMessage } = messagesContext;
+  const {
+    currentStage,
+    stage1Responses,
+    stage1StreamingContent,
+    stage2Reviews,
+    stage2StreamingContent,
+    stage3Synthesis,
+    stage3StreamingContent,
+    stage3ReasoningContent,
+    labelToModel,
+    aggregateRankings,
+  } = streamContext;
+  const { isProcessing, isReconnecting, wasAborted, isLoading, error, isInputExpanded } =
+    statusContext;
+
+  const state: CouncilState = useMemo(
+    () => ({
+      // Messages
+      messages,
+      pendingMessage,
+      // Stream
+      currentStage,
+      stage1Responses,
+      stage1StreamingContent,
+      stage2Reviews,
+      stage2StreamingContent,
+      stage3Synthesis,
+      stage3StreamingContent,
+      stage3ReasoningContent,
+      labelToModel,
+      aggregateRankings,
+      // Status
+      isProcessing,
+      isReconnecting,
+      wasAborted,
+      isLoading,
+      error,
+      isInputExpanded,
+    }),
+    [
+      messages,
+      pendingMessage,
+      currentStage,
+      stage1Responses,
+      stage1StreamingContent,
+      stage2Reviews,
+      stage2StreamingContent,
+      stage3Synthesis,
+      stage3StreamingContent,
+      stage3ReasoningContent,
+      labelToModel,
+      aggregateRankings,
+      isProcessing,
+      isReconnecting,
+      wasAborted,
+      isLoading,
+      error,
+      isInputExpanded,
+    ]
+  );
 
   // Build context value
   const contextValue: CouncilContextValue = useMemo(
@@ -270,9 +379,9 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       sendMessage,
       abortProcessing,
       clearError,
-      setInputExpanded: actions.setInputExpanded,
+      setInputExpanded,
     }),
-    [state, loadSession, sendMessage, abortProcessing, clearError, actions.setInputExpanded]
+    [state, loadSession, sendMessage, abortProcessing, clearError, setInputExpanded]
   );
 
   return (
