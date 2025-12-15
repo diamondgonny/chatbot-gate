@@ -11,13 +11,15 @@ interface Stage3PanelProps {
   streamingContent?: string;
   streamingReasoning?: string;
   isLoading?: boolean;
+  wasAborted?: boolean;
 }
 
 export function Stage3Panel({
   synthesis,
   streamingContent = "",
   streamingReasoning = "",
-  isLoading
+  isLoading,
+  wasAborted,
 }: Stage3PanelProps) {
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
 
@@ -52,10 +54,10 @@ export function Stage3Panel({
             />
           </svg>
           Stage 3: Council&apos;s Final Answer
-          {isThinking && !isStreaming && (
+          {isThinking && !isStreaming && !wasAborted && (
             <span className="ml-2 text-xs text-blue-400/70">● Thinking...</span>
           )}
-          {isStreaming && (
+          {isStreaming && !wasAborted && (
             <span className="ml-2 text-xs text-green-500/70">● Streaming...</span>
           )}
         </h3>
@@ -89,7 +91,7 @@ export function Stage3Panel({
                     ({synthesis.reasoningTokens} tokens)
                   </span>
                 )}
-                {isThinking && !synthesis && (
+                {isThinking && !synthesis && !wasAborted && (
                   <span className="inline-block w-1.5 h-3 bg-blue-400 animate-pulse ml-1" />
                 )}
               </span>
@@ -105,7 +107,7 @@ export function Stage3Panel({
                 >
                   <div className="bg-blue-900/10 border border-blue-700/20 rounded-lg p-3 text-sm text-slate-300">
                     <MarkdownRenderer content={displayReasoning} />
-                    {isThinking && !synthesis && (
+                    {isThinking && !synthesis && !wasAborted && (
                       <span className="inline-block w-2 h-4 bg-blue-400 animate-pulse ml-0.5" />
                     )}
                   </div>
@@ -138,7 +140,7 @@ export function Stage3Panel({
             </div>
             <div>
               <MarkdownRenderer content={displayContent} />
-              {isStreaming && (
+              {isStreaming && !wasAborted && (
                 <span className="inline-block w-2 h-4 bg-green-400 animate-pulse ml-0.5" />
               )}
             </div>

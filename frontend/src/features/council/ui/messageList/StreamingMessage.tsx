@@ -127,6 +127,7 @@ export function StreamingMessage() {
             streamingContent={stage3StreamingContent}
             streamingReasoning={stage3ReasoningContent}
             isLoading={currentStage === "stage3"}
+            wasAborted={wasAborted}
           />
         )}
       </AnimatePresence>
