@@ -74,13 +74,13 @@ export default function SessionSidebar({
                 key={session.sessionId}
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                className={`relative group w-full text-left px-3 py-3 rounded-lg transition-colors ${
+                className={`relative group w-full text-left rounded-lg transition-colors cursor-pointer ${
                   isActive ? "bg-slate-700" : "hover:bg-slate-800"
                 } ${isLoading ? "opacity-50 cursor-wait" : ""}`}
               >
                 <button
                   onClick={() => onSessionSelect?.(session.sessionId)}
-                  className="w-full text-left"
+                  className="w-full text-left px-3 py-3 cursor-pointer"
                   disabled={isLoading}
                 >
                   <h3 className="text-slate-200 text-sm font-medium mb-1 pr-4 flex items-center gap-2">

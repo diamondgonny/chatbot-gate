@@ -78,14 +78,14 @@ const SessionItem = memo(
 
         <button
           onClick={handleSelect}
-          className="w-full text-left p-3"
+          className="w-full text-left px-3 py-3 cursor-pointer"
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
-          <div className="text-sm text-slate-200 truncate">{session.title}</div>
-          <div className="text-xs text-slate-500 mt-1">
-            {formatTimeAgo(session.updatedAt)}
-          </div>
+          <h3 className="text-slate-200 text-sm font-medium mb-1 pr-4 truncate">
+            {session.title}
+          </h3>
+          <div className="text-xs text-slate-500">{formatTimeAgo(session.updatedAt)}</div>
         </button>
 
         {/* Delete button */}
@@ -180,7 +180,7 @@ export function CouncilSidebar({
             Start a new council!
           </div>
         ) : (
-          <div className="space-y-1">
+          <div>
             {sessions.map((session) => (
               <SessionItem
                 key={session.sessionId}
@@ -195,7 +195,7 @@ export function CouncilSidebar({
       </div>
 
       {/* Footer - height matches input area */}
-      <div className="px-4 py-[22px] border-t border-slate-800">
+      <div className="px-4 py-[30px] border-t border-slate-800">
         <a
           href="/hub"
           className="flex items-center gap-2 text-slate-400 hover:text-slate-200 transition-colors text-sm"
