@@ -27,7 +27,8 @@ export function Stage3Panel({
   const isThinking = !synthesis && !!streamingReasoning;
   const displayContent = synthesis?.response || streamingContent;
   const displayReasoning = synthesis?.reasoning || streamingReasoning;
-  const isComplete = !!synthesis;
+  // Consider complete only if synthesis exists AND responseTimeMs > 0 (0ms indicates abort)
+  const isComplete = !!synthesis && (synthesis.responseTimeMs ?? 0) > 0;
 
   if (!synthesis && !streamingContent && !streamingReasoning && !isLoading) {
     return null;
@@ -127,7 +128,7 @@ export function Stage3Panel({
               <span className={`text-xs ${isComplete ? "text-green-500/70" : "text-slate-500"}`}>
                 Chairman: {synthesis ? formatModelName(synthesis.model) : "🤖"}
               </span>
-              {synthesis && (
+              {synthesis && synthesis.responseTimeMs > 0 && (
                 <span className="text-xs text-slate-600">
                   {synthesis.responseTimeMs}ms
                   {synthesis.promptTokens !== undefined && (
