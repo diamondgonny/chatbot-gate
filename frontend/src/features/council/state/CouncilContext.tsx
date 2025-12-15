@@ -140,11 +140,10 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       onTitleComplete: () => {
         onCompleteCallbackRef.current?.();
       },
-      onReconnected: (stage: CurrentStage, userMessage?: string) => {
+      onReconnected: (stage: CurrentStage) => {
         updateStreamState({ currentStage: stage });
-        if (userMessage) {
-          setPendingMessage(userMessage);
-        }
+        // Note: userMessage is no longer used here since loadSession already
+        // loads messages from the server before reconnecting
         setReconnecting(false);
       },
       onProcessingStart: () => {
