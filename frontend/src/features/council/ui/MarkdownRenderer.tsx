@@ -82,7 +82,7 @@ export function MarkdownRenderer({
                     customStyle={{
                       margin: 0,
                       borderRadius: "0 0 6px 6px",
-                      fontSize: "0.85em",
+                      fontSize: "0.95em",
                     }}
                   >
                     {codeString}
