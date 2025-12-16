@@ -171,7 +171,7 @@ FINAL RANKING:
 2. Response A
 3. Response B
 
-Now provide your evaluation and ranking:`;
+Now provide your evaluation and ranking, in English:`;
 
   const messages: OpenRouterMessage[] = [{ role: 'user', content: rankingPrompt }];
 
