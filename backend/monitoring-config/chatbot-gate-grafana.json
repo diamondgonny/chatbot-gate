@@ -300,7 +300,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Total council messages in the selected time range",
+      "description": "Total auth failures in the selected time range",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "fixed" },
@@ -338,7 +338,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Total council messages in the selected time range",
+      "description": "Total council questions (User) in the selected time range",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "fixed" },
@@ -364,7 +364,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(chatbot_gate_council_messages_total{deployment_env=~\"$deployment_env\", direction=\"user\"})",
+          "expr": "(round(sum(increase(chatbot_gate_council_messages_total{deployment_env=~\"$deployment_env\", direction=\"user\"}[$__range])))) or vector(0)",
           "instant": true,
           "legendFormat": "__auto",
           "refId": "A"
@@ -375,7 +375,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Total OpenRouter tokens consumed",
+      "description": "Total OpenRouter tokens consumed in the selected time range",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "fixed" },
@@ -401,7 +401,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(chatbot_gate_openrouter_tokens_total{deployment_env=~\"$deployment_env\"})",
+          "expr": "(round(sum(increase(chatbot_gate_openrouter_tokens_total{deployment_env=~\"$deployment_env\"}[$__range])))) or vector(0)",
           "instant": true,
           "legendFormat": "__auto",
           "refId": "A"
@@ -412,7 +412,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Total chat messages in the selected time range",
+      "description": "Total chat messages (User) in the selected time range",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "fixed" },
@@ -438,7 +438,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(chatbot_gate_chat_messages_total{deployment_env=~\"$deployment_env\", direction=\"user\"})",
+          "expr": "(round(sum(increase(chatbot_gate_chat_messages_total{deployment_env=~\"$deployment_env\", direction=\"user\"}[$__range])))) or vector(0)",
           "instant": true,
           "legendFormat": "__auto",
           "refId": "A"
@@ -449,7 +449,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Total OpenAI tokens consumed",
+      "description": "Total OpenAI tokens consumed in the selected time range",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "fixed" },
@@ -475,7 +475,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(chatbot_gate_openai_tokens_total{deployment_env=~\"$deployment_env\"})",
+          "expr": "(round(sum(increase(chatbot_gate_openai_tokens_total{deployment_env=~\"$deployment_env\"}[$__range])))) or vector(0)",
           "instant": true,
           "legendFormat": "__auto",
           "refId": "A"
@@ -1399,7 +1399,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Total council messages in the selected time range",
+      "description": "Total council questions (User) in the selected time range",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "fixed" },
@@ -1425,7 +1425,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(chatbot_gate_council_messages_total{deployment_env=~\"$deployment_env\", direction=\"user\"})",
+          "expr": "(round(sum(increase(chatbot_gate_council_messages_total{deployment_env=~\"$deployment_env\", direction=\"user\"}[$__range])))) or vector(0)",
           "instant": true,
           "legendFormat": "__auto",
           "refId": "A"
@@ -1436,7 +1436,7 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
-      "description": "Total OpenRouter tokens consumed",
+      "description": "Total OpenRouter tokens consumed in the selected time range",
       "fieldConfig": {
         "defaults": {
           "color": { "mode": "fixed" },
@@ -1462,7 +1462,7 @@
         {
           "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
           "editorMode": "code",
-          "expr": "sum(chatbot_gate_openrouter_tokens_total{deployment_env=~\"$deployment_env\"})",
+          "expr": "(round(sum(increase(chatbot_gate_openrouter_tokens_total{deployment_env=~\"$deployment_env\"}[$__range])))) or vector(0)",
           "instant": true,
           "legendFormat": "__auto",
           "refId": "A"
