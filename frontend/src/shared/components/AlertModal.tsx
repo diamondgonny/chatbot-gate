@@ -57,13 +57,13 @@ export default function AlertModal({
             <div className="flex items-center justify-end gap-3 p-5">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-slate-300 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                className="cursor-pointer px-4 py-2 text-sm font-medium text-slate-300 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
               >
                 {cancelText}
               </button>
               <button
                 onClick={onConfirm}
-                className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors shadow-lg ${
+                className={`cursor-pointer px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors shadow-lg ${
                   isDestructive
                     ? "bg-red-600 hover:bg-red-500 shadow-red-900/20"
                     : "bg-blue-600 hover:bg-blue-500 shadow-blue-900/20"

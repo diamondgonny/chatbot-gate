@@ -37,6 +37,7 @@ export interface UseSessionsReturn {
   loadSessions: () => Promise<Session[]>;
   handleCreateSession: () => Promise<Session | null>;
   handleDeleteSession: (sessionId: string) => Promise<void>;
+  removeSessionOptimistic: (sessionId: string) => void;
   sortSessionsByUpdatedAt: (sessionList: Session[]) => Session[];
 }
 
@@ -115,6 +116,11 @@ export function useSessions(services: SessionServices = defaultServices): UseSes
     }
   }, [services]);
 
+  // Optimistically remove session from UI (before API call completes)
+  const removeSessionOptimistic = useCallback((sessionId: string) => {
+    setSessions((prev) => prev.filter((s) => s.sessionId !== sessionId));
+  }, []);
+
   return {
     sessions,
     setSessions,
@@ -128,6 +134,7 @@ export function useSessions(services: SessionServices = defaultServices): UseSes
     loadSessions,
     handleCreateSession,
     handleDeleteSession,
+    removeSessionOptimistic,
     sortSessionsByUpdatedAt,
   };
 }

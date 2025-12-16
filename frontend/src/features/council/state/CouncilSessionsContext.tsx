@@ -21,6 +21,12 @@ export interface CouncilSessionsContextValue {
   loadSessions: () => Promise<void>;
   createSession: () => Promise<string | null>;
   removeSession: (sessionId: string) => Promise<boolean>;
+  /** Optimistically remove session from UI (returns the removed session for potential restore) */
+  removeSessionOptimistic: (sessionId: string) => CouncilSession | null;
+  /** Restore a session to the UI (e.g., after failed deletion) */
+  restoreSession: (session: CouncilSession) => void;
+  /** Delete session API call only (without UI update) */
+  deleteSessionApi: (sessionId: string) => Promise<void>;
   updateSessionTitle: (sessionId: string, title: string) => void;
   updateSessionTimestamp: (sessionId: string) => void;
 }

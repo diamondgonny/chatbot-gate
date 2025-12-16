@@ -5,3 +5,4 @@
  */
 
 export { default as AlertModal } from "./AlertModal";
+export { ToastContainer } from "./Toast";

@@ -35,6 +35,12 @@ interface UseCouncilSessionsReturn {
   loadSessions: () => Promise<void>;
   createSession: () => Promise<string | null>;
   removeSession: (sessionId: string) => Promise<boolean>;
+  /** Optimistically remove session from UI (returns the removed session for potential restore) */
+  removeSessionOptimistic: (sessionId: string) => CouncilSession | null;
+  /** Restore a session to the UI (e.g., after failed deletion) */
+  restoreSession: (session: CouncilSession) => void;
+  /** Delete session API call only (without UI update) */
+  deleteSessionApi: (sessionId: string) => Promise<void>;
   updateSessionTitle: (sessionId: string, title: string) => void;
   updateSessionTimestamp: (sessionId: string) => void;
 }
@@ -119,6 +125,44 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
     []
   );
 
+  // Optimistically remove session from UI (returns the removed session for potential restore)
+  const removeSessionOptimistic = useCallback(
+    (sessionId: string): CouncilSession | null => {
+      let removedSession: CouncilSession | null = null;
+      setSessions((prev) => {
+        const session = prev.find((s) => s.sessionId === sessionId);
+        if (session) {
+          removedSession = session;
+        }
+        return prev.filter((s) => s.sessionId !== sessionId);
+      });
+      return removedSession;
+    },
+    []
+  );
+
+  // Restore a session to the UI (e.g., after failed deletion)
+  const restoreSession = useCallback(
+    (session: CouncilSession): void => {
+      setSessions((prev) => {
+        // Add back and sort by updatedAt descending
+        const updated = [...prev, session];
+        return updated.sort(
+          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+      });
+    },
+    []
+  );
+
+  // Delete session API call only (without UI update)
+  const deleteSessionApi = useCallback(
+    async (sessionId: string): Promise<void> => {
+      await deleteCouncilSession(sessionId);
+    },
+    []
+  );
+
   const updateSessionTitle = useCallback(
     (sessionId: string, title: string): void => {
       setSessions((prev) => {
@@ -172,6 +216,9 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
     loadSessions,
     createSession,
     removeSession,
+    removeSessionOptimistic,
+    restoreSession,
+    deleteSessionApi,
     updateSessionTitle,
     updateSessionTimestamp,
   };

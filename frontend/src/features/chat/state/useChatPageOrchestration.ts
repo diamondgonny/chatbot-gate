@@ -20,6 +20,13 @@ export interface OrchestrationServices {
   chatServices?: ChatServices;
 }
 
+export interface OrchestrationCallbacks {
+  /** Called when session deletion fails - use for showing error toast */
+  onDeleteError?: (message: string) => void;
+  /** Called when session creation fails - use for showing error toast */
+  onCreateError?: (message: string) => void;
+}
+
 export interface UseChatPageOrchestrationReturn {
   // Loading states
   isLoading: boolean;
@@ -55,7 +62,8 @@ export interface UseChatPageOrchestrationReturn {
  * Each hook has a single responsibility.
  */
 export function useChatPageOrchestration(
-  services: OrchestrationServices = {}
+  services: OrchestrationServices = {},
+  callbacks: OrchestrationCallbacks = {}
 ): UseChatPageOrchestrationReturn {
   // Session management
   const {
@@ -71,6 +79,7 @@ export function useChatPageOrchestration(
     loadSessions,
     handleCreateSession,
     handleDeleteSession: deleteSessionApi,
+    removeSessionOptimistic,
     sortSessionsByUpdatedAt,
   } = useSessions(services.sessionServices);
 
@@ -205,14 +214,16 @@ export function useChatPageOrchestration(
     }
   }, [currentSessionId, setLoadingSessionId, setCurrentSessionId, loadChatHistory, setMessages, intendedSessionRef]);
 
-  // Delete session with navigation handling
+  // Delete session with optimistic UI pattern
   const deleteConfig = useMemo(() => ({
     onDelete: deleteSessionApi,
-    onAfterDelete: async (deletedSessionId: string) => {
-      const updatedSessions = await loadSessions();
+    onBeforeDelete: async (deletedSessionId: string) => {
+      // 1. Immediately remove from UI (optimistic)
+      removeSessionOptimistic(deletedSessionId);
 
+      // 2. Navigate if deleting current session
       if (currentSessionId === deletedSessionId) {
-        const remainingSessions = updatedSessions.filter(
+        const remainingSessions = sessions.filter(
           (s) => s.sessionId !== deletedSessionId
         );
         if (remainingSessions.length > 0) {
@@ -222,7 +233,10 @@ export function useChatPageOrchestration(
         }
       }
     },
-  }), [deleteSessionApi, loadSessions, currentSessionId, handleSessionSelect, handleNewChat]);
+    onError: () => {
+      callbacks.onDeleteError?.("Failed to delete. Please refresh and try again.");
+    },
+  }), [deleteSessionApi, removeSessionOptimistic, currentSessionId, sessions, handleSessionSelect, handleNewChat, callbacks]);
 
   const {
     sessionToDelete,

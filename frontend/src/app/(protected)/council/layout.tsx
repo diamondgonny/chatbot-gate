@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   CouncilSidebar,
@@ -10,7 +10,9 @@ import {
   CouncilStatusProvider,
   useCouncilSessionsContext,
 } from "@/features/council";
-import { AlertModal } from "@/shared";
+import type { CouncilSession } from "@/features/council/domain";
+import { AlertModal, ToastContainer } from "@/shared";
+import { useToast } from "@/shared/hooks";
 
 /**
  * Inner layout component that uses the sessions context
@@ -21,16 +23,22 @@ function CouncilLayoutInner({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const currentSessionId = (params.sessionId as string) || null;
 
-  const { sessions, isLoading, isCreating, createSession, removeSession, loadSessions } =
+  const { sessions, isLoading, isCreating, createSession, removeSessionOptimistic, restoreSession, deleteSessionApi } =
     useCouncilSessionsContext();
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const { toasts, showToast, removeToast } = useToast();
+
+  // Store the session being deleted for potential restore
+  const deletedSessionRef = useRef<CouncilSession | null>(null);
 
   const handleNewSession = useCallback(async () => {
     const newSessionId = await createSession();
     if (newSessionId) {
       router.push(`/council/${newSessionId}`);
+    } else {
+      showToast("Failed to create session. Please try again.", "error");
     }
-  }, [createSession, router]);
+  }, [createSession, router, showToast]);
 
   const handleSelectSession = useCallback(
     (sessionId: string) => {
@@ -48,29 +56,49 @@ function CouncilLayoutInner({ children }: { children: React.ReactNode }) {
   const confirmDeleteSession = useCallback(async () => {
     if (!sessionToDelete) return;
 
-    const success = await removeSession(sessionToDelete);
-    if (success) {
-      // If deleting current session, navigate to another session or index
-      if (sessionToDelete === currentSessionId) {
-        await loadSessions();
-        const remainingSessions = sessions.filter(
-          (s) => s.sessionId !== sessionToDelete
-        );
-        if (remainingSessions.length > 0) {
-          router.push(`/council/${remainingSessions[0].sessionId}`);
-        } else {
-          router.push("/council");
-        }
+    const deletedId = sessionToDelete;
+
+    // 1. Close modal immediately
+    setSessionToDelete(null);
+
+    // 2. Optimistically remove from UI and save for potential restore
+    const removedSession = removeSessionOptimistic(deletedId);
+    deletedSessionRef.current = removedSession;
+
+    // 3. Navigate if deleting current session
+    if (deletedId === currentSessionId) {
+      const remainingSessions = sessions.filter(
+        (s) => s.sessionId !== deletedId
+      );
+      if (remainingSessions.length > 0) {
+        router.push(`/council/${remainingSessions[0].sessionId}`);
+      } else {
+        router.push("/council");
       }
     }
-    setSessionToDelete(null);
+
+    // 4. Call API in background
+    try {
+      await deleteSessionApi(deletedId);
+    } catch (error) {
+      console.error("Error deleting council session:", error);
+      // Restore session on failure
+      if (deletedSessionRef.current) {
+        restoreSession(deletedSessionRef.current);
+      }
+      showToast("Failed to delete. Please try again.", "error");
+    } finally {
+      deletedSessionRef.current = null;
+    }
   }, [
     sessionToDelete,
-    removeSession,
+    removeSessionOptimistic,
+    restoreSession,
+    deleteSessionApi,
     currentSessionId,
-    loadSessions,
     sessions,
     router,
+    showToast,
   ]);
 
   return (
@@ -100,6 +128,9 @@ function CouncilLayoutInner({ children }: { children: React.ReactNode }) {
         onClose={() => setSessionToDelete(null)}
         onConfirm={confirmDeleteSession}
       />
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </>
   );
 }

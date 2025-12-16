@@ -1,12 +1,21 @@
 'use client';
 
+import { useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { useChatPageOrchestration, SessionSidebar } from "@/features/chat";
-import { AlertModal } from "@/shared";
+import { AlertModal, ToastContainer } from "@/shared";
+import { useToast } from "@/shared/hooks";
 
 export default function ChatInterface() {
+  const { toasts, showToast, removeToast } = useToast();
+  const prevSessionErrorRef = useRef<string | null>(null);
+
+  const callbacks = useMemo(() => ({
+    onDeleteError: (message: string) => showToast(message, "error"),
+  }), [showToast]);
+
   const {
     isLoading,
     loadingSessionId,
@@ -26,7 +35,15 @@ export default function ChatInterface() {
     requestDeleteSession,
     confirmDeleteSession,
     cancelDeleteSession,
-  } = useChatPageOrchestration();
+  } = useChatPageOrchestration({}, callbacks);
+
+  // Show toast when session creation fails
+  useEffect(() => {
+    if (sessionError && sessionError !== prevSessionErrorRef.current) {
+      showToast(sessionError, "error");
+    }
+    prevSessionErrorRef.current = sessionError;
+  }, [sessionError, showToast]);
 
   if (isLoading) {
     return (
@@ -153,6 +170,9 @@ export default function ChatInterface() {
         onClose={cancelDeleteSession}
         onConfirm={confirmDeleteSession}
       />
+
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }

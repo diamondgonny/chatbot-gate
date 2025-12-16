@@ -91,7 +91,7 @@ const SessionItem = memo(
         {/* Delete button */}
         <button
           onClick={handleDelete}
-          className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-slate-500 hover:text-red-400 hover:bg-slate-700 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="cursor-pointer absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-slate-500 hover:text-red-400 hover:bg-slate-700 opacity-0 group-hover:opacity-100 transition-opacity"
           title="Delete session"
         >
           <svg
