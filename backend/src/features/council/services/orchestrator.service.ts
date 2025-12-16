@@ -371,7 +371,7 @@ export async function* processCouncilMessage(
   userId: string,
   sessionId: string,
   userMessage: string,
-  mode: CouncilMode = 'ultra',
+  mode: CouncilMode = 'lite',
   signal?: AbortSignal,
   onTitleGenerated?: (title: string) => void
 ): AsyncGenerator<SSEEvent> {

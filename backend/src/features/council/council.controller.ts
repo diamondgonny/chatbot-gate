@@ -125,11 +125,11 @@ export const sendMessage = async (req: Request, res: Response) => {
   const content = req.body?.content as string;
   const modeParam = req.body?.mode as string | undefined;
 
-  // Validate and normalize mode (default to 'ultra')
+  // Validate and normalize mode (default to 'lite')
   const validModes: CouncilMode[] = ['lite', 'ultra'];
   const mode: CouncilMode = validModes.includes(modeParam as CouncilMode)
     ? (modeParam as CouncilMode)
-    : 'ultra';
+    : 'lite';
 
   // Validation
   if (!userId) {

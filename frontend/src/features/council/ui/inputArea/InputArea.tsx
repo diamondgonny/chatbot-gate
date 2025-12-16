@@ -96,7 +96,7 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
   // Actions → 기존 context (비즈니스 로직 유지)
   const { sendMessage, abortProcessing, setInputExpanded } = useCouncilContext();
   const [input, setInput] = useState("");
-  const [mode, setMode] = useState<CouncilMode>("ultra");
+  const [mode, setMode] = useState<CouncilMode>("lite");
   const [isMultiline, setIsMultiline] = useState(false);
   const [showScrollbar, setShowScrollbar] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);

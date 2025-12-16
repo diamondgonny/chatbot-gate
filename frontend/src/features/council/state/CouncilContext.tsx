@@ -278,7 +278,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
    * Send a message to the council
    */
   const sendMessage = useCallback(
-    (sessionId: string, content: string, mode: CouncilMode = 'ultra', onComplete?: () => void) => {
+    (sessionId: string, content: string, mode: CouncilMode = 'lite', onComplete?: () => void) => {
       // Store callback for later use
       onCompleteCallbackRef.current = onComplete;
 

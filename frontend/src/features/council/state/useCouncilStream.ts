@@ -67,7 +67,7 @@ export function useCouncilStream(
    * Start a new SSE stream for sending a message
    */
   const startStream = useCallback(
-    (sessionId: string, content: string, mode: CouncilMode = 'ultra') => {
+    (sessionId: string, content: string, mode: CouncilMode = 'lite') => {
       // Abort any existing request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
