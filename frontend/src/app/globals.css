@@ -89,15 +89,31 @@ body {
   margin: 4px 0;
 }
 
-.markdown-content pre {
-  background: #1e293b; /* slate-800 */
-  padding: 12px;
+/* Code block with header (ChatGPT/Claude style) */
+.markdown-content .code-block-wrapper {
+  margin: 12px 0;
   border-radius: 6px;
-  overflow-x: auto;
-  max-width: 100%;
-  margin: 0 0 12px 0;
+  overflow: hidden;
+  background: #1e293b;
 }
 
+.markdown-content .code-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #334155; /* slate-700 */
+  border-bottom: 1px solid #475569;
+}
+
+.markdown-content .code-block-language {
+  font-size: 0.75em;
+  color: #94a3b8; /* slate-400 */
+  font-family: monospace;
+  text-transform: lowercase;
+}
+
+/* Inline code */
 .markdown-content code {
   background: #1e293b;
   color: #34d399; /* emerald-400 */
@@ -106,6 +122,16 @@ body {
   font-family: monospace;
   font-size: 0.85em;
   word-break: break-all;
+}
+
+/* Fallback for pre without wrapper */
+.markdown-content pre {
+  background: #1e293b;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+  max-width: 100%;
+  margin: 0 0 12px 0;
 }
 
 .markdown-content pre code {
