@@ -39,4 +39,4 @@ export {
 export { metricsMiddleware } from './metrics.middleware';
 
 // Routes
-export { default as metricsRoutes } from './metrics.routes';
+export { default as metricsRoutes } from './routes/metrics.routes';

@@ -4,12 +4,12 @@
  */
 
 import { Request, Response } from 'express';
-import { asyncHandler, AppError, ErrorCodes, isOpenRouterConfigured } from '../../shared';
-import * as councilService from './services';
-import { processingRegistry } from './sse';
-import { streamCouncilMessage, setupSSEHeaders } from './sse/sseStreamHandler';
-import { replayAccumulatedState } from './sse/sseReplayService';
-import type { CouncilMode } from '../../shared';
+import { asyncHandler, AppError, ErrorCodes, isOpenRouterConfigured } from '../../../shared';
+import * as councilService from '../services';
+import { processingRegistry } from '../sse';
+import { streamCouncilMessage, setupSSEHeaders } from '../sse/sseStreamHandler';
+import { replayAccumulatedState } from '../sse/sseReplayService';
+import type { CouncilMode } from '../../../shared';
 
 /**
  * Create a new council session

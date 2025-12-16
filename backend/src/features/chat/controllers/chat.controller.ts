@@ -5,7 +5,7 @@
  */
 
 import { Request, Response } from 'express';
-import { asyncHandler, AppError, ErrorCodes } from '../../shared';
+import { asyncHandler, AppError, ErrorCodes } from '../../../shared';
 import {
   validateMessage,
   validateSessionId,
@@ -18,7 +18,7 @@ import {
   getUserSessions as getUserSessionsService,
   getSessionById as getSessionByIdService,
   deleteSession as deleteSessionService,
-} from './services';
+} from '../services';
 
 // ============================================================================
 // Session Management

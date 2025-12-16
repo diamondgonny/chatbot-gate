@@ -8,8 +8,8 @@ import {
   getProcessingStatus,
   reconnectToProcessing,
   abortProcessing,
-} from './council.controller';
-import { authMiddleware, createRateLimiter } from '../../shared';
+} from '../controllers/council.controller';
+import { authMiddleware, createRateLimiter } from '../../../shared';
 
 const router = Router();
 
