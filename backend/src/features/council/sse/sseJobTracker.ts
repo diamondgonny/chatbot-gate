@@ -4,8 +4,8 @@
  */
 
 import { Response } from 'express';
-import type { SSEEvent, AggregateRanking, IStage1Response, IStage2Review } from '../../../shared';
-import { COUNCIL } from '../../../shared';
+import type { SSEEvent, AggregateRanking, IStage1Response, IStage2Review } from '@shared';
+import { COUNCIL } from '@shared';
 
 export interface ActiveProcessing {
   sessionId: string;

@@ -4,8 +4,8 @@
  */
 
 import { Response } from 'express';
-import type { SSEEvent, CouncilMode } from '../../../shared';
-import { COUNCIL } from '../../../shared';
+import type { SSEEvent, CouncilMode } from '@shared';
+import { COUNCIL } from '@shared';
 import { processingRegistry } from './index';
 import * as councilService from '../services';
 

@@ -4,7 +4,7 @@ import {
   httpRequestDuration,
   httpRequestsInProgress,
   getDeploymentEnv,
-} from '../../shared/observability';
+} from '@shared/observability';
 
 // Route normalization to avoid high cardinality
 const normalizeRoute = (req: Request): string => {

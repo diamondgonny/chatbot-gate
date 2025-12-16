@@ -3,8 +3,8 @@
  * Builds conversation history for LLM context.
  */
 
-import { COUNCIL } from '../../../shared';
-import type { ICouncilMessage, OpenRouterMessage } from '../../../shared';
+import { COUNCIL } from '@shared';
+import type { ICouncilMessage, OpenRouterMessage } from '@shared';
 
 /**
  * Build conversation history for context

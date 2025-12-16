@@ -3,8 +3,8 @@
  * Handles ranking text parsing and aggregate ranking calculations.
  */
 
-import type { IStage2Review } from '../../../shared';
-import type { AggregateRanking } from '../../../shared';
+import type { IStage2Review } from '@shared';
+import type { AggregateRanking } from '@shared';
 
 /**
  * Parse ranking from model's evaluation text

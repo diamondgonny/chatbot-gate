@@ -4,7 +4,7 @@
  */
 
 import OpenAI from 'openai';
-import { config } from '../../../shared';
+import { config } from '@shared';
 
 // Use a fast, cheap model for title generation
 const TITLE_MODEL = 'gpt-4o-mini';

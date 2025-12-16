@@ -13,7 +13,7 @@ import {
   chatCompletionStream,
   chatCompletionStreamWithReasoning,
   StreamEvent,
-} from '../../../shared';
+} from '@shared';
 
 export interface ModelResponse {
   model: string;
@@ -245,4 +245,4 @@ export async function* queryCouncilModelsStreaming(
 }
 
 // Re-export chatCompletionStreamWithReasoning for Stage 3 (chairman with reasoning)
-export { chatCompletionStreamWithReasoning } from '../../../shared';
+export { chatCompletionStreamWithReasoning } from '@shared';

@@ -8,8 +8,8 @@ import {
   chatMessagesTotal,
   chatMessageDuration,
   getDeploymentEnv,
-} from '../../../shared';
-import type { ChatMessageResponse, ChatHistoryResponse, SessionLimitError } from '../../../shared';
+} from '@shared';
+import type { ChatMessageResponse, ChatHistoryResponse, SessionLimitError } from '@shared';
 import { getCompletion, buildConversationHistory } from './openai.service';
 import { findOrCreateSession } from './session.service';
 import { isSessionLimitError } from './validation.service';

@@ -3,7 +3,7 @@
  * Accumulates event state for replay on reconnection.
  */
 
-import type { SSEEvent } from '../../../shared';
+import type { SSEEvent } from '@shared';
 import { ActiveProcessing } from './sseJobTracker';
 
 export class SSEEventAccumulator {

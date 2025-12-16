@@ -4,7 +4,7 @@
  * Used when processing is aborted mid-stream.
  */
 
-import type { IStage1Response, IStage2Review } from '../../../shared';
+import type { IStage1Response, IStage2Review } from '@shared';
 
 /**
  * Build partial Stage 1 responses from completed results + streaming content

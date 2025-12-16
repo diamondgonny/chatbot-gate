@@ -7,7 +7,7 @@ import {
   sendChatMessage,
   getChatHistory,
 } from '../controllers/chat.controller';
-import { authMiddleware, createRateLimiter } from '../../../shared';
+import { authMiddleware, createRateLimiter } from '@shared';
 
 const router = Router();
 

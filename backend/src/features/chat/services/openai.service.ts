@@ -11,8 +11,8 @@ import {
   openaiApiDuration,
   openaiTokensUsed,
   getDeploymentEnv,
-} from '../../../shared';
-import type { IMessage } from '../../../shared';
+} from '@shared';
+import type { IMessage } from '@shared';
 
 // System Prompt: Defines the persona of the AI
 export const SYSTEM_PROMPT = `

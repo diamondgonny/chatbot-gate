@@ -4,14 +4,14 @@
  */
 
 import { randomUUID } from 'crypto';
-import { CouncilSession, COUNCIL, SESSION } from '../../../shared';
+import { CouncilSession, COUNCIL, SESSION } from '@shared';
 import type {
   CreateSessionResult,
   GetSessionsResult,
   GetSessionResult,
   DeleteSessionResult,
-} from '../../../shared';
-import { councilSessionsTotal, getDeploymentEnv } from '../../../shared';
+} from '@shared';
+import { councilSessionsTotal, getDeploymentEnv } from '@shared';
 
 /**
  * Validate session ID format (UUID v4)

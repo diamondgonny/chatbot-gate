@@ -4,7 +4,7 @@
  */
 
 import { Response } from 'express';
-import type { SSEEvent } from '../../../shared';
+import type { SSEEvent } from '@shared';
 import { SSEJobTracker, ActiveProcessing } from './sseJobTracker';
 import { SSEClientManager } from './sseClientManager';
 import { SSEEventAccumulator } from './sseEventAccumulator';
@@ -14,7 +14,7 @@ import {
   councilSseConnections,
   councilAbortsTotal,
   getDeploymentEnv,
-} from '../../../shared';
+} from '@shared';
 
 // Re-export ActiveProcessing type
 export type { ActiveProcessing } from './sseJobTracker';

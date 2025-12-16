@@ -4,14 +4,14 @@
  */
 
 import { randomUUID } from 'crypto';
-import { ChatSession, SESSION, type IChatSession } from '../../../shared';
+import { ChatSession, SESSION, type IChatSession } from '@shared';
 import type {
   SessionResponse,
   SessionListItem,
   SessionDetailResponse,
   SessionLimitError,
-} from '../../../shared';
-import { sessionOperations, getDeploymentEnv } from '../../../shared';
+} from '@shared';
+import { sessionOperations, getDeploymentEnv } from '@shared';
 
 /**
  * Result of findOrCreateSession operation

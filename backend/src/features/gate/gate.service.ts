@@ -6,9 +6,9 @@
 import { appendFileSync } from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
-import { config, BACKOFF, signToken } from '../../shared';
-import type { BackoffCheckResult, FailureBucket } from '../../shared';
-import { gateAuthAttempts, getDeploymentEnv } from '../../shared';
+import { config, BACKOFF, signToken } from '@shared';
+import type { BackoffCheckResult, FailureBucket } from '@shared';
+import { gateAuthAttempts, getDeploymentEnv } from '@shared';
 
 // In-memory storage for failure tracking
 const failureBuckets = new Map<string, FailureBucket>();

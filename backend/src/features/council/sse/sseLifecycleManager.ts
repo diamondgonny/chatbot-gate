@@ -5,7 +5,7 @@
 
 import { SSEJobTracker } from './sseJobTracker';
 import { SSEClientManager } from './sseClientManager';
-import { COUNCIL, councilSseConnections, getDeploymentEnv } from '../../../shared';
+import { COUNCIL, councilSseConnections, getDeploymentEnv } from '@shared';
 
 export class SSELifecycleManager {
   private gracePeriodTimers = new Map<string, ReturnType<typeof setTimeout>>();

@@ -13,7 +13,7 @@ import {
   getChairmanForMode,
   SSEEvent,
   OpenRouterMessage,
-} from '../../../shared';
+} from '@shared';
 import { queryCouncilModelsStreaming, chatCompletionStreamWithReasoning } from './councilApi.service';
 import { generateTitle } from './title.service';
 import {
@@ -30,7 +30,7 @@ import {
   openrouterResponseTime,
   openrouterTokensUsed,
   getDeploymentEnv,
-} from '../../../shared';
+} from '@shared';
 
 /**
  * Stage 1: Collect individual responses from all council models (streaming)

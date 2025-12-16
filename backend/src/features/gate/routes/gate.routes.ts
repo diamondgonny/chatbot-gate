@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { validateGateCode } from '../controllers/gate.controller';
-import { createRateLimiter } from '../../../shared';
+import { createRateLimiter } from '@shared';
 
 const router = Router();
 

@@ -9,7 +9,7 @@ import morgan from 'morgan';
 import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import path from 'path';
 import { createApp } from './app';
-import { validateEnv, connectDB, stopActiveSessionsTracking, logCookieConfig } from './shared';
+import { validateEnv, connectDB, stopActiveSessionsTracking, logCookieConfig } from '@shared';
 import { stopMetricsCollection } from './features/metrics';
 import { processingRegistry } from './features/council';
 

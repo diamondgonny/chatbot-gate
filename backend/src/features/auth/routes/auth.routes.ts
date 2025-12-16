@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { verifyToken } from '../../../shared';
+import { verifyToken } from '@shared';
 
 const router = Router();
 

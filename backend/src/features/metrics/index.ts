@@ -33,7 +33,7 @@ export {
   openrouterApiCalls,
   openrouterResponseTime,
   openrouterTokensUsed,
-} from '../../shared/observability';
+} from '@shared/observability';
 
 // Middleware
 export { metricsMiddleware } from './metrics.middleware';

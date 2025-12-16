@@ -3,7 +3,7 @@
  * Broadcasts events to connected SSE clients.
  */
 
-import type { SSEEvent } from '../../../shared';
+import type { SSEEvent } from '@shared';
 import { ActiveProcessing } from './sseJobTracker';
 
 export class SSEBroadcaster {

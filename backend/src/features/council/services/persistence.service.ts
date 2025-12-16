@@ -9,7 +9,7 @@ import {
   IStage2Review,
   IStage3Synthesis,
   CouncilMode,
-} from '../../../shared';
+} from '@shared';
 
 /**
  * Save an aborted council message with partial results

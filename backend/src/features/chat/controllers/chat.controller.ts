@@ -5,7 +5,7 @@
  */
 
 import { Request, Response } from 'express';
-import { asyncHandler, AppError, ErrorCodes } from '../../../shared';
+import { asyncHandler, AppError, ErrorCodes } from '@shared';
 import {
   validateMessage,
   validateSessionId,

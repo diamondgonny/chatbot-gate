@@ -3,8 +3,8 @@
  * Centralizes all input validation logic for chat feature.
  */
 
-import { SESSION, CHAT } from '../../../shared';
-import type { SessionLimitError } from '../../../shared';
+import { SESSION, CHAT } from '@shared';
+import type { SessionLimitError } from '@shared';
 import type { SendMessageResult } from './message.service';
 
 /**

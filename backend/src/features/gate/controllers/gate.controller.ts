@@ -5,7 +5,7 @@
  */
 
 import { Request, Response } from 'express';
-import { cookieConfig } from '../../../shared';
+import { cookieConfig } from '@shared';
 import * as gateService from '../gate.service';
 
 export const validateGateCode = (req: Request, res: Response) => {
