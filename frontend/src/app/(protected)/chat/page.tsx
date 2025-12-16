@@ -10,6 +10,7 @@ export default function ChatInterface() {
   const {
     isLoading,
     loadingSessionId,
+    isCreating,
     sessions,
     currentSessionId,
     sessionError,
@@ -45,6 +46,7 @@ export default function ChatInterface() {
         onDeleteSession={requestDeleteSession}
         onNewChat={handleNewChat}
         loadingSessionId={loadingSessionId || undefined}
+        isCreating={isCreating}
       />
 
       {/* Chat Interface */}

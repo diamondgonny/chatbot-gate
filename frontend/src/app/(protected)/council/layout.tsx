@@ -21,7 +21,7 @@ function CouncilLayoutInner({ children }: { children: React.ReactNode }) {
   const params = useParams();
   const currentSessionId = (params.sessionId as string) || null;
 
-  const { sessions, isLoading, createSession, removeSession, loadSessions } =
+  const { sessions, isLoading, isCreating, createSession, removeSession, loadSessions } =
     useCouncilSessionsContext();
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
 
@@ -80,6 +80,7 @@ function CouncilLayoutInner({ children }: { children: React.ReactNode }) {
           sessions={sessions}
           currentSessionId={currentSessionId}
           isLoading={isLoading}
+          isCreating={isCreating}
           onSelectSession={handleSelectSession}
           onNewSession={handleNewSession}
           onDeleteSession={handleDeleteSession}

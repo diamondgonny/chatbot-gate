@@ -31,6 +31,7 @@ export interface UseSessionsReturn {
   setCurrentSessionId: React.Dispatch<React.SetStateAction<string | null>>;
   loadingSessionId: string | null;
   setLoadingSessionId: React.Dispatch<React.SetStateAction<string | null>>;
+  isCreating: boolean;
   sessionError: string | null;
   setSessionError: React.Dispatch<React.SetStateAction<string | null>>;
   loadSessions: () => Promise<Session[]>;
@@ -43,6 +44,7 @@ export function useSessions(services: SessionServices = defaultServices): UseSes
   const [sessions, setSessions] = useState<Session[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
 
   // Maintain sessions in descending updatedAt order (most recent first)
@@ -71,6 +73,7 @@ export function useSessions(services: SessionServices = defaultServices): UseSes
   }, [sortSessionsByUpdatedAt, services]);
 
   const handleCreateSession = useCallback(async (): Promise<Session | null> => {
+    setIsCreating(true);
     try {
       const newSession = await services.createSession();
       const session: Session = {
@@ -98,6 +101,8 @@ export function useSessions(services: SessionServices = defaultServices): UseSes
         setSessionError("Failed to create a new session. Please try again.");
       }
       return null;
+    } finally {
+      setIsCreating(false);
     }
   }, [services]);
 
@@ -117,6 +122,7 @@ export function useSessions(services: SessionServices = defaultServices): UseSes
     setCurrentSessionId,
     loadingSessionId,
     setLoadingSessionId,
+    isCreating,
     sessionError,
     setSessionError,
     loadSessions,

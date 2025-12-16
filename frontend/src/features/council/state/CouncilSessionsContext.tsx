@@ -16,6 +16,7 @@ import type { CouncilSession } from "../domain";
 export interface CouncilSessionsContextValue {
   sessions: CouncilSession[];
   isLoading: boolean;
+  isCreating: boolean;
   error: string | null;
   loadSessions: () => Promise<void>;
   createSession: () => Promise<string | null>;

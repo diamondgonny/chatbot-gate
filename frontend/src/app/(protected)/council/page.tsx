@@ -12,7 +12,7 @@ import { useCouncilSessionsContext } from "@/features/council";
  */
 export default function CouncilPage() {
   const router = useRouter();
-  const { createSession } = useCouncilSessionsContext();
+  const { createSession, isCreating } = useCouncilSessionsContext();
 
   const handleNewSession = useCallback(async () => {
     const sessionId = await createSession();
@@ -53,7 +53,10 @@ export default function CouncilPage() {
         </p>
         <button
           onClick={handleNewSession}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors flex items-center gap-2 mx-auto"
+          disabled={isCreating}
+          className={`px-6 py-3 bg-blue-600 text-white rounded-lg transition-colors flex items-center gap-2 mx-auto cursor-pointer ${
+            isCreating ? "opacity-50" : "hover:bg-blue-500"
+          }`}
         >
           <svg
             className="w-5 h-5"

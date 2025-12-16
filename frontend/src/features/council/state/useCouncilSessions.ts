@@ -30,6 +30,7 @@ function isAbortError(error: unknown): boolean {
 interface UseCouncilSessionsReturn {
   sessions: CouncilSession[];
   isLoading: boolean;
+  isCreating: boolean;
   error: string | null;
   loadSessions: () => Promise<void>;
   createSession: () => Promise<string | null>;
@@ -41,6 +42,7 @@ interface UseCouncilSessionsReturn {
 export function useCouncilSessions(): UseCouncilSessionsReturn {
   const [sessions, setSessions] = useState<CouncilSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Track if component is still mounted to prevent state updates after unmount
@@ -74,6 +76,7 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
   }, []);
 
   const createSession = useCallback(async (): Promise<string | null> => {
+    setIsCreating(true);
     try {
       const newSession = await createCouncilSession();
       if (!isMountedRef.current) return null;
@@ -92,6 +95,10 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
       console.error("Error creating council session:", err);
       setError("Failed to create session");
       return null;
+    } finally {
+      if (isMountedRef.current) {
+        setIsCreating(false);
+      }
     }
   }, []);
 
@@ -160,6 +167,7 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
   return {
     sessions,
     isLoading,
+    isCreating,
     error,
     loadSessions,
     createSession,

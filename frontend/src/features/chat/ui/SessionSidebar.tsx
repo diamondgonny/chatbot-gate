@@ -12,6 +12,7 @@ interface SessionSidebarProps {
   onNewChat?: () => void;
   loading?: boolean;
   loadingSessionId?: string;
+  isCreating?: boolean;
 }
 
 export default function SessionSidebar({
@@ -22,6 +23,7 @@ export default function SessionSidebar({
   onNewChat,
   loading = false,
   loadingSessionId,
+  isCreating = false,
 }: SessionSidebarProps) {
   if (loading) {
     return (
@@ -37,7 +39,10 @@ export default function SessionSidebar({
       <div className="p-4 border-b border-slate-800 min-h-[88px] flex items-center">
         <button
           onClick={onNewChat}
-          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium cursor-pointer"
+          disabled={isCreating}
+          className={`w-full py-2 px-4 bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium cursor-pointer ${
+            isCreating ? "opacity-50" : "hover:bg-blue-500"
+          }`}
         >
           <svg
             className="w-4 h-4"

@@ -24,6 +24,7 @@ export interface UseChatPageOrchestrationReturn {
   // Loading states
   isLoading: boolean;
   loadingSessionId: string | null;
+  isCreating: boolean;
 
   // Session state
   sessions: ReturnType<typeof useSessions>["sessions"];
@@ -64,6 +65,7 @@ export function useChatPageOrchestration(
     setCurrentSessionId,
     loadingSessionId,
     setLoadingSessionId,
+    isCreating,
     sessionError,
     setSessionError,
     loadSessions,
@@ -233,6 +235,7 @@ export function useChatPageOrchestration(
     // Loading states
     isLoading,
     loadingSessionId,
+    isCreating,
 
     // Session state
     sessions,

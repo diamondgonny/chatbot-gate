@@ -128,6 +128,7 @@ interface CouncilSidebarProps {
   sessions: CouncilSession[];
   currentSessionId: string | null;
   isLoading: boolean;
+  isCreating: boolean;
   onSelectSession: (sessionId: string) => void;
   onNewSession: () => void;
   onDeleteSession: (sessionId: string) => void;
@@ -137,6 +138,7 @@ export function CouncilSidebar({
   sessions,
   currentSessionId,
   isLoading,
+  isCreating,
   onSelectSession,
   onNewSession,
   onDeleteSession,
@@ -148,7 +150,10 @@ export function CouncilSidebar({
       <div className="p-4 border-b border-slate-800 min-h-[88px] flex items-center">
         <button
           onClick={onNewSession}
-          className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium cursor-pointer"
+          disabled={isCreating}
+          className={`w-full py-2 px-4 bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 text-sm font-medium cursor-pointer ${
+            isCreating ? "opacity-50" : "hover:bg-blue-500"
+          }`}
         >
           <svg
             className="w-4 h-4"
