@@ -98,7 +98,8 @@ export const queryChairman = async (
     chairmanModel,
     messages,
     COUNCIL.CHAIRMAN_MAX_TOKENS,
-    signal
+    signal,
+    COUNCIL.STAGE3_TIMEOUT_MS  // Chairman gets 5 min timeout
   );
   return {
     model: chairmanModel,
@@ -119,7 +120,8 @@ const BATCH_INTERVAL_MS = 50;
 export async function* queryCouncilModelsStreaming(
   messages: OpenRouterMessage[],
   mode: CouncilMode = 'lite',
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  timeoutMs?: number
 ): AsyncGenerator<ModelStreamEvent> {
   if (signal?.aborted) return;
 
@@ -139,7 +141,7 @@ export async function* queryCouncilModelsStreaming(
   // Initialize streams for all models
   const streams: StreamState[] = models.map((model) => ({
     model,
-    generator: chatCompletionStream(model, messages, COUNCIL.MAX_TOKENS, signal),
+    generator: chatCompletionStream(model, messages, COUNCIL.MAX_TOKENS, signal, timeoutMs),
     startTime: Date.now(),
     done: false,
     pendingChunks: [],

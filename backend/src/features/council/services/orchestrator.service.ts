@@ -56,8 +56,8 @@ async function* stage1CollectResponses(
   const modelContents: Record<string, string> = {};
   const modelMeta: Record<string, { responseTimeMs: number; promptTokens?: number; completionTokens?: number }> = {};
 
-  // Stream responses from all models
-  for await (const event of queryCouncilModelsStreaming(messages, mode, signal)) {
+  // Stream responses from all models (Stage 1: 3 min timeout)
+  for await (const event of queryCouncilModelsStreaming(messages, mode, signal, COUNCIL.STAGE1_TIMEOUT_MS)) {
     if (signal?.aborted) return;
 
     if ('done' in event && event.done === true) {
@@ -179,8 +179,8 @@ Now provide your evaluation and ranking:`;
   const modelContents: Record<string, string> = {};
   const modelMeta: Record<string, { responseTimeMs: number; promptTokens?: number; completionTokens?: number }> = {};
 
-  // Stream responses from all models
-  for await (const event of queryCouncilModelsStreaming(messages, mode, signal)) {
+  // Stream responses from all models (Stage 2: 3 min timeout)
+  for await (const event of queryCouncilModelsStreaming(messages, mode, signal, COUNCIL.STAGE2_TIMEOUT_MS)) {
     if (signal?.aborted) return { reviews: [], labelToModel };
 
     if ('done' in event && event.done === true) {
@@ -298,11 +298,13 @@ Provide the council's collective wisdom as your own authoritative answer:`;
   let completionTokens: number | undefined;
   let reasoningTokens: number | undefined;
 
+  // Stage 3: 5 min timeout for chairman synthesis
   for await (const event of chatCompletionStreamWithReasoning(
     chairmanModel,
     messages,
     COUNCIL.CHAIRMAN_MAX_TOKENS,
-    signal
+    signal,
+    COUNCIL.STAGE3_TIMEOUT_MS
   )) {
     if (signal?.aborted) {
       return {

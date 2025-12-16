@@ -66,7 +66,8 @@ export const chatCompletion = async (
   model: string,
   messages: OpenRouterMessage[],
   maxTokens: number = COUNCIL.MAX_TOKENS,
-  externalSignal?: AbortSignal
+  externalSignal?: AbortSignal,
+  timeoutMs: number = COUNCIL.STAGE1_TIMEOUT_MS
 ): Promise<{ content: string; responseTimeMs: number; promptTokens?: number; completionTokens?: number }> => {
   const startTime = Date.now();
   let lastError: Error | null = null;
@@ -78,7 +79,7 @@ export const chatCompletion = async (
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), COUNCIL.API_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     // Listen to external abort signal
     const abortHandler = () => controller.abort();
@@ -199,7 +200,8 @@ export async function* chatCompletionStream(
   model: string,
   messages: OpenRouterMessage[],
   maxTokens: number = COUNCIL.MAX_TOKENS,
-  externalSignal?: AbortSignal
+  externalSignal?: AbortSignal,
+  timeoutMs: number = COUNCIL.STAGE1_TIMEOUT_MS
 ): AsyncGenerator<StreamEvent> {
   if (externalSignal?.aborted) {
     throw new Error(`Request aborted for model ${model}`);
@@ -223,7 +225,7 @@ export async function* chatCompletionStream(
         stream: true,
       }),
     },
-    { timeoutMs: COUNCIL.API_TIMEOUT_MS, externalSignal }
+    { timeoutMs, externalSignal }
   );
 
   try {
@@ -269,7 +271,8 @@ export async function* chatCompletionStreamWithReasoning(
   model: string,
   messages: OpenRouterMessage[],
   maxTokens: number = COUNCIL.MAX_TOKENS,
-  externalSignal?: AbortSignal
+  externalSignal?: AbortSignal,
+  timeoutMs: number = COUNCIL.STAGE3_TIMEOUT_MS
 ): AsyncGenerator<StreamEvent> {
   if (externalSignal?.aborted) {
     throw new Error(`Request aborted for model ${model}`);
@@ -294,7 +297,7 @@ export async function* chatCompletionStreamWithReasoning(
         reasoning: { enabled: true },
       }),
     },
-    { timeoutMs: COUNCIL.API_TIMEOUT_MS, externalSignal }
+    { timeoutMs, externalSignal }
   );
 
   try {

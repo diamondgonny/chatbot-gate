@@ -77,8 +77,12 @@ Answer fully and directly.`,
   MAX_MESSAGE_LENGTH: 4000,
   /** Number of recent messages to include in context */
   RECENT_MESSAGES_LIMIT: 5,
-  /** API request timeout in milliseconds */
-  API_TIMEOUT_MS: 60000,
+  /** Stage 1 API timeout (individual responses) - 3 minutes */
+  STAGE1_TIMEOUT_MS: 180000,
+  /** Stage 2 API timeout (peer rankings) - 3 minutes */
+  STAGE2_TIMEOUT_MS: 180000,
+  /** Stage 3 API timeout (chairman synthesis) - 5 minutes */
+  STAGE3_TIMEOUT_MS: 300000,
   /** Max tokens for council member responses */
   MAX_TOKENS: 8192,
   /** Max tokens for chairman synthesis (higher for comprehensive answer) */
