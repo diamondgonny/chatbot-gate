@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkBreaks from "remark-breaks";
+import remarkCjkFriendly from "remark-cjk-friendly";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
@@ -55,7 +56,7 @@ export function MarkdownRenderer({
   return (
     <div className={`markdown-content ${className}`}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
+        remarkPlugins={[remarkCjkFriendly, remarkGfm, remarkBreaks, remarkMath]}
         rehypePlugins={[rehypeRaw, rehypeKatex]}
         components={{
           code({ className, children, ...props }) {
