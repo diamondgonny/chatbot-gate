@@ -111,6 +111,10 @@ export class StreamEventProcessor {
    */
   processEvent(event: SSEEvent): void {
     switch (event.type) {
+      // Heartbeat - ignore (keeps connection alive, no state change needed)
+      case "heartbeat":
+        break;
+
       // Stage starts
       case "stage1_start":
         this.handleStage1Start();

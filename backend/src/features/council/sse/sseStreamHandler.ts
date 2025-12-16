@@ -5,6 +5,7 @@
 
 import { Response } from 'express';
 import type { SSEEvent, CouncilMode } from '../../../shared';
+import { COUNCIL } from '../../../shared';
 import { processingRegistry } from './index';
 import * as councilService from '../services';
 
@@ -92,6 +93,7 @@ export const streamCouncilMessage = async (
 
 /**
  * Consume events from generator and broadcast to clients
+ * Includes heartbeat mechanism to keep SSE connection alive during long operations
  */
 const consumeEventGenerator = async (
   generator: AsyncGenerator<SSEEvent>,
@@ -99,23 +101,40 @@ const consumeEventGenerator = async (
   userId: string,
   sessionId: string
 ): Promise<void> => {
-  for await (const event of generator) {
-    // Check if aborted
-    if (abortController.signal.aborted) {
-      break;
+  // Start heartbeat interval to keep connection alive
+  // This prevents proxy/tunnel timeouts (e.g., Cloudflare's ~100s idle timeout)
+  const heartbeatInterval = setInterval(() => {
+    if (!abortController.signal.aborted) {
+      const heartbeatEvent: SSEEvent = { type: 'heartbeat', timestamp: Date.now() };
+      // Don't record heartbeats in event history (not needed for replay)
+      processingRegistry.broadcast(userId, sessionId, heartbeatEvent);
     }
+  }, COUNCIL.SSE.HEARTBEAT_INTERVAL_MS);
+  // Don't let heartbeat timer prevent process exit
+  heartbeatInterval.unref();
 
-    // Record event in registry for replay on reconnection
-    processingRegistry.recordEvent(userId, sessionId, event);
+  try {
+    for await (const event of generator) {
+      // Check if aborted
+      if (abortController.signal.aborted) {
+        break;
+      }
 
-    // Broadcast to all connected clients
-    processingRegistry.broadcast(userId, sessionId, event);
+      // Record event in registry for replay on reconnection
+      processingRegistry.recordEvent(userId, sessionId, event);
 
-    // Mark complete on final events
-    if (event.type === 'complete' || event.type === 'error') {
-      processingRegistry.complete(userId, sessionId, abortController);
-      break;
+      // Broadcast to all connected clients
+      processingRegistry.broadcast(userId, sessionId, event);
+
+      // Mark complete on final events
+      if (event.type === 'complete' || event.type === 'error') {
+        processingRegistry.complete(userId, sessionId, abortController);
+        break;
+      }
     }
+  } finally {
+    // Always clean up heartbeat interval
+    clearInterval(heartbeatInterval);
   }
 };
 

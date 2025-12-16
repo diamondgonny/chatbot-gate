@@ -19,6 +19,7 @@ export interface AggregateRanking {
 
 // SSE Event types for real-time streaming
 export type SSEEvent =
+  | { type: 'heartbeat'; timestamp: number }
   | { type: 'stage1_start' }
   | { type: 'stage1_chunk'; model: string; delta: string }
   | { type: 'stage1_model_complete'; model: string; responseTimeMs: number; promptTokens?: number; completionTokens?: number }

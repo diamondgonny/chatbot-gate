@@ -72,6 +72,7 @@ export interface AggregateRanking {
 
 // SSE Event types
 export type SSEEventType =
+  | "heartbeat"
   | "stage1_start"
   | "stage1_chunk"
   | "stage1_model_complete"

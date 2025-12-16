@@ -47,6 +47,8 @@ export const COUNCIL = {
     STALE_THRESHOLD_MS: 10 * 60 * 1000,
     /** Cleanup interval for stale sessions (ms) */
     CLEANUP_INTERVAL_MS: 5 * 60 * 1000,
+    /** Heartbeat interval to keep SSE connection alive (ms) - prevents proxy/tunnel timeouts */
+    HEARTBEAT_INTERVAL_MS: 15 * 1000,
   },
   /** Ultra council member models (via OpenRouter) */
   ULTRA_MODELS: [
