@@ -75,7 +75,7 @@ function CouncilLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <div className="h-screen flex overflow-hidden">
+      <div className="h-full flex overflow-hidden">
         <CouncilSidebar
           sessions={sessions}
           currentSessionId={currentSessionId}
