@@ -97,7 +97,7 @@ export function Stage2Panel({
         {hasResults && (
           <button
             onClick={() => setActiveTab(0)}
-            className={`px-4 py-2 text-sm whitespace-nowrap transition-colors ${
+            className={`px-4 py-2 text-sm whitespace-nowrap transition-colors cursor-pointer ${
               activeTab === 0
                 ? "text-green-400 border-b-2 border-green-400 bg-slate-800/50"
                 : "text-slate-400 hover:text-slate-300"
@@ -112,7 +112,7 @@ export function Stage2Panel({
             <button
               key={model}
               onClick={() => setActiveTab(hasResults ? index + 1 : index)}
-              className={`px-4 py-2 text-sm whitespace-nowrap transition-colors ${
+              className={`px-4 py-2 text-sm whitespace-nowrap transition-colors cursor-pointer ${
                 activeTab === (hasResults ? index + 1 : index)
                   ? "text-blue-400 border-b-2 border-blue-400 bg-slate-800/50"
                   : "text-slate-400 hover:text-slate-300"

@@ -68,7 +68,7 @@ export function Stage3Panel({
           <div className="mb-4">
             <button
               onClick={() => setIsReasoningExpanded(!isReasoningExpanded)}
-              className="flex items-center gap-2 text-xs text-blue-400/70 hover:text-blue-300 transition-colors mb-2"
+              className="flex items-center gap-2 text-xs text-blue-400/70 hover:text-blue-300 transition-colors mb-2 cursor-pointer"
             >
               <svg
                 className={`w-3 h-3 transition-transform ${isReasoningExpanded ? "rotate-90" : ""}`}

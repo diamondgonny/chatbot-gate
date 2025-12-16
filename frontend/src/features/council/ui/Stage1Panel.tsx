@@ -59,7 +59,7 @@ export function Stage1Panel({ responses, streamingContent = {}, isLoading, wasAb
             <button
               key={model}
               onClick={() => setActiveTab(index)}
-              className={`px-4 py-2 text-sm whitespace-nowrap transition-colors ${
+              className={`px-4 py-2 text-sm whitespace-nowrap transition-colors cursor-pointer ${
                 activeTab === index
                   ? "text-blue-400 border-b-2 border-blue-400 bg-slate-800/50"
                   : "text-slate-400 hover:text-slate-300"
