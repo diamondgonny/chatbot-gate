@@ -14,6 +14,11 @@ export function handleAuthError(error: AxiosError): Promise<never> {
   const status = error.response?.status;
 
   if (status === 401 || status === 403) {
+    // Skip redirect if already on gate page - let error propagate normally
+    if (typeof window !== "undefined" && window.location.pathname === "/") {
+      return Promise.reject(error);
+    }
+
     // Redirect to gate page
     navigation.goToGate();
 
