@@ -154,17 +154,20 @@ export const handlers = [
     });
   }),
 
-  http.delete("*/api/chat/sessions/:sessionId", () => {
-    return new HttpResponse(null, { status: 204 });
+  http.get("*/api/chat/sessions/:sessionId", ({ params }) => {
+    const { sessionId } = params;
+    const session = mockSessions.find((s) => s.sessionId === sessionId);
+    if (!session) {
+      return HttpResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+    return HttpResponse.json({
+      ...session,
+      messages: mockMessages,
+    });
   }),
 
-  // Chat endpoints
-  http.get("*/api/chat/sessions/:sessionId/history", ({ params }) => {
-    const { sessionId } = params;
-    if (sessionId) {
-      return HttpResponse.json({ messages: mockMessages });
-    }
-    return HttpResponse.json({ messages: [] });
+  http.delete("*/api/chat/sessions/:sessionId", () => {
+    return new HttpResponse(null, { status: 204 });
   }),
 
   http.post("*/api/chat/sessions/:sessionId/message", async ({ request, params }) => {

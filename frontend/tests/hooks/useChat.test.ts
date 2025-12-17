@@ -62,7 +62,7 @@ describe("useChat", () => {
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
       server.use(
-        http.get("*/api/chat/sessions/:sessionId/history", () => {
+        http.get("*/api/chat/sessions/:sessionId", () => {
           return new HttpResponse(null, { status: 500 });
         })
       );
@@ -80,8 +80,14 @@ describe("useChat", () => {
 
     it("should return empty array when no messages exist", async () => {
       server.use(
-        http.get("*/api/chat/sessions/:sessionId/history", () => {
-          return HttpResponse.json({ messages: [] });
+        http.get("*/api/chat/sessions/:sessionId", () => {
+          return HttpResponse.json({
+            sessionId: "empty-session",
+            title: "Empty",
+            messages: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
         })
       );
 
@@ -90,6 +96,26 @@ describe("useChat", () => {
       let loadedMessages: Message[] = [];
       await act(async () => {
         loadedMessages = await result.current.loadChatHistory("empty-session");
+      });
+
+      expect(loadedMessages).toEqual([]);
+    });
+
+    it("should return empty array for non-existent session (404)", async () => {
+      server.use(
+        http.get("*/api/chat/sessions/:sessionId", () => {
+          return HttpResponse.json(
+            { error: "Session not found" },
+            { status: 404 }
+          );
+        })
+      );
+
+      const { result } = renderHook(() => useChat());
+
+      let loadedMessages: Message[] = [];
+      await act(async () => {
+        loadedMessages = await result.current.loadChatHistory("non-existent");
       });
 
       expect(loadedMessages).toEqual([]);

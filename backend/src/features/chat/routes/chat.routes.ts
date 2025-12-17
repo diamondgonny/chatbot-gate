@@ -5,7 +5,6 @@ import {
   getSession,
   deleteSession,
   sendChatMessage,
-  getChatHistory,
 } from '../controllers/chat.controller';
 import { authMiddleware, createRateLimiter } from '@shared';
 
@@ -47,13 +46,6 @@ router.post(
   '/sessions/:sessionId/message',
   createRateLimiter({ windowMs: 60_000, max: 20, routeName: 'chat_message' }),
   sendChatMessage
-);
-
-// GET /api/chat/sessions/:sessionId/history - 세션의 chat 히스토리 조회
-router.get(
-  '/sessions/:sessionId/history',
-  createRateLimiter({ windowMs: 60_000, max: 60, routeName: 'chat_history' }),
-  getChatHistory
 );
 
 export default router;

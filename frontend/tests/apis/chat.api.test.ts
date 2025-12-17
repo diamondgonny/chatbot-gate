@@ -14,8 +14,14 @@ describe("chat.api", () => {
 
     it("should return empty array for session with no messages", async () => {
       server.use(
-        http.get("*/api/chat/sessions/:sessionId/history", () => {
-          return HttpResponse.json({ messages: [] });
+        http.get("*/api/chat/sessions/:sessionId", () => {
+          return HttpResponse.json({
+            sessionId: "empty-session",
+            title: "Empty",
+            messages: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
         })
       );
 
@@ -24,13 +30,34 @@ describe("chat.api", () => {
       expect(result.messages).toEqual([]);
     });
 
+    it("should return empty array for non-existent session (404)", async () => {
+      server.use(
+        http.get("*/api/chat/sessions/:sessionId", () => {
+          return HttpResponse.json(
+            { error: "Session not found" },
+            { status: 404 }
+          );
+        })
+      );
+
+      const result = await getChatHistory("non-existent-session");
+
+      expect(result.messages).toEqual([]);
+    });
+
     it("should pass sessionId as URL path parameter", async () => {
       let capturedSessionId: string | readonly string[] | undefined;
 
       server.use(
-        http.get("*/api/chat/sessions/:sessionId/history", ({ params }) => {
+        http.get("*/api/chat/sessions/:sessionId", ({ params }) => {
           capturedSessionId = params.sessionId;
-          return HttpResponse.json({ messages: [] });
+          return HttpResponse.json({
+            sessionId: params.sessionId,
+            title: "Test",
+            messages: [],
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          });
         })
       );
 

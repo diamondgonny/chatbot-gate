@@ -9,7 +9,7 @@ import {
   chatMessageDuration,
   getDeploymentEnv,
 } from '@shared';
-import type { ChatMessageResponse, ChatHistoryResponse, SessionLimitError } from '@shared';
+import type { ChatMessageResponse, SessionLimitError } from '@shared';
 import { getCompletion, buildConversationHistory } from './openai.service';
 import { findOrCreateSession } from './session.service';
 import { isSessionLimitError } from './validation.service';
@@ -89,27 +89,5 @@ export const sendMessage = async (
   return {
     response: completion.content,
     timestamp: new Date().toISOString(),
-  };
-};
-
-/**
- * 세션의 chat 히스토리 조회
- */
-export const getChatHistory = async (
-  userId: string,
-  sessionId: string
-): Promise<ChatHistoryResponse> => {
-  const session = await ChatSession.findOne({ userId, sessionId });
-
-  if (!session) {
-    return { messages: [] };
-  }
-
-  return {
-    messages: session.messages.map((msg) => ({
-      role: msg.role as 'user' | 'ai' | 'system',
-      content: msg.content,
-      timestamp: msg.timestamp,
-    })),
   };
 };

@@ -25,7 +25,6 @@ export {
 // 메시지 오케스트레이션
 export {
   sendMessage,
-  getChatHistory,
   type SendMessageResult,
 } from './message.service';
 

@@ -13,7 +13,6 @@ import {
   sendMessage,
   isSessionLimitError,
   isError,
-  getChatHistory as getChatHistoryService,
   createSession as createSessionService,
   getUserSessions as getUserSessionsService,
   getSessionById as getSessionByIdService,
@@ -154,23 +153,4 @@ export const sendChatMessage = asyncHandler(async (req: Request, res: Response) 
   }
 
   return res.json(result);
-});
-
-/**
- * 세션의 chat 히스토리 조회
- */
-export const getChatHistory = asyncHandler(async (req: Request, res: Response) => {
-  const { sessionId } = req.params;
-  const userId = req.userId;
-
-  if (!userId) {
-    throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'User ID not found. Authentication required.');
-  }
-
-  if (!validateSessionId(sessionId)) {
-    throw new AppError(ErrorCodes.VALIDATION_ERROR, 400, 'Valid session ID is required');
-  }
-
-  const history = await getChatHistoryService(userId, sessionId);
-  return res.json(history);
 });
