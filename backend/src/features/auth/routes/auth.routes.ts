@@ -3,7 +3,7 @@ import { verifyToken } from '@shared';
 
 const router = Router();
 
-// GET /api/auth/status - soft check: returns authenticated flag (never 401)
+// GET /api/auth/status - soft check: 인증 상태 플래그 반환 (401 반환하지 않음)
 router.get('/status', (req, res) => {
   const token = req.cookies?.jwt;
 

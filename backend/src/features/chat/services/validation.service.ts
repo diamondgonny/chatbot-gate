@@ -1,6 +1,6 @@
 /**
- * Validation Service
- * Centralizes all input validation logic for chat feature.
+ * Validation 서비스
+ * Chat 기능의 모든 입력 검증 로직을 중앙화
  */
 
 import { SESSION, CHAT } from '@shared';
@@ -8,7 +8,7 @@ import type { SessionLimitError } from '@shared';
 import type { SendMessageResult } from './message.service';
 
 /**
- * Validate message content
+ * 메시지 내용 검증
  */
 export const validateMessage = (
   message: unknown
@@ -23,14 +23,14 @@ export const validateMessage = (
 };
 
 /**
- * Validate session ID format (UUID v4)
+ * 세션 ID 형식 검증 (UUID v4)
  */
 export const validateSessionId = (sessionId: unknown): boolean => {
   return typeof sessionId === 'string' && SESSION.ID_PATTERN.test(sessionId);
 };
 
 /**
- * Type guard for session limit error
+ * 세션 제한 에러에 대한 Type guard
  */
 export const isSessionLimitError = (
   result: unknown
@@ -44,7 +44,7 @@ export const isSessionLimitError = (
 };
 
 /**
- * Type guard for general error
+ * 일반 에러에 대한 Type guard
  */
 export const isError = (
   result: SendMessageResult

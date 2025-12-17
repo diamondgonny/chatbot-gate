@@ -1,6 +1,6 @@
 /**
- * OpenAI Service
- * Handles OpenAI API communication and metrics.
+ * OpenAI 서비스
+ * OpenAI API 통신 및 메트릭 처리
  */
 
 import OpenAI from 'openai';
@@ -14,7 +14,7 @@ import {
 } from '@shared';
 import type { IMessage } from '@shared';
 
-// System Prompt: Defines the persona of the AI
+// System Prompt: AI의 페르소나 정의
 export const SYSTEM_PROMPT = `
 You are a playful, witty, and friendly AI chatbot living in a secret digital gate.
 Your persona is similar to "SimSimi".
@@ -25,13 +25,13 @@ Your persona is similar to "SimSimi".
 - Keep responses relatively short and engaging, like a real chat message.
 `;
 
-// Initialize OpenAI Client
+// OpenAI Client 초기화
 const openai = new OpenAI({
   apiKey: config.openaiApiKey,
 });
 
 /**
- * Check if OpenAI API key is configured
+ * OpenAI API 키가 설정되어 있는지 확인
  */
 export const isOpenAIConfigured = (): boolean => {
   return !!config.openaiApiKey;
@@ -44,7 +44,7 @@ export interface ChatCompletionResult {
 }
 
 /**
- * Build conversation history for OpenAI from session messages
+ * 세션 메시지로부터 OpenAI용 대화 히스토리 구성
  */
 export const buildConversationHistory = (
   messages: IMessage[]
@@ -59,8 +59,8 @@ export const buildConversationHistory = (
 };
 
 /**
- * Call OpenAI API with conversation history
- * Returns AI response and tracks metrics
+ * 대화 히스토리와 함께 OpenAI API 호출
+ * AI 응답 반환 및 메트릭 추적
  */
 export const getCompletion = async (
   conversationHistory: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>
@@ -74,12 +74,12 @@ export const getCompletion = async (
       messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...conversationHistory],
     });
 
-    // Track success metrics
+    // 성공 메트릭 추적
     const durationMs = Number(process.hrtime.bigint() - startTime) / 1_000_000;
     openaiApiCalls.labels('success', deploymentEnv).inc();
     openaiApiDuration.labels('success', deploymentEnv).observe(durationMs / 1000);
 
-    // Track token usage
+    // Token 사용량 추적
     if (completion.usage) {
       openaiTokensUsed.labels('prompt', deploymentEnv).inc(completion.usage.prompt_tokens);
       openaiTokensUsed.labels('completion', deploymentEnv).inc(completion.usage.completion_tokens);
@@ -91,7 +91,7 @@ export const getCompletion = async (
       completionTokens: completion.usage?.completion_tokens,
     };
   } catch (error) {
-    // Track failure metrics
+    // 실패 메트릭 추적
     const durationMs = Number(process.hrtime.bigint() - startTime) / 1_000_000;
     openaiApiCalls.labels('error', deploymentEnv).inc();
     openaiApiDuration.labels('error', deploymentEnv).observe(durationMs / 1000);

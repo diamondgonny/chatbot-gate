@@ -1,9 +1,9 @@
 /**
- * Chat Services
- * Barrel export for chat-related services.
+ * Chat 서비스
+ * Chat 관련 서비스의 Barrel export
  */
 
-// Validation (single source of truth)
+// Validation (단일 진실 소스)
 export {
   validateMessage,
   validateSessionId,
@@ -11,7 +11,7 @@ export {
   isError,
 } from './validation.service';
 
-// Session management
+// 세션 관리
 export {
   checkSessionLimit,
   createSession,
@@ -22,14 +22,14 @@ export {
   type FindOrCreateResult,
 } from './session.service';
 
-// Message orchestration
+// 메시지 오케스트레이션
 export {
   sendMessage,
   getChatHistory,
   type SendMessageResult,
 } from './message.service';
 
-// OpenAI integration
+// OpenAI 통합
 export {
   isOpenAIConfigured,
   getCompletion,

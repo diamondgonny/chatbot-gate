@@ -1,7 +1,7 @@
 /**
- * Gate Controller
- * Handles HTTP request/response for gate authentication.
- * Business logic delegated to gateService.
+ * Gate 컨트롤러
+ * Gate 인증의 HTTP 요청/응답 처리
+ * 비즈니스 로직은 gateService로 위임
  */
 
 import { Request, Response } from 'express';
@@ -12,7 +12,7 @@ export const validateGateCode = (req: Request, res: Response) => {
   const { code, userId: existingUserId } = req.body;
   const ip = req.ip || 'global';
 
-  // Check if IP is within backoff period
+  // IP가 backoff 기간 내에 있는지 확인
   const backoffStatus = gateService.checkBackoff(ip);
   if (backoffStatus.blocked) {
     const retryAfter = backoffStatus.retryAfter!;
@@ -27,23 +27,23 @@ export const validateGateCode = (req: Request, res: Response) => {
     });
   }
 
-  // Validate request
+  // 요청 검증
   if (!code) {
     return res.status(400).json({ valid: false, message: 'Code is required' });
   }
 
-  // Check if code is valid
+  // 코드 유효성 확인
   if (gateService.validateCode(code)) {
     gateService.clearFailure(ip);
     gateService.recordAuthMetric('success');
 
-    // Reuse existing userId or generate new one
+    // 기존 userId 재사용 또는 새로 생성
     const userId = existingUserId || gateService.generateUserId();
 
-    // Create JWT token
+    // JWT token 생성
     const token = gateService.createAuthToken(userId);
 
-    // Set JWT as HttpOnly cookie
+    // HttpOnly 쿠키로 JWT 설정
     res.cookie('jwt', token, {
       httpOnly: true,
       secure: cookieConfig.secure,
@@ -59,7 +59,7 @@ export const validateGateCode = (req: Request, res: Response) => {
       userId,
     });
   } else {
-    // Record failure and check if now in backoff
+    // 실패 기록 및 backoff 상태 확인
     const failureResult = gateService.recordFailure(ip);
     gateService.recordAuthMetric('failure');
 

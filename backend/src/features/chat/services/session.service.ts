@@ -1,6 +1,6 @@
 /**
- * Session Service
- * Handles session CRUD operations and business logic.
+ * Session 서비스
+ * 세션 CRUD 작업 및 비즈니스 로직 처리
  */
 
 import { randomUUID } from 'crypto';
@@ -14,7 +14,7 @@ import type {
 import { sessionOperations, getDeploymentEnv } from '@shared';
 
 /**
- * Result of findOrCreateSession operation
+ * findOrCreateSession 작업의 결과
  */
 export interface FindOrCreateResult {
   session: IChatSession;
@@ -22,7 +22,7 @@ export interface FindOrCreateResult {
 }
 
 /**
- * Check if user has reached session limit
+ * 사용자가 세션 제한에 도달했는지 확인
  */
 export const checkSessionLimit = async (
   userId: string
@@ -35,13 +35,13 @@ export const checkSessionLimit = async (
 };
 
 /**
- * Create a new session for user
- * Includes race condition prevention with double-check
+ * 사용자를 위한 새 세션 생성
+ * Double-check를 통한 race condition 방지 포함
  */
 export const createSession = async (
   userId: string
 ): Promise<SessionResponse | SessionLimitError> => {
-  // Initial check
+  // 초기 확인
   const { allowed, count } = await checkSessionLimit(userId);
   if (!allowed) {
     return {
@@ -62,10 +62,10 @@ export const createSession = async (
 
   await session.save();
 
-  // Double-check to prevent race condition
+  // Race condition 방지를 위한 double-check
   const finalCount = await ChatSession.countDocuments({ userId });
   if (finalCount > SESSION.MAX_PER_USER) {
-    // Rollback
+    // 롤백
     await ChatSession.deleteOne({ sessionId });
     return {
       error: 'Session limit reached. Delete old sessions to continue.',
@@ -75,7 +75,7 @@ export const createSession = async (
     };
   }
 
-  // Track metric
+  // 메트릭 추적
   sessionOperations.labels('create', getDeploymentEnv()).inc();
 
   return {
@@ -87,21 +87,21 @@ export const createSession = async (
 };
 
 /**
- * Find existing session or create new one with limit check
- * Consolidates session lookup, creation, and limit enforcement
+ * 기존 세션 찾기 또는 제한 확인과 함께 새 세션 생성
+ * 세션 조회, 생성 및 제한 적용을 통합
  */
 export const findOrCreateSession = async (
   userId: string,
   sessionId: string
 ): Promise<FindOrCreateResult | SessionLimitError> => {
-  // Try to find existing session
+  // 기존 세션 찾기 시도
   let session = await ChatSession.findOne({ userId, sessionId });
 
   if (session) {
     return { session, isNewSession: false };
   }
 
-  // Check limit before creation
+  // 생성 전 제한 확인
   const { allowed, count } = await checkSessionLimit(userId);
   if (!allowed) {
     return {
@@ -112,7 +112,7 @@ export const findOrCreateSession = async (
     };
   }
 
-  // Create new session
+  // 새 세션 생성
   session = new ChatSession({
     userId,
     sessionId,
@@ -121,7 +121,7 @@ export const findOrCreateSession = async (
   });
   await session.save();
 
-  // Double-check for race condition
+  // Race condition에 대한 double-check
   const finalCount = await ChatSession.countDocuments({ userId });
   if (finalCount > SESSION.MAX_PER_USER) {
     await ChatSession.deleteOne({ sessionId });
@@ -133,14 +133,14 @@ export const findOrCreateSession = async (
     };
   }
 
-  // Track metric
+  // 메트릭 추적
   sessionOperations.labels('create', getDeploymentEnv()).inc();
 
   return { session, isNewSession: true };
 };
 
 /**
- * Get all sessions for a user
+ * 사용자의 모든 세션 조회
  */
 export const getUserSessions = async (
   userId: string
@@ -168,14 +168,14 @@ export const getUserSessions = async (
     };
   });
 
-  // Track metric
+  // 메트릭 추적
   sessionOperations.labels('list', getDeploymentEnv()).inc();
 
   return sessionList;
 };
 
 /**
- * Get a specific session by ID
+ * ID로 특정 세션 조회
  */
 export const getSessionById = async (
   userId: string,
@@ -187,7 +187,7 @@ export const getSessionById = async (
     return null;
   }
 
-  // Track metric
+  // 메트릭 추적
   sessionOperations.labels('get', getDeploymentEnv()).inc();
 
   return {
@@ -204,8 +204,8 @@ export const getSessionById = async (
 };
 
 /**
- * Delete a session
- * Returns true if deleted, false if not found
+ * 세션 삭제
+ * 삭제되면 true, 찾지 못하면 false 반환
  */
 export const deleteSession = async (
   userId: string,
@@ -217,7 +217,7 @@ export const deleteSession = async (
     return false;
   }
 
-  // Track metric
+  // 메트릭 추적
   sessionOperations.labels('delete', getDeploymentEnv()).inc();
 
   return true;

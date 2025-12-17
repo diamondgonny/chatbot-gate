@@ -1,6 +1,6 @@
 /**
- * Council Controller
- * Handles HTTP request/response for Council feature with SSE streaming.
+ * Council 컨트롤러
+ * SSE 스트리밍을 사용하는 Council 기능의 HTTP 요청/응답 처리
  */
 
 import { Request, Response } from 'express';
@@ -12,7 +12,7 @@ import { replayAccumulatedState } from '../sse/sseReplayService';
 import type { CouncilMode } from '@shared';
 
 /**
- * Create a new council session
+ * 새 council 세션 생성
  */
 export const createSession = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.userId;
@@ -36,7 +36,7 @@ export const createSession = asyncHandler(async (req: Request, res: Response) =>
 });
 
 /**
- * Get all council sessions for the user
+ * 사용자의 모든 council 세션 조회
  */
 export const getSessions = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.userId;
@@ -62,7 +62,7 @@ export const getSessions = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * Get a specific council session with messages
+ * 메시지를 포함한 특정 council 세션 조회
  */
 export const getSession = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.userId;
@@ -92,7 +92,7 @@ export const getSession = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * Delete a council session
+ * Council 세션 삭제
  */
 export const deleteSession = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.userId;
@@ -116,8 +116,8 @@ export const deleteSession = asyncHandler(async (req: Request, res: Response) =>
 });
 
 /**
- * Send a message to the council (SSE streaming response)
- * Accepts POST with JSON body: { content: string }
+ * Council에 메시지 전송 (SSE 스트리밍 응답)
+ * POST 요청 JSON body: { content: string }
  */
 export const sendMessage = async (req: Request, res: Response) => {
   const userId = req.userId;
@@ -125,13 +125,13 @@ export const sendMessage = async (req: Request, res: Response) => {
   const content = req.body?.content as string;
   const modeParam = req.body?.mode as string | undefined;
 
-  // Validate and normalize mode (default to 'lite')
+  // mode 검증 및 정규화 (기본값: 'lite')
   const validModes: CouncilMode[] = ['lite', 'ultra'];
   const mode: CouncilMode = validModes.includes(modeParam as CouncilMode)
     ? (modeParam as CouncilMode)
     : 'lite';
 
-  // Validation
+  // 검증
   if (!userId) {
     return res.status(401).json({ error: 'Authentication required' });
   }
@@ -150,7 +150,7 @@ export const sendMessage = async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Server misconfiguration: OpenRouter API key missing' });
   }
 
-  // Check for existing processing - return 409 if already processing
+  // 기존 처리 확인 - 이미 처리 중이면 409 반환
   if (processingRegistry.isProcessing(userId, sessionId)) {
     return res.status(409).json({
       error: 'Processing already in progress',
@@ -159,7 +159,7 @@ export const sendMessage = async (req: Request, res: Response) => {
     });
   }
 
-  // Check server capacity - return 503 if at maximum concurrent sessions
+  // 서버 용량 확인 - 최대 동시 세션 수에 도달하면 503 반환
   if (processingRegistry.isAtCapacity()) {
     console.warn(`[Council] Server at capacity (${processingRegistry.getActiveCount()} sessions)`);
     return res.status(503).json({
@@ -168,12 +168,12 @@ export const sendMessage = async (req: Request, res: Response) => {
     });
   }
 
-  // Delegate SSE streaming to handler
+  // SSE 스트리밍 핸들러로 위임
   await streamCouncilMessage(res, { userId, sessionId, content, mode });
 };
 
 /**
- * Get processing status for a session
+ * 세션의 처리 상태 조회
  * GET /api/council/sessions/:sessionId/status
  */
 export const getProcessingStatus = asyncHandler(async (req: Request, res: Response) => {
@@ -211,14 +211,14 @@ export const getProcessingStatus = asyncHandler(async (req: Request, res: Respon
 });
 
 /**
- * Reconnect to existing processing (SSE streaming)
+ * 진행 중인 처리에 재연결 (SSE 스트리밍)
  * GET /api/council/sessions/:sessionId/reconnect
  */
 export const reconnectToProcessing = async (req: Request, res: Response) => {
   const userId = req.userId;
   const { sessionId } = req.params;
 
-  // Validation
+  // 검증
   if (!userId) {
     return res.status(401).json({ error: 'Authentication required' });
   }
@@ -236,26 +236,26 @@ export const reconnectToProcessing = async (req: Request, res: Response) => {
     });
   }
 
-  // Setup SSE and replay accumulated state
+  // SSE 설정 및 누적된 상태 재생
   setupSSEHeaders(res);
   replayAccumulatedState(res, processing);
 
-  // Add this client to receive future events
+  // 향후 이벤트를 받기 위해 이 클라이언트 추가
   processingRegistry.addClient(userId, sessionId, res);
 
-  // Handle disconnect
+  // 연결 끊김 처리
   res.on('close', () => {
     if (!res.writableEnded) {
       processingRegistry.removeClient(userId, sessionId, res);
     }
   });
 
-  // Keep connection open - events will be broadcast via processingRegistry
-  // Connection will be closed when processing completes or client disconnects
+  // 연결 유지 - 이벤트는 processingRegistry를 통해 브로드캐스트됨
+  // 처리 완료 또는 클라이언트 연결 끊김 시 연결 종료
 };
 
 /**
- * Explicitly abort processing for a session
+ * 세션의 처리를 명시적으로 중단
  * POST /api/council/sessions/:sessionId/abort
  */
 export const abortProcessing = asyncHandler(async (req: Request, res: Response) => {

@@ -1,7 +1,7 @@
 /**
- * Chat Controller
- * Handles HTTP request/response for chat and session functionality.
- * Business logic delegated to services.
+ * Chat 컨트롤러
+ * Chat 및 세션 기능의 HTTP 요청/응답 처리
+ * 비즈니스 로직은 서비스 레이어로 위임
  */
 
 import { Request, Response } from 'express';
@@ -21,11 +21,11 @@ import {
 } from '../services';
 
 // ============================================================================
-// Session Management
+// 세션 관리
 // ============================================================================
 
 /**
- * Create a new chat session for the current user
+ * 현재 사용자를 위한 새 chat 세션 생성
  */
 export const createSession = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.userId;
@@ -44,7 +44,7 @@ export const createSession = asyncHandler(async (req: Request, res: Response) =>
 });
 
 /**
- * Get all sessions for the current user
+ * 현재 사용자의 모든 세션 조회
  */
 export const getSessions = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.userId;
@@ -58,7 +58,7 @@ export const getSessions = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * Get a specific session by ID
+ * ID로 특정 세션 조회
  */
 export const getSession = asyncHandler(async (req: Request, res: Response) => {
   const { sessionId } = req.params;
@@ -82,7 +82,7 @@ export const getSession = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
- * Delete a session
+ * 세션 삭제
  */
 export const deleteSession = asyncHandler(async (req: Request, res: Response) => {
   const { sessionId } = req.params;
@@ -106,18 +106,18 @@ export const deleteSession = asyncHandler(async (req: Request, res: Response) =>
 });
 
 // ============================================================================
-// Chat Operations
+// Chat 작업
 // ============================================================================
 
 /**
- * Send a message to the AI and get a response
+ * AI에 메시지를 전송하고 응답 받기
  */
 export const sendChatMessage = asyncHandler(async (req: Request, res: Response) => {
   const { sessionId } = req.params;
   const { message } = req.body;
   const userId = req.userId;
 
-  // Validate message
+  // 메시지 검증
   const messageValidation = validateMessage(message);
   if (!messageValidation.valid) {
     const statusCode = messageValidation.error === 'Message too long' ? 413 : 400;
@@ -125,17 +125,17 @@ export const sendChatMessage = asyncHandler(async (req: Request, res: Response) 
     throw new AppError(code, statusCode, messageValidation.error!);
   }
 
-  // Validate user authentication
+  // 사용자 인증 검증
   if (!userId) {
     throw new AppError(ErrorCodes.UNAUTHORIZED, 401, 'User ID not found. Authentication required.');
   }
 
-  // Validate session ID
+  // 세션 ID 검증
   if (!validateSessionId(sessionId)) {
     throw new AppError(ErrorCodes.VALIDATION_ERROR, 400, 'Valid session ID is required');
   }
 
-  // Check OpenAI configuration
+  // OpenAI 설정 확인
   if (!isOpenAIConfigured()) {
     console.error('OPENAI_API_KEY is missing');
     throw new AppError(ErrorCodes.SERVICE_UNAVAILABLE, 500, 'Server misconfiguration: API Key missing');
@@ -143,12 +143,12 @@ export const sendChatMessage = asyncHandler(async (req: Request, res: Response) 
 
   const result = await sendMessage(userId, sessionId, message);
 
-  // Handle session limit error
+  // 세션 제한 에러 처리
   if (isSessionLimitError(result)) {
     return res.status(429).json(result);
   }
 
-  // Handle general error
+  // 일반 에러 처리
   if (isError(result)) {
     return res.status(500).json(result);
   }
@@ -157,7 +157,7 @@ export const sendChatMessage = asyncHandler(async (req: Request, res: Response) 
 });
 
 /**
- * Get chat history for a session
+ * 세션의 chat 히스토리 조회
  */
 export const getChatHistory = asyncHandler(async (req: Request, res: Response) => {
   const { sessionId } = req.params;
