@@ -83,17 +83,18 @@ chatbot-gate/
 │       │   └── (public)/
 │       ├── features/
 │       │   ├── council/
-│       │   │   ├── domain/
-│       │   │   ├── services/
-│       │   │   ├── state/
-│       │   │   └── ui/
+│       │   │   ├── api/
+│       │   │   ├── components/
+│       │   │   ├── hooks/
+│       │   │   ├── types/
+│       │   │   └── utils/
 │       │   └── chat/
-│       │       ├── domain/
-│       │       ├── services/
-│       │       ├── state/
-│       │       └── ui/
+│       │       ├── api/
+│       │       ├── components/
+│       │       ├── hooks/
+│       │       └── types/
 │       └── shared/
-│           ├── apis/
+│           ├── api/
 │           ├── components/
 │           ├── hooks/
 │           ├── types/
