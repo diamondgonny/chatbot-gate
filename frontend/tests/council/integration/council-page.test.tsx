@@ -176,7 +176,7 @@ describe("Council Page - Empty State", () => {
       expect(submitButton).toBeDisabled();
     });
 
-    it("Mode toggle이 기본값 Ultra로 표시된다", async () => {
+    it("Mode toggle이 기본값 Lite로 표시된다", async () => {
       server.use(
         http.get("*/api/council/sessions", () => {
           return HttpResponse.json({ sessions: [] });
@@ -189,10 +189,10 @@ describe("Council Page - Empty State", () => {
         </TestWrapper>
       );
 
-      // Ultra 버튼이 활성화된 스타일로 표시됨
+      // Lite 버튼이 활성화된 스타일로 표시됨
       await waitFor(() => {
-        const ultraButton = screen.getByRole("button", { name: "Ultra" });
-        expect(ultraButton).toHaveClass("bg-purple-600");
+        const liteButton = screen.getByRole("button", { name: "Lite" });
+        expect(liteButton).toHaveClass("bg-blue-600");
       });
     });
   });
