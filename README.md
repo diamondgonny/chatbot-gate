@@ -112,18 +112,17 @@ chatbot-gate/
 |-----------|--------|------|:----:|
 | `/api/gate/validate` | POST | 접근 코드 검증, JWT 발급 | - |
 | `/api/auth/status` | GET | 인증 상태 확인 | - |
-| `/api/chat/sessions/:id/message` | POST | AI에게 메시지 전송 | O |
-| `/api/chat/sessions/:id/history` | GET | 세션 대화 내역 조회 | O |
-| `/api/chat/sessions` | GET | 세션 목록 조회 | O |
-| `/api/chat/sessions` | POST | 세션 생성 | O |
-| `/api/chat/sessions/:id` | GET | 단일 세션 조회 | O |
-| `/api/chat/sessions/:id` | DELETE | 단일 세션 삭제 | O |
+| `/api/chat/sessions` | GET | Chat 세션 목록 | O |
+| `/api/chat/sessions` | POST | Chat 세션 생성 | O |
+| `/api/chat/sessions/:id` | GET | Chat 세션 조회 | O |
+| `/api/chat/sessions/:id` | DELETE | Chat 세션 삭제 | O |
+| `/api/chat/sessions/:id/message` | POST | Chat 메시지 전송 | O |
 | `/api/council/sessions` | GET | Council 세션 목록 | O |
 | `/api/council/sessions` | POST | Council 세션 생성 | O |
 | `/api/council/sessions/:id` | GET | Council 세션 조회 | O |
 | `/api/council/sessions/:id` | DELETE | Council 세션 삭제 | O |
-| `/api/council/sessions/:id/message` | POST | Council 메시지 (SSE) | O |
-| `/api/council/sessions/:id/status` | GET | Council 처리 상태 | O |
-| `/api/council/sessions/:id/reconnect` | GET | SSE 재연결 | O |
-| `/api/council/sessions/:id/abort` | POST | Council 처리 중단 | O |
+| `/api/council/sessions/:id/message` | POST | Council 메시지 전송 (SSE) | O |
+| `/api/council/sessions/:id/reconnect` | GET | Council 재연결 (SSE) | O |
+| `/api/council/sessions/:id/status` | GET | Council 작업 상태 확인 | O |
+| `/api/council/sessions/:id/abort` | POST | Council 작업 중단 | O |
 | `/metrics` | GET | Prometheus 메트릭 | - |
