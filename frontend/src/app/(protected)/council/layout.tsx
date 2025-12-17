@@ -15,8 +15,8 @@ import { AlertModal, ToastContainer } from "@/shared";
 import { useToast } from "@/shared/hooks";
 
 /**
- * Inner layout component that uses the sessions context
- * Separated to allow useContext within the provider
+ * Session context를 사용하는 내부 layout component
+ * Provider 내에서 useContext를 사용할 수 있도록 분리
  */
 function CouncilLayoutInner({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -28,7 +28,7 @@ function CouncilLayoutInner({ children }: { children: React.ReactNode }) {
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
   const { toasts, showToast, removeToast } = useToast();
 
-  // Store the session being deleted for potential restore
+  // 복원 가능성을 위해 삭제 중인 session 저장
   const deletedSessionRef = useRef<CouncilSession | null>(null);
 
   const handleNewSession = useCallback(async () => {
@@ -58,14 +58,14 @@ function CouncilLayoutInner({ children }: { children: React.ReactNode }) {
 
     const deletedId = sessionToDelete;
 
-    // 1. Close modal immediately
+    // 1. Modal 즉시 닫기
     setSessionToDelete(null);
 
-    // 2. Optimistically remove from UI and save for potential restore
+    // 2. UI에서 optimistic하게 제거하고 복원을 위해 저장
     const removedSession = removeSessionOptimistic(deletedId);
     deletedSessionRef.current = removedSession;
 
-    // 3. Navigate if deleting current session
+    // 3. 현재 session 삭제 시 이동
     if (deletedId === currentSessionId) {
       const remainingSessions = sessions.filter(
         (s) => s.sessionId !== deletedId
@@ -77,12 +77,12 @@ function CouncilLayoutInner({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // 4. Call API in background
+    // 4. 백그라운드에서 API 호출
     try {
       await deleteSessionApi(deletedId);
     } catch (error) {
       console.error("Error deleting council session:", error);
-      // Restore session on failure
+      // 실패 시 session 복원
       if (deletedSessionRef.current) {
         restoreSession(deletedSessionRef.current);
       }
@@ -129,7 +129,7 @@ function CouncilLayoutInner({ children }: { children: React.ReactNode }) {
         onConfirm={confirmDeleteSession}
       />
 
-      {/* Toast Notifications */}
+      {/* Toast 알림 */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </>
   );
@@ -137,8 +137,8 @@ function CouncilLayoutInner({ children }: { children: React.ReactNode }) {
 
 /**
  * Council Layout
- * Provides persistent sidebar and session management across council pages
- * The sidebar and session list persist when navigating between sessions
+ * Council page 전체에 걸쳐 지속적인 sidebar와 session 관리 제공
+ * Session 간 이동 시에도 sidebar와 session 목록이 유지됨
  */
 export default function CouncilLayout({
   children,

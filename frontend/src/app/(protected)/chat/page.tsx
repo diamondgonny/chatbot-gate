@@ -37,7 +37,7 @@ export default function ChatInterface() {
     cancelDeleteSession,
   } = useChatPageOrchestration({}, callbacks);
 
-  // Show toast when session creation fails
+  // Session 생성 실패 시 toast 표시
   useEffect(() => {
     if (sessionError && sessionError !== prevSessionErrorRef.current) {
       showToast(sessionError, "error");
@@ -68,7 +68,7 @@ export default function ChatInterface() {
 
       {/* Chat Interface */}
       <div className="flex flex-col flex-1 bg-slate-900/50 shadow-2xl border-x border-slate-800">
-        {/* Header */}
+        {/* 헤더 */}
         <header className="p-4 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 min-h-[88px] flex flex-col justify-center">
           <h2 className="text-xl font-semibold text-slate-200">
             AI Chat Session
@@ -82,7 +82,7 @@ export default function ChatInterface() {
           </div>
         )}
 
-        {/* Messages Area */}
+        {/* Message 영역 */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-custom">
           {messages.map((msg) => (
             <motion.div
@@ -107,7 +107,7 @@ export default function ChatInterface() {
             </motion.div>
           ))}
 
-          {/* Typing Indicator */}
+          {/* Typing 표시 */}
           <AnimatePresence>
             {isTyping && (
               <motion.div
@@ -127,7 +127,7 @@ export default function ChatInterface() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
+        {/* Input 영역 */}
         <form
           onSubmit={handleSendMessage}
           className="p-4 border-t border-slate-800 bg-slate-900/80 backdrop-blur-md"
@@ -159,7 +159,7 @@ export default function ChatInterface() {
         </form>
       </div>
 
-      {/* Delete Confirmation Modal */}
+      {/* 삭제 확인 Modal */}
       <AlertModal
         isOpen={!!sessionToDelete}
         title="Delete chat"
@@ -171,7 +171,7 @@ export default function ChatInterface() {
         onConfirm={confirmDeleteSession}
       />
 
-      {/* Toast Notifications */}
+      {/* Toast 알림 */}
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );

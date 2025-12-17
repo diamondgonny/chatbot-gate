@@ -7,8 +7,8 @@ import { useCouncilSessionsContext } from "@/features/council";
 
 /**
  * Council Index Page
- * Shows empty state with welcome message when no session is selected
- * Sidebar is rendered by the layout component
+ * Session이 선택되지 않았을 때 환영 메시지와 함께 empty state 표시
+ * Sidebar는 layout component에서 렌더링됨
  */
 export default function CouncilPage() {
   const router = useRouter();
