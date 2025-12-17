@@ -1,7 +1,7 @@
 /**
  * Shared Hooks
  *
- * React hooks used across multiple features.
+ * 여러 feature에서 사용되는 React hook
  */
 
 export { useToast } from "./useToast";

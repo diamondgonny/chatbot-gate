@@ -1,7 +1,7 @@
 /**
  * Shared Types
  *
- * Types used across multiple features.
+ * 여러 feature에서 사용되는 type
  */
 
 export type {

@@ -1,7 +1,7 @@
 /**
  * Shared API Layer
  *
- * Core API client and authentication endpoints.
+ * 핵심 API client와 authentication endpoint
  */
 
 export { default as apiClient } from "./client";

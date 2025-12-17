@@ -1,10 +1,10 @@
 /**
  * Council Service Layer
  *
- * Handles API communication and stream processing for the Council feature.
+ * Council feature를 위한 API 통신과 stream 처리
  */
 
-// API functions
+// API 함수
 export {
   createCouncilSession,
   getCouncilSessions,

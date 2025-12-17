@@ -1,11 +1,11 @@
 /**
  * Council Domain Layer
  *
- * Pure business logic and types for the Council feature.
- * No React dependencies - can be used anywhere.
+ * Council feature를 위한 순수 비즈니스 로직과 type
+ * React 의존성 없음 - 어디서나 사용 가능
  */
 
-// API/External types (from council.types.ts)
+// API/External type (council.types.ts에서)
 export type {
   CouncilMode,
   Stage1Response,
@@ -27,11 +27,11 @@ export type {
   ProcessingStatus,
 } from "./council.types";
 
-// Domain types (from types.ts)
+// Domain type (types.ts에서)
 export type { CurrentStage, ModelMapping, ComputedMessageData, StreamState } from "./types";
 export { createInitialStreamState } from "./types";
 
-// Model mapping utilities
+// Model mapping utility
 export {
   formatModelName,
   buildLabelToModel,
@@ -41,7 +41,7 @@ export {
   getModelForLabel,
 } from "./modelMapping";
 
-// Ranking calculation utilities
+// Ranking 계산 utility
 export {
   parseRankingFromText,
   calculateAggregateRankings,
@@ -49,7 +49,7 @@ export {
   isRankingConclusive,
 } from "./rankingCalculations";
 
-// Message reconstruction utilities
+// Message 재구성 utility
 export {
   computeMessageDisplayData,
   isMessageComplete,

@@ -1,25 +1,25 @@
 /**
  * Council State Layer
  *
- * React hooks for council state management and streaming.
+ * Council state 관리와 streaming을 위한 React hook
  */
 
-// State management
+// State 관리
 export { useCouncilState } from "./useCouncilState";
 export type { CouncilState, CouncilStateActions } from "./useCouncilState";
 
-// Stream management
+// Stream 관리
 export { useCouncilStream } from "./useCouncilStream";
 export type {
   UseCouncilStreamCallbacks,
   UseCouncilStreamReturn,
 } from "./useCouncilStream";
 
-// Context provider and consumer (original combined context)
+// Context provider와 consumer (원본 통합 context)
 export { CouncilProvider, useCouncilContext } from "./CouncilContext";
 export type { CouncilContextValue } from "./CouncilContext";
 
-// Split contexts for render optimization
+// Render 최적화를 위한 분리된 context
 export {
   CouncilMessagesProvider,
   useCouncilMessagesContext,
@@ -38,15 +38,15 @@ export {
 } from "./CouncilStatusContext";
 export type { CouncilStatusContextValue } from "./CouncilStatusContext";
 
-// Sessions context (for layout-level persistence)
+// Session context (layout 레벨 지속성을 위함)
 export {
   CouncilSessionsProvider,
   useCouncilSessionsContext,
 } from "./CouncilSessionsContext";
 export type { CouncilSessionsContextValue } from "./CouncilSessionsContext";
 
-// Sessions hook (for standalone usage)
+// Session hook (독립적 사용을 위함)
 export { useCouncilSessions } from "./useCouncilSessions";
 
-// UI utilities
+// UI utility
 export { useTitleAlert } from "./useTitleAlert";

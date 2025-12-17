@@ -1,5 +1,5 @@
 /**
- * MessageList Components
+ * MessageList Component
  */
 
 export { MessageList } from "./MessageList";

@@ -1,11 +1,11 @@
 /**
  * Shared Module
  *
- * Common utilities, components, hooks, and types used across features.
- * Import from @/shared for cross-feature shared code.
+ * Feature 전반에서 사용되는 공통 utility, component, hook, type
+ * Feature 간 공유 코드는 @/shared에서 import
  */
 
-// APIs
+// API
 export {
   apiClient,
   handleAuthError,
