@@ -1,5 +1,5 @@
 /**
- * Auth types (shared concern)
+ * Auth types (공유 관심사)
  */
 export interface AuthStatusResponse {
   authenticated: boolean;

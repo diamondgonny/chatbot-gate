@@ -5,7 +5,7 @@ import { jwtVerify } from "jose";
 const PROTECTED_PATHS = ["/hub", "/chat", "/council"];
 
 /**
- * Verify JWT token signature and expiration
+ * JWT token signature와 만료 검증
  */
 async function verifyToken(token: string): Promise<boolean> {
   const secret = process.env.JWT_SECRET;
@@ -16,14 +16,14 @@ async function verifyToken(token: string): Promise<boolean> {
   }
 
   try {
-    // Convert secret string to Uint8Array for jose
+    // jose를 위해 secret 문자열을 Uint8Array로 변환
     const secretKey = new TextEncoder().encode(secret);
 
-    // Verify token signature and expiration
+    // Token signature와 만료 검증
     await jwtVerify(token, secretKey);
     return true;
   } catch (error) {
-    // Token is invalid (expired, malformed, or wrong signature)
+    // Token이 invalid함 (만료됨, 잘못된 형식, 또는 잘못된 signature)
     console.error("JWT verification failed:", error);
     return false;
   }
@@ -32,7 +32,7 @@ async function verifyToken(token: string): Promise<boolean> {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Check if the path is protected
+  // Path가 protected인지 확인
   const isProtectedPath = PROTECTED_PATHS.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`)
   );
@@ -41,26 +41,26 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check for JWT cookie
+  // JWT cookie 확인
   const token = request.cookies.get("jwt");
 
   if (!token?.value) {
-    // Redirect to gate page if no token
+    // Token이 없으면 gate page로 redirect
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
   }
 
-  // Verify JWT signature and expiration
+  // JWT signature와 만료 검증
   const isValid = await verifyToken(token.value);
 
   if (!isValid) {
-    // Token is invalid or expired - clear cookie and redirect
+    // Token이 invalid하거나 만료됨 - cookie 삭제하고 redirect
     const url = request.nextUrl.clone();
     url.pathname = "/";
     const response = NextResponse.redirect(url);
 
-    // Clear the invalid JWT cookie
+    // Invalid JWT cookie 삭제
     response.cookies.delete("jwt");
 
     return response;
