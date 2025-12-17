@@ -1,6 +1,6 @@
 /**
- * Council State Management Hook
- * Consolidates all council-related state into a single hook
+ * Council State 관리 Hook
+ * Council 관련 모든 state를 단일 hook으로 통합
  */
 
 "use client";
@@ -16,7 +16,7 @@ import type {
 import type { CurrentStage, StreamState } from "../domain";
 
 /**
- * Council state shape
+ * Council state 구조
  */
 export interface CouncilState {
   // Session data
@@ -47,7 +47,7 @@ export interface CouncilState {
 }
 
 /**
- * State actions for updating council state
+ * Council state 업데이트를 위한 state action
  */
 export interface CouncilStateActions {
   setMessages: (
@@ -66,7 +66,7 @@ export interface CouncilStateActions {
 }
 
 /**
- * Hook for managing council state
+ * Council state 관리를 위한 Hook
  */
 export function useCouncilState(): [CouncilState, CouncilStateActions] {
   // Session data
@@ -105,7 +105,7 @@ export function useCouncilState(): [CouncilState, CouncilStateActions] {
   const [isInputExpanded, setIsInputExpanded] = useState(false);
 
   /**
-   * Update multiple stream state fields at once
+   * 여러 stream state field를 한번에 업데이트
    */
   const updateStreamState = useCallback((partial: Partial<StreamState>) => {
     if (partial.currentStage !== undefined) {
@@ -141,7 +141,7 @@ export function useCouncilState(): [CouncilState, CouncilStateActions] {
   }, []);
 
   /**
-   * Reset stream state to initial values
+   * Stream state를 초기값으로 재설정
    */
   const resetStreamState = useCallback(() => {
     setCurrentStage("idle");
@@ -157,7 +157,7 @@ export function useCouncilState(): [CouncilState, CouncilStateActions] {
   }, []);
 
   /**
-   * Reset all state to initial values
+   * 모든 state를 초기값으로 재설정
    */
   const resetAll = useCallback(() => {
     setMessages([]);
@@ -171,7 +171,7 @@ export function useCouncilState(): [CouncilState, CouncilStateActions] {
     setIsInputExpanded(false);
   }, [resetStreamState]);
 
-  // Build state object
+  // State 객체 구성
   const state: CouncilState = {
     messages,
     pendingMessage,
@@ -193,7 +193,7 @@ export function useCouncilState(): [CouncilState, CouncilStateActions] {
     isInputExpanded,
   };
 
-  // Build actions object
+  // Actions 객체 구성
   const actions: CouncilStateActions = useMemo(
     () => ({
       setMessages,

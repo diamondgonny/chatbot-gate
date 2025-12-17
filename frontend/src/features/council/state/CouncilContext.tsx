@@ -53,7 +53,7 @@ function isAbortError(error: unknown): boolean {
 }
 
 export interface CouncilContextValue extends CouncilState {
-  // Session actions
+  // Session action
   loadSession: (sessionId: string) => Promise<void>;
   sendMessage: (
     sessionId: string,
@@ -187,52 +187,52 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
   }, [abortStream]);
 
   /**
-   * Load a council session
+   * Council session 로드
    */
   const loadSession = useCallback(
     async (sessionId: string) => {
-      // Cancel previous in-flight request (race condition prevention)
+      // 이전 진행 중인 요청 취소 (race condition 방지)
       loadAbortControllerRef.current?.abort();
       const controller = new AbortController();
       loadAbortControllerRef.current = controller;
 
-      // Track current session ID
+      // 현재 session ID 추적
       loadSessionIdRef.current = sessionId;
 
-      // Abort any in-flight SSE stream
+      // 진행 중인 SSE stream abort
       abortStream();
 
-      // Set loading state - LoadingState will hide any existing content
+      // Loading state 설정 - LoadingState가 기존 content를 숨김
       setLoading(true);
 
-      // Reset stream state (no visual impact while loading)
+      // Stream state 재설정 (loading 중에는 시각적 영향 없음)
       resetStreamState();
 
-      // Reset status flags
+      // Status flag 재설정
       setProcessing(false);
       setReconnecting(false);
       setAborted(false);
       setError(null);
       setInputExpanded(false);
 
-      // NOTE: Don't clear messages here - they're hidden by LoadingState anyway
-      // Clearing causes a flash of EmptyState due to split context update timing
+      // 참고: 여기서 message를 clear하지 않음 - LoadingState가 이미 숨기고 있음
+      // Split context 업데이트 타이밍으로 인해 clear하면 EmptyState가 깜빡임
 
       try {
         const session = await getCouncilSession(sessionId, controller.signal);
 
-        // Skip if session changed (race condition)
+        // Session이 변경된 경우 건너뛰기 (race condition)
         if (loadSessionIdRef.current !== sessionId) {
           return;
         }
 
-        // Replace messages directly (handles both empty and non-empty sessions)
+        // Message를 직접 교체 (빈 session과 비어있지 않은 session 모두 처리)
         setMessages(session.messages);
 
-        // Check for active processing and reconnect if needed
+        // 활성 처리 확인 후 필요시 재연결
         const status = await getProcessingStatus(sessionId, controller.signal);
 
-        // Skip if session changed (race condition)
+        // Session이 변경된 경우 건너뛰기 (race condition)
         if (loadSessionIdRef.current !== sessionId) {
           return;
         }

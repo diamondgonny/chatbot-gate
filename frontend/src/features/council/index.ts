@@ -1,8 +1,8 @@
 /**
  * Council Feature
  *
- * 질문에 답하기 위해 협력하는 여러 AI model.
- * 내부 layer로부터 public API를 재export.
+ * 질문에 답하기 위해 협력하는 여러 AI model
+ * 내부 layer로부터 public API를 재export
  */
 
 // ============================================================================

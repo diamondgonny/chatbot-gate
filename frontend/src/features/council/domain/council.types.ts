@@ -1,7 +1,7 @@
-// Council mode for model routing
+// Model routing을 위한 council mode
 export type CouncilMode = 'lite' | 'ultra';
 
-// Stage 1: Individual model response
+// Stage 1: 개별 model response
 export interface Stage1Response {
   model: string;
   response: string;
@@ -10,7 +10,7 @@ export interface Stage1Response {
   completionTokens?: number;
 }
 
-// Stage 2: Peer review with ranking
+// Stage 2: Ranking을 포함한 peer review
 export interface Stage2Review {
   model: string;
   ranking: string;
@@ -38,19 +38,19 @@ export interface CouncilUserMessage {
   timestamp: string;
 }
 
-// Assistant message with 3 stages
+// 3개의 stage를 포함한 assistant message
 export interface CouncilAssistantMessage {
   role: "assistant";
   stage1: Stage1Response[];
-  stage2?: Stage2Review[];    // optional for abort cases
-  stage3?: Stage3Synthesis;   // optional for abort cases
-  wasAborted?: boolean;       // true if processing was aborted
+  stage2?: Stage2Review[];    // abort된 경우 optional
+  stage3?: Stage3Synthesis;   // abort된 경우 optional
+  wasAborted?: boolean;       // 처리가 abort된 경우 true
   timestamp: string;
 }
 
 export type CouncilMessage = CouncilUserMessage | CouncilAssistantMessage;
 
-// Council session (list view)
+// Council session (목록 view)
 export interface CouncilSession {
   sessionId: string;
   title: string;
@@ -58,19 +58,19 @@ export interface CouncilSession {
   updatedAt: string;
 }
 
-// Council session with messages (detail view)
+// Message를 포함한 council session (상세 view)
 export interface CouncilSessionDetail extends CouncilSession {
   messages: CouncilMessage[];
 }
 
-// Aggregate ranking (computed from Stage 2)
+// Stage 2에서 계산된 aggregate ranking
 export interface AggregateRanking {
   model: string;
   averageRank: number;
   rankingsCount: number;
 }
 
-// SSE Event types
+// SSE Event type
 export type SSEEventType =
   | "heartbeat"
   | "stage1_start"
@@ -99,7 +99,7 @@ export interface Stage1ChunkEvent {
   delta: string;
 }
 
-// Stage 1 model complete event
+// Stage 1 model 완료 event
 export interface Stage1ModelCompleteEvent {
   type: "stage1_model_complete";
   model: string;
@@ -112,18 +112,18 @@ export interface SSEEvent {
   type: SSEEventType;
   data?: Stage1Response | Stage2Review | Stage3Synthesis | { labelToModel: Record<string, string>; aggregateRankings: AggregateRanking[] };
   error?: string;
-  // Streaming fields (for chunk and model_complete events across all stages)
+  // 모든 stage의 chunk 및 model_complete event용 streaming field
   model?: string;
   delta?: string;
   responseTimeMs?: number;
   promptTokens?: number;
   completionTokens?: number;
-  // Reconnection fields
+  // 재연결 field
   stage?: string;
   userMessage?: string;
 }
 
-// API response types
+// API response type
 export interface CreateCouncilSessionResponse {
   sessionId: string;
   title: string;
@@ -136,7 +136,7 @@ export interface GetCouncilSessionsResponse {
 
 export type GetCouncilSessionResponse = CouncilSessionDetail;
 
-// Processing status for reconnection
+// 재연결을 위한 processing status
 export interface ProcessingStatus {
   isProcessing: boolean;
   canReconnect: boolean;

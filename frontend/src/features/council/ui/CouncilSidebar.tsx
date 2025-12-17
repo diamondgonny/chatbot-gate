@@ -6,8 +6,8 @@ import type { CouncilSession } from "../domain";
 import { formatTimeAgo } from "@/shared/utils";
 
 /**
- * Memoized session item component
- * Only re-renders when its own props change
+ * Memoize된 session item component
+ * 자신의 prop이 변경될 때만 re-render
  */
 interface SessionItemProps {
   session: CouncilSession;
@@ -112,7 +112,7 @@ const SessionItem = memo(
     );
   },
   (prevProps, nextProps) => {
-    // Custom comparison: only re-render if these specific props change
+    // 커스텀 비교: 특정 prop이 변경될 때만 re-render
     return (
       prevProps.session.sessionId === nextProps.session.sessionId &&
       prevProps.session.title === nextProps.session.title &&

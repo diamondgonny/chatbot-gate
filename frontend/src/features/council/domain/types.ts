@@ -1,6 +1,6 @@
 /**
- * Domain types for Council feature
- * Pure TypeScript types, no React dependencies
+ * Council feature를 위한 domain type
+ * 순수 TypeScript type, React 의존성 없음
  */
 
 import type {
@@ -11,13 +11,13 @@ import type {
 } from "./council.types";
 
 /**
- * Current processing stage identifier
+ * 현재 처리 중인 stage identifier
  */
 export type CurrentStage = "idle" | "stage1" | "stage2" | "stage3";
 
 /**
- * Mapping between anonymized labels and actual model names
- * e.g., "Response A" -> "anthropic/claude-sonnet-4"
+ * 익명화된 label과 실제 model 이름 간의 mapping
+ * 예: "Response A" -> "anthropic/claude-sonnet-4"
  */
 export interface ModelMapping {
   labelToModel: Record<string, string>;
@@ -25,8 +25,8 @@ export interface ModelMapping {
 }
 
 /**
- * Computed display data for a single assistant message
- * Derived from stage1/stage2 data for UI rendering
+ * 단일 assistant message의 계산된 표시 데이터
+ * UI rendering을 위해 stage1/stage2 데이터로부터 유도
  */
 export interface ComputedMessageData {
   labelToModel: Record<string, string>;
@@ -34,7 +34,7 @@ export interface ComputedMessageData {
 }
 
 /**
- * Stream state accumulated during SSE processing
+ * SSE 처리 중 누적된 stream state
  */
 export interface StreamState {
   stage1Responses: Stage1Response[];
@@ -50,7 +50,7 @@ export interface StreamState {
 }
 
 /**
- * Initial empty stream state factory
+ * 초기 빈 stream state factory
  */
 export function createInitialStreamState(): StreamState {
   return {

@@ -82,11 +82,11 @@ function ModeToggle({ mode, onToggle }: { mode: CouncilMode; onToggle: (m: Counc
   );
 }
 
-// Constants for textarea auto-resize
-const LINE_HEIGHT = 24; // px per line
+// textarea 자동 크기 조정을 위한 상수
+const LINE_HEIGHT = 24; // 라인당 px
 const MIN_ROWS = 1;
 const MAX_ROWS = 18;
-// Width of inline controls (toggle + send button + gaps) in single-line mode
+// 단일 라인 mode에서 inline control의 너비 (toggle + send button + 간격)
 const INLINE_CONTROLS_WIDTH = 190;
 
 export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
@@ -103,7 +103,7 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
   const measureRef = useRef<HTMLSpanElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-resize textarea based on content
+  // Content에 따라 textarea 자동 크기 조정
   useEffect(() => {
     const textarea = textareaRef.current;
     const measure = measureRef.current;
@@ -114,26 +114,26 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
     const scrollHeight = textarea.scrollHeight;
     const hasNewline = input.includes('\n');
 
-    // Measure actual text width using hidden span
+    // Hidden span을 사용하여 실제 text 너비 측정
     const textWidth = measure.offsetWidth;
-    // Available width in single-line mode (container minus inline controls)
+    // 단일 라인 mode에서 사용 가능한 너비 (container - inline control)
     const singleLineAvailable = container.clientWidth - INLINE_CONTROLS_WIDTH;
 
     setIsMultiline(prev => {
-      // Newline always triggers multiline
+      // Newline은 항상 multiline을 트리거
       if (hasNewline) return true;
 
       if (prev) {
-        // Exit multiline: when text fits in single-line available space
+        // Multiline 종료: text가 단일 라인 가용 공간에 맞을 때
         return textWidth > singleLineAvailable;
       }
 
-      // Enter multiline: when content wraps (scrollHeight exceeds single line)
+      // Multiline 진입: content가 wrap될 때 (scrollHeight가 단일 라인 초과)
       return scrollHeight > LINE_HEIGHT * 1.5;
     });
   }, [input]);
 
-  // Separate effect for height adjustment to avoid circular dependency
+  // 순환 의존성 방지를 위해 높이 조정을 별도 effect로 분리
   useEffect(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
@@ -178,7 +178,7 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
     abortProcessing(sessionId);
   }, [abortProcessing, sessionId]);
 
-  // Update scrollbar visibility based on textarea height
+  // textarea 높이에 따라 scrollbar 가시성 업데이트
   useEffect(() => {
     const textarea = textareaRef.current;
     const hasScrollbar = textarea
@@ -188,12 +188,12 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
     setShowScrollbar(hasScrollbar);
   }, [input, isMultiline]);
 
-  // Show input form only when no messages exist and not processing
+  // Message가 없고 processing 중이 아닐 때만 input form 표시
   if (messages.length === 0 && !isProcessing) {
     return (
       <div className="p-4 bg-slate-900/80 backdrop-blur-md">
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-          {/* Hidden span for measuring text width */}
+          {/* Text 너비 측정을 위한 hidden span */}
           <span
             ref={measureRef}
             className="absolute invisible whitespace-pre pointer-events-none"
@@ -261,7 +261,7 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
     );
   }
 
-  // Show abort button during processing
+  // Processing 중 abort 버튼 표시
   if (isProcessing) {
     return (
       <div className="p-4">
@@ -278,6 +278,6 @@ export function InputArea({ sessionId, onMessageSent }: InputAreaProps) {
     );
   }
 
-  // Hide when messages exist and not processing
+  // Message가 있고 processing 중이 아닐 때 숨김
   return null;
 }

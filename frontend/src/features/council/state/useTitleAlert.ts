@@ -3,8 +3,8 @@
 import { useRef, useCallback, useEffect } from "react";
 
 /**
- * Hook for flashing the browser tab title as a notification
- * Automatically stops when the user returns to the tab
+ * 알림으로 브라우저 tab title을 깜빡이게 하는 Hook
+ * 사용자가 tab으로 돌아오면 자동으로 중지
  */
 export function useTitleAlert() {
   const originalTitleRef = useRef<string>("");
@@ -21,7 +21,7 @@ export function useTitleAlert() {
   }, []);
 
   const startAlert = useCallback((message: string) => {
-    if (intervalRef.current) return; // Prevent duplicate alerts
+    if (intervalRef.current) return; // 중복 alert 방지
 
     originalTitleRef.current = document.title;
 
@@ -33,7 +33,7 @@ export function useTitleAlert() {
     }, 500);
   }, []);
 
-  // Auto-stop alert when user returns to tab
+  // 사용자가 tab으로 돌아올 때 alert 자동 중지
   useEffect(() => {
     const handleVisibility = () => {
       if (!document.hidden) {
@@ -44,7 +44,7 @@ export function useTitleAlert() {
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
-      stopAlert(); // Cleanup on unmount
+      stopAlert(); // Unmount 시 정리
     };
   }, [stopAlert]);
 
