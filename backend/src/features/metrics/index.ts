@@ -36,7 +36,7 @@ export {
 } from '@shared/observability';
 
 // 미들웨어
-export { metricsMiddleware } from './metrics.middleware';
+export { metricsMiddleware } from './middleware/metrics.middleware';
 
 // 라우트
 export { default as metricsRoutes } from './routes/metrics.routes';
