@@ -1,6 +1,6 @@
 /**
- * Stream Event Processor for Council feature
- * Abstracts SSE event handling logic into a reusable, testable class
+ * Council feature용 Stream Event Processor
+ * SSE event 처리 로직을 재사용 가능하고 테스트 가능한 class로 추상화
  */
 
 import type {
@@ -14,44 +14,30 @@ import type {
 import type { CurrentStage, StreamState } from "../domain";
 import { buildLabelToModel, calculateAggregateRankings } from "../domain";
 
-/**
- * Callbacks for stream event processing
- */
 export interface StreamEventCallbacks {
-  /** Called when stream state changes */
   onStateChange: (partial: Partial<StreamState>) => void;
-  /** Called when user message is confirmed (stage1_start received) */
   onUserMessageConfirmed: () => void;
-  /** Called when processing completes with final assistant message */
   onComplete: (assistantMessage: CouncilAssistantMessage) => void;
-  /** Called when an error occurs */
   onError: (error: string) => void;
-  /** Called when title generation completes with the new title */
   onTitleComplete: (title: string) => void;
-  /** Called when reconnection is established */
   onReconnected: (stage: CurrentStage, userMessage?: string) => void;
 }
 
-/**
- * Options for creating a StreamEventProcessor
- */
 export interface StreamEventProcessorOptions {
-  /** Whether this is a reconnection (ignores chunks) */
+  /** 재연결인지 여부 (chunk 무시) */
   isReconnection?: boolean;
 }
 
 /**
- * Stream Event Processor
- *
- * Processes SSE events and maintains accumulated state.
- * Decouples event handling logic from React state management.
+ * SSE event를 처리하고 누적된 state를 유지.
+ * Event 처리 로직을 React state 관리로부터 분리.
  */
 export class StreamEventProcessor {
   private callbacks: StreamEventCallbacks;
   private isReconnection: boolean;
   private userMessageConfirmed = false;
 
-  // Accumulated state during processing
+  // 처리 중 누적된 state
   private tempStage1: Stage1Response[] = [];
   private tempStage2: Stage2Review[] = [];
   private tempStage3: Stage3Synthesis | null = null;
@@ -59,13 +45,13 @@ export class StreamEventProcessor {
   private tempAggregateRankings: AggregateRanking[] = [];
   private currentStage: CurrentStage = "idle";
 
-  // Streaming content accumulators
+  // Streaming content 누적기
   private stage1StreamingContent: Record<string, string> = {};
   private stage2StreamingContent: Record<string, string> = {};
   private stage3StreamingContent = "";
   private stage3ReasoningContent = "";
 
-  // rAF batching for streaming updates
+  // rAF batching으로 streaming 업데이트 최적화
   private pendingStateUpdate: Partial<StreamState> = {};
   private rafId: number | null = null;
 
@@ -75,14 +61,14 @@ export class StreamEventProcessor {
   }
 
   /**
-   * Schedule state update with rAF batching
-   * Batches multiple chunk updates into a single frame for better performance
+   * rAF batching으로 state 업데이트 스케줄링
+   * 여러 chunk 업데이트를 한 프레임에 묶어서 성능 향상
    */
   private scheduleStateUpdate(partial: Partial<StreamState>): void {
-    // Merge pending updates
+    // Pending 업데이트 병합
     this.pendingStateUpdate = { ...this.pendingStateUpdate, ...partial };
 
-    // Schedule rAF if not already scheduled
+    // 아직 스케줄되지 않았다면 rAF 스케줄
     if (!this.rafId) {
       this.rafId = requestAnimationFrame(() => {
         this.callbacks.onStateChange(this.pendingStateUpdate);
@@ -92,9 +78,6 @@ export class StreamEventProcessor {
     }
   }
 
-  /**
-   * Flush any pending batched updates immediately
-   */
   private flushPendingUpdates(): void {
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
@@ -106,16 +89,13 @@ export class StreamEventProcessor {
     }
   }
 
-  /**
-   * Process a single SSE event
-   */
   processEvent(event: SSEEvent): void {
     switch (event.type) {
-      // Heartbeat - ignore (keeps connection alive, no state change needed)
+      // Heartbeat - 무시 (연결 유지용, state 변경 불필요)
       case "heartbeat":
         break;
 
-      // Stage starts
+      // Stage 시작
       case "stage1_start":
         this.handleStage1Start();
         break;
@@ -126,12 +106,12 @@ export class StreamEventProcessor {
         this.handleStage3Start();
         break;
 
-      // Stage 1 events
+      // Stage 1 event
       case "stage1_chunk":
         this.handleStage1Chunk(event);
         break;
       case "stage1_model_complete":
-        // Metadata only, content already accumulated
+        // Metadata만 있음, content는 이미 누적됨
         break;
       case "stage1_response":
         this.handleStage1Response(event);
@@ -140,12 +120,12 @@ export class StreamEventProcessor {
         this.handleStage1Complete();
         break;
 
-      // Stage 2 events
+      // Stage 2 event
       case "stage2_chunk":
         this.handleStage2Chunk(event);
         break;
       case "stage2_model_complete":
-        // Metadata only
+        // Metadata만 있음
         break;
       case "stage2_response":
         this.handleStage2Response(event);
@@ -154,7 +134,7 @@ export class StreamEventProcessor {
         this.handleStage2Complete(event);
         break;
 
-      // Stage 3 events
+      // Stage 3 event
       case "stage3_reasoning_chunk":
         this.handleStage3ReasoningChunk(event);
         break;
@@ -165,7 +145,7 @@ export class StreamEventProcessor {
         this.handleStage3Response(event);
         break;
 
-      // Connection events
+      // 연결 event
       case "reconnected":
         this.handleReconnected(event);
         break;
@@ -183,11 +163,8 @@ export class StreamEventProcessor {
     }
   }
 
-  /**
-   * Reset processor state for a new message
-   */
   reset(): void {
-    // Cancel any pending rAF
+    // Pending rAF 취소
     if (this.rafId) {
       cancelAnimationFrame(this.rafId);
       this.rafId = null;
@@ -207,9 +184,6 @@ export class StreamEventProcessor {
     this.stage3ReasoningContent = "";
   }
 
-  /**
-   * Build the final assistant message from accumulated state
-   */
   buildAssistantMessage(): CouncilAssistantMessage | null {
     if (!this.tempStage3) {
       return null;
@@ -224,9 +198,7 @@ export class StreamEventProcessor {
     };
   }
 
-  /**
-   * Get current accumulated responses (for partial results on abort)
-   */
+  /** abort 시 부분 결과용으로 현재 누적된 response 반환 */
   getPartialResults(): {
     stage1: Stage1Response[];
     stage2: Stage2Review[];
@@ -239,7 +211,7 @@ export class StreamEventProcessor {
     };
   }
 
-  // === Private handlers ===
+  // === Private handler ===
 
   private handleStage1Start(): void {
     this.currentStage = "stage1";
@@ -262,13 +234,13 @@ export class StreamEventProcessor {
   }
 
   private handleStage1Chunk(event: SSEEvent): void {
-    // Ignore chunks during reconnection
+    // 재연결 중에는 chunk 무시
     if (this.isReconnection) return;
 
     if (event.model && event.delta) {
       this.stage1StreamingContent[event.model] =
         (this.stage1StreamingContent[event.model] || "") + event.delta;
-      // Use rAF batching for streaming chunks
+      // Streaming chunk에 rAF batching 사용
       this.scheduleStateUpdate({
         stage1StreamingContent: { ...this.stage1StreamingContent },
       });
@@ -277,13 +249,13 @@ export class StreamEventProcessor {
 
   private handleStage1Response(event: SSEEvent): void {
     if (event.data) {
-      // Flush pending streaming updates before response
+      // Response 전에 pending streaming 업데이트 flush
       this.flushPendingUpdates();
 
       const response = event.data as Stage1Response;
       this.tempStage1 = [...this.tempStage1, response];
 
-      // Remove from streaming content
+      // Streaming content에서 제거
       delete this.stage1StreamingContent[response.model];
 
       this.callbacks.onStateChange({
@@ -301,13 +273,13 @@ export class StreamEventProcessor {
   }
 
   private handleStage2Chunk(event: SSEEvent): void {
-    // Ignore chunks during reconnection
+    // 재연결 중에는 chunk 무시
     if (this.isReconnection) return;
 
     if (event.model && event.delta) {
       this.stage2StreamingContent[event.model] =
         (this.stage2StreamingContent[event.model] || "") + event.delta;
-      // Use rAF batching for streaming chunks
+      // Streaming chunk에 rAF batching 사용
       this.scheduleStateUpdate({
         stage2StreamingContent: { ...this.stage2StreamingContent },
       });
@@ -316,13 +288,13 @@ export class StreamEventProcessor {
 
   private handleStage2Response(event: SSEEvent): void {
     if (event.data) {
-      // Flush pending streaming updates before response
+      // Response 전에 pending streaming 업데이트 flush
       this.flushPendingUpdates();
 
       const review = event.data as Stage2Review;
       this.tempStage2 = [...this.tempStage2, review];
 
-      // Remove from streaming content
+      // Streaming content에서 제거
       delete this.stage2StreamingContent[review.model];
 
       this.callbacks.onStateChange({
@@ -335,7 +307,7 @@ export class StreamEventProcessor {
   private handleStage2Complete(event: SSEEvent): void {
     this.stage2StreamingContent = {};
 
-    // Use backend-provided values or compute locally via domain functions
+    // Backend 제공값 사용, 없으면 domain 함수로 계산
     const eventData = event.data as
       | { labelToModel?: Record<string, string>; aggregateRankings?: AggregateRanking[] }
       | undefined;
@@ -354,12 +326,12 @@ export class StreamEventProcessor {
   }
 
   private handleStage3ReasoningChunk(event: SSEEvent): void {
-    // Ignore chunks during reconnection
+    // 재연결 중에는 chunk 무시
     if (this.isReconnection) return;
 
     if (event.delta) {
       this.stage3ReasoningContent += event.delta;
-      // Use rAF batching for streaming chunks
+      // Streaming chunk에 rAF batching 사용
       this.scheduleStateUpdate({
         stage3ReasoningContent: this.stage3ReasoningContent,
       });
@@ -367,12 +339,12 @@ export class StreamEventProcessor {
   }
 
   private handleStage3Chunk(event: SSEEvent): void {
-    // Ignore chunks during reconnection
+    // 재연결 중에는 chunk 무시
     if (this.isReconnection) return;
 
     if (event.delta) {
       this.stage3StreamingContent += event.delta;
-      // Use rAF batching for streaming chunks
+      // Streaming chunk에 rAF batching 사용
       this.scheduleStateUpdate({
         stage3StreamingContent: this.stage3StreamingContent,
       });
@@ -380,7 +352,7 @@ export class StreamEventProcessor {
   }
 
   private handleStage3Response(event: SSEEvent): void {
-    // Flush pending streaming updates before response
+    // Response 전에 pending streaming 업데이트 flush
     this.flushPendingUpdates();
 
     this.stage3StreamingContent = "";
@@ -403,7 +375,7 @@ export class StreamEventProcessor {
   }
 
   private handleComplete(): void {
-    // Flush any pending updates before completing
+    // 완료 전에 pending 업데이트 flush
     this.flushPendingUpdates();
 
     this.currentStage = "idle";

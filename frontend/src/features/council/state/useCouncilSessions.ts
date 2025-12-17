@@ -35,11 +35,11 @@ interface UseCouncilSessionsReturn {
   loadSessions: () => Promise<void>;
   createSession: () => Promise<string | null>;
   removeSession: (sessionId: string) => Promise<boolean>;
-  /** Optimistically remove session from UI (returns the removed session for potential restore) */
+  /** UI에서 낙관적으로 session 제거 (복원 가능하도록 제거된 session 반환) */
   removeSessionOptimistic: (sessionId: string) => CouncilSession | null;
-  /** Restore a session to the UI (e.g., after failed deletion) */
+  /** UI에 session 복원 (예: 삭제 실패 후) */
   restoreSession: (session: CouncilSession) => void;
-  /** Delete session API call only (without UI update) */
+  /** API 호출만 수행 (UI 업데이트 없음) */
   deleteSessionApi: (sessionId: string) => Promise<void>;
   updateSessionTitle: (sessionId: string, title: string) => void;
   updateSessionTimestamp: (sessionId: string) => void;
@@ -51,7 +51,7 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
   const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Track if component is still mounted to prevent state updates after unmount
+  // Unmount 후 state 업데이트 방지를 위해 component mount 상태 추적
   const isMountedRef = useRef(true);
   const loadAbortControllerRef = useRef<AbortController | null>(null);
 
@@ -125,7 +125,6 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
     []
   );
 
-  // Optimistically remove session from UI (returns the removed session for potential restore)
   const removeSessionOptimistic = useCallback(
     (sessionId: string): CouncilSession | null => {
       let removedSession: CouncilSession | null = null;
@@ -141,11 +140,10 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
     []
   );
 
-  // Restore a session to the UI (e.g., after failed deletion)
   const restoreSession = useCallback(
     (session: CouncilSession): void => {
       setSessions((prev) => {
-        // Add back and sort by updatedAt descending
+        // 다시 추가하고 updatedAt 기준 내림차순 정렬
         const updated = [...prev, session];
         return updated.sort(
           (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
@@ -155,7 +153,6 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
     []
   );
 
-  // Delete session API call only (without UI update)
   const deleteSessionApi = useCallback(
     async (sessionId: string): Promise<void> => {
       await deleteCouncilSession(sessionId);
@@ -171,7 +168,7 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
             ? { ...s, title, updatedAt: new Date().toISOString() }
             : s
         );
-        // Sort by updatedAt descending (most recent first)
+        // updatedAt 기준 내림차순 정렬 (최신 우선)
         return updated.sort(
           (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
@@ -188,7 +185,7 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
             ? { ...s, updatedAt: new Date().toISOString() }
             : s
         );
-        // Sort by updatedAt descending (most recent first)
+        // updatedAt 기준 내림차순 정렬 (최신 우선)
         return updated.sort(
           (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
@@ -197,7 +194,7 @@ export function useCouncilSessions(): UseCouncilSessionsReturn {
     []
   );
 
-  // Load sessions on mount and cleanup on unmount
+  // Mount 시 session 로드 및 unmount 시 cleanup
   useEffect(() => {
     isMountedRef.current = true;
     loadSessions();

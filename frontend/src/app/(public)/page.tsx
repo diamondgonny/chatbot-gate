@@ -13,7 +13,7 @@ export default function Gate() {
   const [cooldownUntil, setCooldownUntil] = useState<number | null>(null);
   const router = useRouter();
 
-  // If already authenticated (jwt cookie present), skip gate and go to hub
+  // 이미 인증된 경우 (JWT cookie 존재) gate를 건너뛰고 hub로 이동
   useEffect(() => {
     let isActive = true;
     const controller = new AbortController();
@@ -46,7 +46,7 @@ export default function Gate() {
         ) {
           return;
         }
-        // Unauthenticated: stay on gate
+        // 인증되지 않음: gate에 머무름
       }
     };
 
@@ -60,7 +60,7 @@ export default function Gate() {
 
   const [now, setNow] = useState(Date.now());
 
-  // Auto-clear error state after shake animation
+  // Shake animation 후 error state 자동 제거
   useEffect(() => {
     if (!error) return;
     const timer = setTimeout(() => setError(false), 500);
@@ -70,7 +70,7 @@ export default function Gate() {
   useEffect(() => {
     if (!cooldownUntil) return;
 
-    // Update 'now' every second to trigger re-render for countdown
+    // Countdown을 위해 매초 'now'를 업데이트하여 re-render 트리거
     const interval = setInterval(() => {
       const current = Date.now();
       setNow(current);
@@ -95,7 +95,7 @@ export default function Gate() {
     setError(false);
 
     try {
-      // Get existing userId if available
+      // 가능하면 기존 userId 가져오기
       const existingUserId = getUserId();
 
       const { valid, userId } = await validateGateCode({
@@ -104,7 +104,7 @@ export default function Gate() {
       });
 
       if (valid) {
-        // Success! Store userId only (JWT is in HttpOnly cookie)
+        // 성공! userId만 저장 (JWT는 HttpOnly cookie에 있음)
         saveUserId(userId);
         router.push("/hub");
       }
@@ -112,7 +112,7 @@ export default function Gate() {
       console.error(err);
       setError(true);
 
-      // Handle rate limit / backoff
+      // Rate limit / backoff 처리
       if (err && typeof err === "object" && "response" in err) {
         const axiosErr = err as { response?: { status?: number; data?: { code?: string; retryAfter?: number } } };
         if (
@@ -126,7 +126,7 @@ export default function Gate() {
         }
       }
 
-      // Error state triggers shake animation, auto-cleared by useEffect
+      // Error state가 shake animation을 트리거, useEffect가 자동 제거
     } finally {
       setLoading(false);
     }

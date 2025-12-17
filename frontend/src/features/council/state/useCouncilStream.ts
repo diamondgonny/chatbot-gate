@@ -1,6 +1,5 @@
 /**
- * Council Stream Hook
- * Handles SSE streaming using StreamEventProcessor
+ * StreamEventProcessor를 사용한 SSE streaming 처리
  */
 
 "use client";
@@ -17,9 +16,6 @@ import {
   getReconnectUrl,
 } from "../services";
 
-/**
- * Stream callbacks for state updates
- */
 export interface UseCouncilStreamCallbacks {
   onStateChange: (partial: Partial<StreamState>) => void;
   onUserMessageConfirmed: (content: string) => void;
@@ -31,29 +27,23 @@ export interface UseCouncilStreamCallbacks {
   onProcessingEnd: () => void;
 }
 
-/**
- * Return type for useCouncilStream
- */
 export interface UseCouncilStreamReturn {
   startStream: (sessionId: string, content: string, mode?: CouncilMode) => void;
   reconnectStream: (sessionId: string) => Promise<void>;
   abortStream: () => void;
 }
 
-/**
- * Hook for managing council SSE streams
- */
 export function useCouncilStream(
   callbacks: UseCouncilStreamCallbacks
 ): UseCouncilStreamReturn {
-  // AbortController for cancelling fetch requests
+  // Fetch 요청 취소용 AbortController
   const abortControllerRef = useRef<AbortController | null>(null);
-  // Track if component is still mounted
+  // Component가 여전히 마운트되어 있는지 추적
   const isMountedRef = useRef(true);
-  // Store pending message content for user message confirmation
+  // User message 확인용 pending message content 저장
   const pendingContentRef = useRef<string>("");
 
-  // Cleanup on unmount
+  // Unmount 시 cleanup
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -63,25 +53,22 @@ export function useCouncilStream(
     };
   }, []);
 
-  /**
-   * Start a new SSE stream for sending a message
-   */
   const startStream = useCallback(
     (sessionId: string, content: string, mode: CouncilMode = 'lite') => {
-      // Abort any existing request
+      // 기존 요청 abort
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
 
-      // Create new AbortController
+      // 새 AbortController 생성
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
       pendingContentRef.current = content;
 
-      // Notify processing start
+      // 처리 시작 알림
       callbacks.onProcessingStart();
 
-      // Create processor with callbacks
+      // Callback으로 processor 생성
       const processor = new StreamEventProcessor(
         {
           onStateChange: (partial) => {
@@ -112,13 +99,12 @@ export function useCouncilStream(
             }
           },
           onReconnected: () => {
-            // Not used for new streams
+            // 새 stream에서는 사용 안 함
           },
         },
         { isReconnection: false }
       );
 
-      // Process stream
       const processStream = async () => {
         try {
           const url = getCouncilMessageUrl(sessionId);
@@ -132,7 +118,7 @@ export function useCouncilStream(
 
           if (err instanceof StreamError) {
             if (err.isAborted) {
-              return; // Intentional abort, no error
+              return; // 의도적 abort, error 아님
             }
             callbacks.onError(err.message);
           } else {
@@ -152,12 +138,9 @@ export function useCouncilStream(
     [callbacks]
   );
 
-  /**
-   * Reconnect to existing processing
-   */
   const reconnectStream = useCallback(
     async (sessionId: string) => {
-      // Abort any existing request to prevent multiple concurrent streams
+      // 다중 동시 stream 방지를 위해 기존 요청 abort
       abortControllerRef.current?.abort();
 
       const abortController = new AbortController();
@@ -165,7 +148,7 @@ export function useCouncilStream(
 
       callbacks.onProcessingStart();
 
-      // Create processor for reconnection (ignores chunks)
+      // 재연결용 processor 생성 (chunk 무시)
       const processor = new StreamEventProcessor(
         {
           onStateChange: (partial) => {
@@ -174,7 +157,7 @@ export function useCouncilStream(
             }
           },
           onUserMessageConfirmed: () => {
-            // Not used for reconnection
+            // 재연결에서는 사용 안 함
           },
           onComplete: (msg) => {
             if (isMountedRef.current) {
@@ -216,7 +199,7 @@ export function useCouncilStream(
           if (err.isAborted) {
             return;
           }
-          // 404 means no active processing - expected in some cases
+          // 404는 활성 처리 없음을 의미 - 일부 경우에서 예상됨
           if (err.status === 404) {
             callbacks.onProcessingEnd();
             return;
@@ -236,9 +219,6 @@ export function useCouncilStream(
     [callbacks]
   );
 
-  /**
-   * Abort current stream
-   */
   const abortStream = useCallback(() => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();

@@ -1,11 +1,10 @@
 /**
- * Council Context Provider
- * Provides council state and actions to all child components
+ * 모든 하위 component에 council state와 action을 제공
  *
- * Uses split contexts for state management to enable render optimization:
- * - CouncilMessagesContext for messages
- * - CouncilStreamContext for stream state
- * - CouncilStatusContext for status flags
+ * Render 최적화를 위해 분리된 context를 사용:
+ * - CouncilMessagesContext: message
+ * - CouncilStreamContext: stream state
+ * - CouncilStatusContext: status flag
  */
 
 "use client";
@@ -33,7 +32,7 @@ import { useCouncilStreamContext } from "./CouncilStreamContext";
 import { useCouncilStatusContext } from "./CouncilStatusContext";
 import { useCouncilSessionsContext } from "./CouncilSessionsContext";
 
-// Treat both DOM aborts and axios cancellations as benign
+// DOM abort와 axios 취소를 모두 무해한 것으로 처리
 function isAbortError(error: unknown): boolean {
   if (error instanceof Error) {
     if (error.name === "AbortError" || error.name === "CanceledError") {
@@ -53,9 +52,6 @@ function isAbortError(error: unknown): boolean {
   return false;
 }
 
-/**
- * Council context value shape
- */
 export interface CouncilContextValue extends CouncilState {
   // Session actions
   loadSession: (sessionId: string) => Promise<void>;
@@ -70,42 +66,38 @@ export interface CouncilContextValue extends CouncilState {
   setInputExpanded: (isExpanded: boolean) => void;
 }
 
-// Create context with undefined default (must be used within provider)
+// Provider 내에서 사용되어야 함 (undefined 기본값으로 context 생성)
 const CouncilContext = createContext<CouncilContextValue | undefined>(
   undefined
 );
 
-/**
- * Props for CouncilProvider
- */
 interface CouncilProviderProps {
   children: ReactNode;
 }
 
 /**
- * Council Provider component
- * Wraps children with council state and actions
+ * Council state와 action으로 children을 래핑
  *
- * Uses split contexts for state management - must be nested inside:
+ * 다음 내부에 중첩되어야 함:
  * - CouncilMessagesProvider
  * - CouncilStreamProvider
  * - CouncilStatusProvider
  */
 export function CouncilProvider({ children }: CouncilProviderProps) {
-  // Use split contexts for state management (render optimization)
+  // Render 최적화를 위해 분리된 context 사용
   const messagesContext = useCouncilMessagesContext();
   const streamContext = useCouncilStreamContext();
   const statusContext = useCouncilStatusContext();
   const { updateSessionTitle, updateSessionTimestamp } = useCouncilSessionsContext();
 
-  // Track current session for race condition prevention
+  // Race condition 방지를 위해 현재 session 추적
   const loadSessionIdRef = useRef<string | null>(null);
   const loadAbortControllerRef = useRef<AbortController | null>(null);
 
-  // Store onComplete callback for title_complete events
+  // title_complete event용 onComplete callback 저장
   const onCompleteCallbackRef = useRef<(() => void) | undefined>(undefined);
 
-  // Destructure stable setters from split contexts to avoid dependency issues
+  // Dependency 문제 방지를 위해 split context에서 안정적인 setter 추출
   const { setMessages, setPendingMessage } = messagesContext;
   const { updateStreamState, resetStreamState } = streamContext;
   const {
@@ -117,7 +109,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
     setInputExpanded,
   } = statusContext;
 
-  // Create stream callbacks using stable setter references
+  // 안정적인 setter reference를 사용하여 stream callback 생성
   const streamCallbacks = useMemo(
     () => ({
       onStateChange: updateStreamState,
@@ -132,8 +124,8 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       },
       onComplete: (assistantMessage: CouncilAssistantMessage) => {
         setMessages((prev) => [...prev, assistantMessage]);
-        setPendingMessage(null); // Clear pending message (including reconnection case)
-        // Update session timestamp for recency ordering
+        setPendingMessage(null); // Pending message 제거 (재연결 경우 포함)
+        // 최신순 정렬을 위해 session timestamp 업데이트
         const sessionId = loadSessionIdRef.current;
         if (sessionId) {
           updateSessionTimestamp(sessionId);
@@ -145,7 +137,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
         setPendingMessage(null);
       },
       onTitleComplete: (title: string) => {
-        // Update session title in sidebar without full refetch
+        // 전체 refetch 없이 sidebar의 session title 업데이트
         const sessionId = loadSessionIdRef.current;
         if (sessionId && title) {
           updateSessionTitle(sessionId, title);
@@ -153,8 +145,8 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       },
       onReconnected: (stage: CurrentStage) => {
         updateStreamState({ currentStage: stage });
-        // Note: userMessage is no longer used here since loadSession already
-        // loads messages from the server before reconnecting
+        // 참고: loadSession이 재연결 전에 server에서 message를 이미 로드하므로
+        // userMessage는 여기서 더 이상 사용되지 않음
         setReconnecting(false);
       },
       onProcessingStart: () => {
@@ -183,7 +175,7 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
   const { startStream, reconnectStream, abortStream } =
     useCouncilStream(streamCallbacks);
 
-  // Cleanup in-flight requests/streams on unmount
+  // Unmount 시 진행 중인 요청/stream cleanup
   useEffect(() => {
     return () => {
       loadAbortControllerRef.current?.abort();
@@ -253,19 +245,19 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
           reconnectStream(sessionId);
         }
       } catch (err) {
-        // Ignore intentional cancellations (AbortController/axios)
+        // 의도적 취소 무시 (AbortController/axios)
         if (isAbortError(err)) {
           return;
         }
 
         console.error("Error loading council session:", err);
 
-        // Only set error if still on the same session
+        // 여전히 동일한 session이면 error 설정
         if (loadSessionIdRef.current === sessionId) {
           setError("Failed to load session");
         }
       } finally {
-        // Only update loading state if still on the same session
+        // 여전히 동일한 session이면 loading state 업데이트
         if (loadSessionIdRef.current === sessionId) {
           setLoading(false);
         }
@@ -274,40 +266,34 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
     [abortStream, reconnectStream, resetStreamState, setMessages, setLoading, setProcessing, setReconnecting, setAborted, setError, setInputExpanded]
   );
 
-  /**
-   * Send a message to the council
-   */
   const sendMessage = useCallback(
     (sessionId: string, content: string, mode: CouncilMode = 'lite', onComplete?: () => void) => {
-      // Store callback for later use
+      // 나중에 사용하기 위해 callback 저장
       onCompleteCallbackRef.current = onComplete;
 
-      // Reset stream state
+      // Stream state 초기화
       resetStreamState();
       setPendingMessage(content);
 
-      // Start streaming with mode
+      // mode와 함께 streaming 시작
       startStream(sessionId, content, mode);
     },
     [startStream, resetStreamState, setPendingMessage]
   );
 
-  /**
-   * Abort ongoing processing
-   */
   const abortProcessing = useCallback(
     async (sessionId: string) => {
-      // 1. Abort local SSE connection
+      // 1. 로컬 SSE 연결 abort
       abortStream();
 
-      // 2. Tell backend to abort
+      // 2. Backend에 abort 전달
       try {
         await abortCouncilProcessing(sessionId);
       } catch {
-        // Ignore - processing may have already completed
+        // 무시 - 처리가 이미 완료되었을 수 있음
       }
 
-      // 3. Update UI state
+      // 3. UI state 업데이트
       updateStreamState({ currentStage: "idle" });
       setProcessing(false);
       setAborted(true);
@@ -316,14 +302,11 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
     [abortStream, updateStreamState, setProcessing, setAborted, setPendingMessage]
   );
 
-  /**
-   * Clear error state
-   */
   const clearError = useCallback(() => {
     setError(null);
   }, [setError]);
 
-  // Build state object from split contexts (use individual values, not context objects)
+  // Split context에서 state 객체 구성 (context 객체가 아닌 개별 값 사용)
   const { messages, pendingMessage } = messagesContext;
   const {
     currentStage,
@@ -342,10 +325,8 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
 
   const state: CouncilState = useMemo(
     () => ({
-      // Messages
       messages,
       pendingMessage,
-      // Stream
       currentStage,
       stage1Responses,
       stage1StreamingContent,
@@ -356,7 +337,6 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
       stage3ReasoningContent,
       labelToModel,
       aggregateRankings,
-      // Status
       isProcessing,
       isReconnecting,
       wasAborted,
@@ -386,7 +366,6 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
     ]
   );
 
-  // Build context value
   const contextValue: CouncilContextValue = useMemo(
     () => ({
       ...state,
@@ -406,10 +385,6 @@ export function CouncilProvider({ children }: CouncilProviderProps) {
   );
 }
 
-/**
- * Hook to access council context
- * Must be used within a CouncilProvider
- */
 export function useCouncilContext(): CouncilContextValue {
   const context = useContext(CouncilContext);
   if (context === undefined) {

@@ -1,6 +1,6 @@
 /**
- * Low-level SSE streaming client for Council feature
- * Handles fetch + ReadableStream for Server-Sent Events
+ * Council feature용 low-level SSE streaming client
+ * Server-Sent Event를 위한 fetch + ReadableStream 처리
  */
 
 "use client";
@@ -22,18 +22,12 @@ async function cleanupReader(
   }
 }
 
-/**
- * Get CSRF token from cookie
- */
 function getCsrfToken(): string | null {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(/(?:^|;\s*)csrfToken=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-/**
- * Error class for streaming failures
- */
 export class StreamError extends Error {
   constructor(
     message: string,
@@ -46,8 +40,8 @@ export class StreamError extends Error {
 }
 
 /**
- * Parse SSE events from a text buffer
- * @returns Tuple of [parsedEvents, remainingBuffer]
+ * Text buffer에서 SSE event 파싱
+ * @returns [파싱된 event, 남은 buffer] 튜플
  */
 function parseSSEBuffer(buffer: string): [SSEEvent[], string] {
   const events: SSEEvent[] = [];
@@ -72,8 +66,8 @@ function parseSSEBuffer(buffer: string): [SSEEvent[], string] {
 }
 
 /**
- * Streaming SSE client using fetch + ReadableStream
- * Supports POST method with JSON body for CSRF protection
+ * fetch + ReadableStream을 사용하는 streaming SSE client
+ * CSRF 보호를 위해 JSON body와 함께 POST method 지원
  */
 export async function* streamSSE(
   url: string,
@@ -101,7 +95,7 @@ export async function* streamSSE(
         errorMessage = errorBody.error;
       }
     } catch {
-      // ignore - response body may not be JSON
+      // 무시 - response body가 JSON이 아닐 수 있음
     }
 
     throw new StreamError(errorMessage, response.status);
@@ -129,14 +123,14 @@ export async function* streamSSE(
       for (const event of events) {
         yield event;
 
-        // If we received an error or complete event, stop processing
+        // Error 또는 complete event 수신 시 처리 중단
         if (event.type === "error" || event.type === "complete") {
           return;
         }
       }
     }
 
-    // Process any remaining data in buffer
+    // Buffer에 남은 데이터 처리
     if (buffer.trim()) {
       const [events] = parseSSEBuffer(buffer + "\n\n");
       for (const event of events) {
@@ -154,7 +148,7 @@ export async function* streamSSE(
 }
 
 /**
- * Reconnect SSE client using GET (for reconnecting to existing processing)
+ * GET을 사용하는 재연결용 SSE client (진행 중인 처리에 재연결)
  */
 export async function* reconnectSSE(
   url: string,
@@ -172,7 +166,7 @@ export async function* reconnectSSE(
   });
 
   if (!response.ok) {
-    // Parse error response body if available
+    // Error response body 가능하면 파싱
     let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
     try {
       const errorBody = await response.json();
@@ -180,7 +174,7 @@ export async function* reconnectSSE(
         errorMessage = errorBody.error;
       }
     } catch {
-      // Use default error message
+      // 기본 error 메시지 사용
     }
     throw new StreamError(errorMessage, response.status);
   }
@@ -213,7 +207,7 @@ export async function* reconnectSSE(
       }
     }
 
-    // Process any remaining data in buffer
+    // Buffer에 남은 데이터 처리
     if (buffer.trim()) {
       const [events] = parseSSEBuffer(buffer + "\n\n");
       for (const event of events) {

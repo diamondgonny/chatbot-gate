@@ -1,26 +1,26 @@
 /**
- * Ranking calculation utilities for Council feature
- * Handles parsing and aggregation of peer review rankings
+ * Council feature용 순위 계산 utility
+ * Peer review 순위의 파싱 및 집계 처리
  */
 
 import type { Stage2Review, AggregateRanking } from "./council.types";
 
 /**
- * Parse ranking labels from review text
- * Extracts "Response A", "Response B", etc. from ranking text
+ * 검토 텍스트에서 순위 레이블 파싱
+ * 순위 텍스트에서 "Response A", "Response B" 등을 추출
  *
  * @example
  * parseRankingFromText("FINAL RANKING:\n1. Response B\n2. Response A\n3. Response C");
  * // ["Response B", "Response A", "Response C"]
  */
 export function parseRankingFromText(rankingText: string): string[] {
-  // Try to parse from structured FINAL RANKING section
+  // 구조화된 FINAL RANKING 섹션에서 파싱 시도
   if (rankingText.includes("FINAL RANKING:")) {
     const parts = rankingText.split("FINAL RANKING:");
     if (parts.length >= 2) {
       const rankingSection = parts[1];
 
-      // Try numbered format first (e.g., "1. Response A")
+      // 먼저 번호 형식 시도 (예: "1. Response A")
       const numberedMatches = rankingSection.match(/\d+\.\s*Response [A-Z]/g);
       if (numberedMatches) {
         return numberedMatches
@@ -31,20 +31,20 @@ export function parseRankingFromText(rankingText: string): string[] {
           .filter(Boolean);
       }
 
-      // Fall back to simple Response X pattern
+      // 단순 Response X 패턴으로 fallback
       const matches = rankingSection.match(/Response [A-Z]/g);
       return matches || [];
     }
   }
 
-  // Fall back to finding all Response X patterns in the text
+  // 텍스트 전체에서 Response X 패턴 찾기로 fallback
   const matches = rankingText.match(/Response [A-Z]/g);
   return matches || [];
 }
 
 /**
- * Calculate aggregate rankings from stage2 reviews
- * Computes average rank position for each model across all reviewers
+ * Stage2 review에서 집계 순위 계산
+ * 모든 reviewer에 걸쳐 각 model의 평균 순위 위치를 계산
  *
  * @example
  * const reviews = [
@@ -65,7 +65,7 @@ export function calculateAggregateRankings(
   const modelPositions: Record<string, number[]> = {};
 
   for (const review of stage2) {
-    // Guard against missing/invalid parsedRanking (older records or failed extraction)
+    // 누락되거나 유효하지 않은 parsedRanking에 대한 보호 (이전 레코드 또는 추출 실패)
     const parsedRanking =
       Array.isArray(review.parsedRanking) && review.parsedRanking.length > 0
         ? review.parsedRanking
@@ -83,7 +83,7 @@ export function calculateAggregateRankings(
     });
   }
 
-  // Calculate average rank for each model
+  // 각 model의 평균 순위 계산
   const aggregate: AggregateRanking[] = [];
   for (const [model, positions] of Object.entries(modelPositions)) {
     if (positions.length > 0) {
@@ -96,21 +96,18 @@ export function calculateAggregateRankings(
     }
   }
 
-  // Sort by average rank (best first)
+  // 평균 순위 기준 정렬 (최상위 우선)
   aggregate.sort((a, b) => a.averageRank - b.averageRank);
   return aggregate;
 }
 
-/**
- * Get the winner (best ranked model) from aggregate rankings
- */
 export function getWinner(rankings: AggregateRanking[]): AggregateRanking | undefined {
   return rankings[0];
 }
 
 /**
- * Check if rankings are conclusive (clear winner)
- * A ranking is conclusive if the top model has a significantly better average rank
+ * 순위가 결정적인지 확인 (명확한 승자)
+ * 상위 model이 평균 순위에서 현저히 우수하면 결정적
  */
 export function isRankingConclusive(
   rankings: AggregateRanking[],

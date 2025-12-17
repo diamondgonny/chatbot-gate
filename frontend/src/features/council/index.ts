@@ -1,15 +1,15 @@
 /**
  * Council Feature
  *
- * Multiple AI models collaborating to answer questions.
- * Re-exports public API from internal layers.
+ * 질문에 답하기 위해 협력하는 여러 AI model.
+ * 내부 layer로부터 public API를 재export.
  */
 
 // ============================================================================
-// Domain Layer - Types and pure business logic
+// Domain Layer - Type 및 순수 비즈니스 로직
 // ============================================================================
 
-// Core types
+// 핵심 type
 export type {
   CouncilMode,
   CouncilSession,
@@ -23,7 +23,7 @@ export type {
   AggregateRanking,
 } from "./domain";
 
-// API response types
+// API response type
 export type {
   CreateCouncilSessionResponse,
   GetCouncilSessionsResponse,
@@ -31,14 +31,14 @@ export type {
   ProcessingStatus,
 } from "./domain";
 
-// SSE event types
+// SSE event type
 export type { SSEEventType, SSEEvent, Stage1ChunkEvent, Stage1ModelCompleteEvent } from "./domain";
 
-// Internal state types
+// 내부 state type
 export type { CurrentStage, ModelMapping, ComputedMessageData, StreamState } from "./domain";
 export { createInitialStreamState } from "./domain";
 
-// Pure utility functions
+// 순수 utility 함수
 export {
   formatModelName,
   buildLabelToModel,
@@ -56,7 +56,7 @@ export {
 } from "./domain";
 
 // ============================================================================
-// Services Layer - API communication
+// Services Layer - API 통신
 // ============================================================================
 
 export {
@@ -70,20 +70,20 @@ export {
   getReconnectUrl,
 } from "./services";
 
-// Stream utilities (advanced usage)
+// Stream utility (고급 사용)
 export { streamSSE, reconnectSSE, StreamError } from "./services";
 export { StreamEventProcessor } from "./services";
 export type { StreamEventCallbacks, StreamEventProcessorOptions } from "./services";
 
 // ============================================================================
-// State Layer - React hooks and context
+// State Layer - React hook 및 context
 // ============================================================================
 
-// Context provider and consumer (primary API)
+// Context provider 및 consumer (기본 API)
 export { CouncilProvider, useCouncilContext } from "./state";
 export type { CouncilContextValue } from "./state";
 
-// Split contexts for render optimization
+// Render 최적화를 위한 분리된 context
 export {
   CouncilMessagesProvider,
   useCouncilMessagesContext,
@@ -98,17 +98,17 @@ export type {
   CouncilStatusContextValue,
 } from "./state";
 
-// Sessions context (for layout-level persistence)
+// Session context (layout 레벨 지속성)
 export { CouncilSessionsProvider, useCouncilSessionsContext } from "./state";
 export type { CouncilSessionsContextValue } from "./state";
 
-// Sessions management hook (for standalone usage)
+// Session 관리 hook (독립 실행용)
 export { useCouncilSessions } from "./state";
 
-// UI utilities
+// UI utility
 export { useTitleAlert } from "./state";
 
-// Internal state hooks (advanced usage)
+// 내부 state hook (고급 사용)
 export { useCouncilState, useCouncilStream } from "./state";
 export type {
   CouncilState,
@@ -118,13 +118,13 @@ export type {
 } from "./state";
 
 // ============================================================================
-// UI Layer - React components
+// UI Layer - React component
 // ============================================================================
 
-// Layout components
+// Layout component
 export { CouncilSidebar } from "./ui";
 
-// Message display components
+// Message 표시 component
 export { MessageList } from "./ui";
 export {
   UserMessage,
@@ -137,9 +137,9 @@ export {
 // Input component
 export { InputArea } from "./ui";
 
-// Stage visualization components
+// Stage 시각화 component
 export { StageProgress } from "./ui";
 export { Stage1Panel, Stage2Panel, Stage3Panel } from "./ui";
 
-// Utility components
+// Utility component
 export { MarkdownRenderer } from "./ui";

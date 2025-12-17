@@ -1,6 +1,6 @@
 /**
- * Message reconstruction utilities for Council feature
- * Computes derived display data from stored message data
+ * Council feature용 message 재구성 utility
+ * 저장된 message 데이터로부터 파생된 표시 데이터를 계산
  */
 
 import type { CouncilAssistantMessage } from "./council.types";
@@ -9,11 +9,10 @@ import { buildLabelToModel } from "./modelMapping";
 import { calculateAggregateRankings } from "./rankingCalculations";
 
 /**
- * Compute display data for a single assistant message
- * Reconstructs labelToModel mapping and aggregate rankings from stage1/stage2 data
+ * 단일 assistant message의 표시 데이터 계산
+ * stage1/stage2 데이터로부터 labelToModel mapping 및 집계 순위를 재구성
  *
- * This function centralizes the computation that was previously duplicated
- * in page.tsx and useCouncilChat.ts
+ * page.tsx와 useCouncilChat.ts에서 중복되던 계산을 중앙화
  *
  * @example
  * const message = {
@@ -39,9 +38,6 @@ export function computeMessageDisplayData(
   };
 }
 
-/**
- * Check if an assistant message has complete data (all 3 stages)
- */
 export function isMessageComplete(message: CouncilAssistantMessage): boolean {
   return (
     message.stage1.length > 0 &&
@@ -51,9 +47,6 @@ export function isMessageComplete(message: CouncilAssistantMessage): boolean {
   );
 }
 
-/**
- * Get the completion status of an assistant message
- */
 export function getMessageCompletionStatus(message: CouncilAssistantMessage): {
   hasStage1: boolean;
   hasStage2: boolean;
