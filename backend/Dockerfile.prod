@@ -1,7 +1,7 @@
 # ============================================
 # Stage 1: Dependencies (Builder)
 # ============================================
-FROM node:20.18.1-alpine AS deps
+FROM node:20.19.1-alpine AS deps
 
 # Security: Run as non-root
 RUN addgroup --system --gid 1001 nodejs && \
@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
 # ============================================
 # Stage 2: Build (TypeScript Compilation)
 # ============================================
-FROM node:20.18.1-alpine AS builder
+FROM node:20.19.1-alpine AS builder
 
 WORKDIR /app
 
@@ -46,7 +46,7 @@ RUN npm run build && \
 # ============================================
 # Stage 3: Production Runtime
 # ============================================
-FROM node:20.18.1-alpine AS production
+FROM node:20.19.1-alpine AS production
 
 # Security updates
 RUN apk upgrade --no-cache
