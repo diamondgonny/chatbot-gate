@@ -10,7 +10,7 @@ import {
   CouncilStatusProvider,
   useCouncilSessionsContext,
 } from "@/features/council";
-import type { CouncilSession } from "@/features/council/domain";
+import type { CouncilSession } from "@/features/council/types";
 import { AlertModal, ToastContainer } from "@/shared";
 import { useToast } from "@/shared/hooks";
 

@@ -12,7 +12,7 @@ export {
   checkAuthStatus,
   validateGateCode,
   navigation,
-} from "./apis";
+} from "./api";
 
 // Components
 export { AlertModal, ToastContainer } from "./components";

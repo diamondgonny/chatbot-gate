@@ -7,7 +7,7 @@ import type {
   Stage2Review,
   Stage3Synthesis,
   ProcessingStatus,
-} from "@/features/council/domain";
+} from "@/features/council/types";
 
 // Default mock data
 export const mockAuthStatus = { authenticated: true, userId: "user-123" };

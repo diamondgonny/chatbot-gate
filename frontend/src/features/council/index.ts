@@ -6,7 +6,7 @@
  */
 
 // ============================================================================
-// Domain Layer - Type 및 순수 비즈니스 로직
+// Types Layer - Type 정의
 // ============================================================================
 
 // 핵심 type
@@ -21,7 +21,7 @@ export type {
   Stage2Review,
   Stage3Synthesis,
   AggregateRanking,
-} from "./domain";
+} from "./types";
 
 // API response type
 export type {
@@ -29,16 +29,19 @@ export type {
   GetCouncilSessionsResponse,
   GetCouncilSessionResponse,
   ProcessingStatus,
-} from "./domain";
+} from "./types";
 
 // SSE event type
-export type { SSEEventType, SSEEvent, Stage1ChunkEvent, Stage1ModelCompleteEvent } from "./domain";
+export type { SSEEventType, SSEEvent, Stage1ChunkEvent, Stage1ModelCompleteEvent } from "./types";
 
 // 내부 state type
-export type { CurrentStage, ModelMapping, ComputedMessageData, StreamState } from "./domain";
-export { createInitialStreamState } from "./domain";
+export type { CurrentStage, ModelMapping, ComputedMessageData, StreamState } from "./types";
+export { createInitialStreamState } from "./types";
 
-// 순수 utility 함수
+// ============================================================================
+// Utils Layer - 순수 비즈니스 로직
+// ============================================================================
+
 export {
   formatModelName,
   buildLabelToModel,
@@ -53,10 +56,10 @@ export {
   computeMessageDisplayData,
   isMessageComplete,
   getMessageCompletionStatus,
-} from "./domain";
+} from "./utils";
 
 // ============================================================================
-// Services Layer - API 통신
+// API Layer - API 통신
 // ============================================================================
 
 export {
@@ -68,20 +71,20 @@ export {
   abortCouncilProcessing,
   getCouncilMessageUrl,
   getReconnectUrl,
-} from "./services";
+} from "./api";
 
 // Stream utility (고급 사용)
-export { streamSSE, reconnectSSE, StreamError } from "./services";
-export { StreamEventProcessor } from "./services";
-export type { StreamEventCallbacks, StreamEventProcessorOptions } from "./services";
+export { streamSSE, reconnectSSE, StreamError } from "./api";
+export { StreamEventProcessor } from "./api";
+export type { StreamEventCallbacks, StreamEventProcessorOptions } from "./api";
 
 // ============================================================================
-// State Layer - React hook 및 context
+// Hooks Layer - React hook 및 context
 // ============================================================================
 
 // Context provider 및 consumer (기본 API)
-export { CouncilProvider, useCouncilContext } from "./state";
-export type { CouncilContextValue } from "./state";
+export { CouncilProvider, useCouncilContext } from "./hooks";
+export type { CouncilContextValue } from "./hooks";
 
 // Render 최적화를 위한 분리된 context
 export {
@@ -91,55 +94,55 @@ export {
   useCouncilStreamContext,
   CouncilStatusProvider,
   useCouncilStatusContext,
-} from "./state";
+} from "./hooks";
 export type {
   CouncilMessagesContextValue,
   CouncilStreamContextValue,
   CouncilStatusContextValue,
-} from "./state";
+} from "./hooks";
 
 // Session context (layout 레벨 지속성)
-export { CouncilSessionsProvider, useCouncilSessionsContext } from "./state";
-export type { CouncilSessionsContextValue } from "./state";
+export { CouncilSessionsProvider, useCouncilSessionsContext } from "./hooks";
+export type { CouncilSessionsContextValue } from "./hooks";
 
 // Session 관리 hook (독립 실행용)
-export { useCouncilSessions } from "./state";
+export { useCouncilSessions } from "./hooks";
 
 // UI utility
-export { useTitleAlert } from "./state";
+export { useTitleAlert } from "./hooks";
 
 // 내부 state hook (고급 사용)
-export { useCouncilState, useCouncilStream } from "./state";
+export { useCouncilState, useCouncilStream } from "./hooks";
 export type {
   CouncilState,
   CouncilStateActions,
   UseCouncilStreamCallbacks,
   UseCouncilStreamReturn,
-} from "./state";
+} from "./hooks";
 
 // ============================================================================
-// UI Layer - React component
+// Components Layer - React component
 // ============================================================================
 
 // Layout component
-export { CouncilSidebar } from "./ui";
+export { CouncilSidebar } from "./components";
 
 // Message 표시 component
-export { MessageList } from "./ui";
+export { MessageList } from "./components";
 export {
   UserMessage,
   AssistantMessage,
   StreamingMessage,
   PendingMessage,
   ErrorMessage,
-} from "./ui";
+} from "./components";
 
 // Input component
-export { InputArea } from "./ui";
+export { InputArea } from "./components";
 
 // Stage 시각화 component
-export { StageProgress } from "./ui";
-export { Stage1Panel, Stage2Panel, Stage3Panel } from "./ui";
+export { StageProgress } from "./components";
+export { Stage1Panel, Stage2Panel, Stage3Panel } from "./components";
 
 // Utility component
-export { MarkdownRenderer } from "./ui";
+export { MarkdownRenderer } from "./components";
