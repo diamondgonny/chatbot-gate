@@ -3,8 +3,8 @@
 import { useEffect } from "react";
 
 /**
- * Auto-dismisses an error after a specified timeout.
- * Returns nothing - this is a pure side-effect hook.
+ * 지정된 timeout 후 error를 자동으로 제거
+ * 반환값 없음 - 순수 side-effect hook
  */
 export function useAutoError(
   error: string | null,

@@ -1,10 +1,10 @@
 /**
  * Chat Feature
  *
- * Complete chat functionality including messaging and session management.
+ * Messaging과 session 관리를 포함한 완전한 chat 기능
  */
 
-// Domain (Types and pure logic)
+// Domain (Type과 순수 로직)
 export type {
   Message,
   Session,
@@ -24,7 +24,7 @@ export {
   deleteSession,
 } from "./services";
 
-// State (Hooks)
+// State (Hook)
 export { useChat, useSessions, useChatPageOrchestration } from "./state";
 export type {
   UseChatReturn,
@@ -33,7 +33,7 @@ export type {
   OrchestrationServices,
 } from "./state";
 
-// UI (Components)
+// UI (Component)
 export { SessionSidebar } from "./ui";
 
 // Utils

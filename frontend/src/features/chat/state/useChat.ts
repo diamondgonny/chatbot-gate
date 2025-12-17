@@ -13,8 +13,8 @@ import type {
 } from "../domain";
 
 /**
- * Service interface for dependency injection.
- * Allows testing hooks without MSW by providing mock implementations.
+ * Dependency injection을 위한 service interface
+ * Mock 구현을 제공하여 MSW 없이 hook 테스트 가능
  */
 export interface ChatServices {
   getChatHistory: (sessionId: string) => Promise<ChatHistoryResponse>;
@@ -40,8 +40,8 @@ export interface UseChatReturn {
 }
 
 /**
- * Manages chat message state and API operations.
- * UI concerns (scrolling) are handled separately by useChatScroll.
+ * Chat message state와 API 작업 관리
+ * UI 관련 작업 (scrolling)은 useChatScroll에서 별도 처리
  */
 export function useChat(services: ChatServices = defaultServices): UseChatReturn {
   const [messages, setMessages] = useState<Message[]>([]);

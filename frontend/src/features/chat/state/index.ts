@@ -2,7 +2,7 @@
 export { useChat } from "./useChat";
 export type { UseChatReturn, ChatServices } from "./useChat";
 
-// Session management
+// Session 관리
 export { useSessions } from "./useSessions";
 export type { UseSessionsReturn, SessionServices } from "./useSessions";
 
@@ -13,7 +13,7 @@ export type {
   OrchestrationServices,
 } from "./useChatPageOrchestration";
 
-// Focused hooks (SRP-compliant)
+// 집중된 hook (SRP 준수)
 export { useChatScroll } from "./useChatScroll";
 export type { UseChatScrollReturn } from "./useChatScroll";
 

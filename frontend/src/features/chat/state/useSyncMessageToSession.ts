@@ -11,17 +11,17 @@ export interface SyncConfig {
 }
 
 /**
- * Syncs the latest message to the session list.
- * Updates lastMessage, title, and updatedAt when a NEW message is added.
+ * Session list에 최신 message 동기화
+ * 새 message 추가 시 lastMessage, title, updatedAt 업데이트
  *
- * Important: Only syncs when messages are appended (not when the array is replaced
- * during session switching). This prevents race conditions where switching sessions
- * could cause the previous session's messages to overwrite the new session's title.
+ * 중요: Message가 추가될 때만 동기화 (session 전환 시 array 교체는 제외)
+ * Session 전환 시 이전 session의 message가 새 session의 title을 덮어쓰는
+ * race condition 방지
  */
 export function useSyncMessageToSession(config: SyncConfig): void {
   const { messages, targetSessionId, setSessions, sortSessions } = config;
 
-  // Track previous messages to detect if a message was added vs array replaced
+  // 이전 message를 추적하여 message 추가 vs array 교체 감지
   const prevMessagesRef = useRef<Message[]>([]);
   const prevSessionIdRef = useRef<string | null>(null);
 
@@ -29,19 +29,19 @@ export function useSyncMessageToSession(config: SyncConfig): void {
     const prevMessages = prevMessagesRef.current;
     const prevSessionId = prevSessionIdRef.current;
 
-    // Update refs for next comparison
+    // 다음 비교를 위해 ref 업데이트
     prevMessagesRef.current = messages;
     prevSessionIdRef.current = targetSessionId;
 
-    // Skip if no messages or no target session
+    // Message가 없거나 target session이 없으면 건너뛰기
     if (messages.length === 0) return;
     if (!targetSessionId) return;
 
-    // Skip if session changed (array was replaced, not appended)
+    // Session이 변경되면 건너뛰기 (array가 추가가 아닌 교체됨)
     if (prevSessionId !== targetSessionId) return;
 
-    // Skip if this is not an append operation
-    // An append means: new array is longer AND shares the same prefix
+    // 추가 작업이 아니면 건너뛰기
+    // 추가란: 새 array가 더 길고 동일한 prefix를 공유
     const isAppend =
       messages.length > prevMessages.length &&
       prevMessages.every((msg, i) => messages[i]?.id === msg.id);

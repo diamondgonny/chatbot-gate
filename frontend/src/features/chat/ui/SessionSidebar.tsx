@@ -35,7 +35,7 @@ export default function SessionSidebar({
 
   return (
     <div className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-full min-h-0 overflow-hidden">
-      {/* Header */}
+      {/* 헤더 */}
       <div className="p-4 border-b border-slate-800 min-h-[88px] flex items-center">
         <button
           onClick={onNewChat}
@@ -61,7 +61,7 @@ export default function SessionSidebar({
         </button>
       </div>
 
-      {/* Sessions List */}
+      {/* Session 목록 */}
       <div className="flex-1 overflow-y-auto py-2 pl-2 pr-2 scrollbar-custom">
         {sessions.length === 0 ? (
           <div className="text-slate-500 text-sm p-4 text-center">
@@ -101,7 +101,7 @@ export default function SessionSidebar({
                   <div className="text-xs text-slate-500">{formatTimeAgo(session.updatedAt)}</div>
                 </button>
 
-                {/* Delete Button */}
+                {/* 삭제 버튼 */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -132,7 +132,7 @@ export default function SessionSidebar({
         )}
       </div>
 
-      {/* Footer - height matches input area */}
+      {/* Footer - input 영역과 높이 일치 */}
       <div className="px-4 py-[30px] border-t border-slate-800">
         <a
           href="/hub"

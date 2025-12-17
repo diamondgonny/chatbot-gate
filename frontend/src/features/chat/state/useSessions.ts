@@ -9,8 +9,8 @@ import {
 import type { Session, SessionsResponse, CreateSessionResponse } from "../domain";
 
 /**
- * Service interface for dependency injection.
- * Allows testing hooks without MSW by providing mock implementations.
+ * Dependency injection을 위한 service interface
+ * Mock 구현을 제공하여 MSW 없이 hook 테스트 가능
  */
 export interface SessionServices {
   getSessions: () => Promise<SessionsResponse>;
@@ -48,7 +48,7 @@ export function useSessions(services: SessionServices = defaultServices): UseSes
   const [isCreating, setIsCreating] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
 
-  // Maintain sessions in descending updatedAt order (most recent first)
+  // updatedAt 내림차순으로 session 유지 (최신순)
   const sortSessionsByUpdatedAt = useCallback((sessionList: Session[]) => {
     return [...sessionList].sort((a, b) => {
       const timeA = new Date(a.updatedAt).getTime();
@@ -63,7 +63,7 @@ export function useSessions(services: SessionServices = defaultServices): UseSes
   const loadSessions = useCallback(async (): Promise<Session[]> => {
     try {
       const { sessions: fetchedSessions } = await services.getSessions();
-      // Sort sessions to ensure consistent order
+      // 일관된 순서 보장을 위해 session 정렬
       const sortedSessions = sortSessionsByUpdatedAt(fetchedSessions);
       setSessions(sortedSessions);
       return sortedSessions;
@@ -88,7 +88,7 @@ export function useSessions(services: SessionServices = defaultServices): UseSes
     } catch (error: unknown) {
       console.error("Error creating session:", error);
 
-      // Handle rate limit
+      // Rate limit 처리
       if (error && typeof error === "object" && "response" in error) {
         const axiosErr = error as { response?: { status?: number; data?: { error?: string; limit?: number; count?: number } } };
         if (axiosErr.response?.status === 429) {
@@ -116,7 +116,7 @@ export function useSessions(services: SessionServices = defaultServices): UseSes
     }
   }, [services]);
 
-  // Optimistically remove session from UI (before API call completes)
+  // UI에서 session을 optimistic하게 제거 (API 호출 완료 전)
   const removeSessionOptimistic = useCallback((sessionId: string) => {
     setSessions((prev) => prev.filter((s) => s.sessionId !== sessionId));
   }, []);

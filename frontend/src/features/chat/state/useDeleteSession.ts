@@ -11,19 +11,19 @@ export interface UseDeleteSessionReturn {
 
 export interface DeleteSessionConfig {
   onDelete: (sessionId: string) => Promise<void>;
-  /** Called immediately before API call - use for optimistic UI updates and navigation */
+  /** API 호출 직전에 호출 - optimistic UI 업데이트와 navigation에 사용 */
   onBeforeDelete?: (deletedSessionId: string) => void | Promise<void>;
-  /** Called if deletion fails - use for error toasts */
+  /** 삭제 실패 시 호출 - error toast에 사용 */
   onError?: (sessionId: string, error: unknown) => void;
 }
 
 /**
- * Manages delete confirmation modal state and deletion logic.
- * Implements optimistic delete pattern:
- * 1. Close modal immediately
- * 2. Execute onBeforeDelete (optimistic UI update + navigation)
- * 3. Call API in background
- * 4. Call onError if API fails
+ * 삭제 확인 modal state와 삭제 로직 관리
+ * Optimistic delete 패턴 구현:
+ * 1. Modal 즉시 닫기
+ * 2. onBeforeDelete 실행 (optimistic UI 업데이트 + navigation)
+ * 3. 백그라운드에서 API 호출
+ * 4. API 실패 시 onError 호출
  */
 export function useDeleteSession(config: DeleteSessionConfig): UseDeleteSessionReturn {
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
@@ -41,19 +41,19 @@ export function useDeleteSession(config: DeleteSessionConfig): UseDeleteSessionR
 
     const deletedId = sessionToDelete;
 
-    // 1. Close modal immediately for responsive UX
+    // 1. 반응형 UX를 위해 modal 즉시 닫기
     setSessionToDelete(null);
 
-    // 2. Execute optimistic updates and navigation
+    // 2. Optimistic 업데이트와 navigation 실행
     if (config.onBeforeDelete) {
       await config.onBeforeDelete(deletedId);
     }
 
-    // 3. Call API in background
+    // 3. 백그라운드에서 API 호출
     try {
       await config.onDelete(deletedId);
     } catch (error) {
-      // 4. Notify on error
+      // 4. Error 발생 시 알림
       console.error("Error deleting session:", error);
       if (config.onError) {
         config.onError(deletedId, error);

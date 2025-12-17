@@ -12,8 +12,8 @@ import type { SessionServices } from "./useSessions";
 import type { ChatServices } from "./useChat";
 
 /**
- * Service interfaces for dependency injection.
- * Allows testing the orchestration hook without real API calls.
+ * Dependency injection을 위한 service interface
+ * 실제 API 호출 없이 orchestration hook 테스트 가능
  */
 export interface OrchestrationServices {
   sessionServices?: SessionServices;
@@ -21,9 +21,9 @@ export interface OrchestrationServices {
 }
 
 export interface OrchestrationCallbacks {
-  /** Called when session deletion fails - use for showing error toast */
+  /** Session 삭제 실패 시 호출 - error toast 표시에 사용 */
   onDeleteError?: (message: string) => void;
-  /** Called when session creation fails - use for showing error toast */
+  /** Session 생성 실패 시 호출 - error toast 표시에 사용 */
   onCreateError?: (message: string) => void;
 }
 
@@ -58,14 +58,14 @@ export interface UseChatPageOrchestrationReturn {
 }
 
 /**
- * Orchestrates chat page state by composing focused hooks.
- * Each hook has a single responsibility.
+ * 집중된 hook들을 조합하여 chat page state 조율
+ * 각 hook은 단일 책임을 가짐
  */
 export function useChatPageOrchestration(
   services: OrchestrationServices = {},
   callbacks: OrchestrationCallbacks = {}
 ): UseChatPageOrchestrationReturn {
-  // Session management
+  // Session 관리
   const {
     sessions,
     setSessions,
@@ -97,17 +97,17 @@ export function useChatPageOrchestration(
     sendMessage,
   } = useChat(services.chatServices);
 
-  // UI: Scroll management (extracted from useChat)
+  // UI: Scroll 관리 (useChat에서 추출)
   const { messagesEndRef } = useChatScroll({
     messagesLength: messages.length,
     isTyping,
   });
 
-  // Side effect: Auto-dismiss errors
+  // Side effect: Error 자동 제거
   const clearSessionError = useCallback(() => setSessionError(null), [setSessionError]);
   useAutoError(sessionError, clearSessionError);
 
-  // Side effect: Sync messages to session list
+  // Side effect: Session list에 message 동기화
   useSyncMessageToSession({
     messages,
     targetSessionId: intendedSessionRef.current,
@@ -115,7 +115,7 @@ export function useChatPageOrchestration(
     sortSessions: sortSessionsByUpdatedAt,
   });
 
-  // Load chat history on mount
+  // Mount 시 chat history 로드
   useEffect(() => {
     const loadOnMount = async () => {
       try {
@@ -150,7 +150,7 @@ export function useChatPageOrchestration(
 
     let sessionId = currentSessionId;
 
-    // Lazily create a session if none exists
+    // Session이 없으면 지연 생성
     if (!sessionId) {
       const newSession = await handleCreateSession();
       if (!newSession) return;
@@ -214,14 +214,14 @@ export function useChatPageOrchestration(
     }
   }, [currentSessionId, setLoadingSessionId, setCurrentSessionId, loadChatHistory, setMessages, intendedSessionRef]);
 
-  // Delete session with optimistic UI pattern
+  // Optimistic UI 패턴으로 session 삭제
   const deleteConfig = useMemo(() => ({
     onDelete: deleteSessionApi,
     onBeforeDelete: async (deletedSessionId: string) => {
-      // 1. Immediately remove from UI (optimistic)
+      // 1. UI에서 즉시 제거 (optimistic)
       removeSessionOptimistic(deletedSessionId);
 
-      // 2. Navigate if deleting current session
+      // 2. 현재 session 삭제 시 이동
       if (currentSessionId === deletedSessionId) {
         const remainingSessions = sessions.filter(
           (s) => s.sessionId !== deletedSessionId

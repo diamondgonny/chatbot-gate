@@ -8,8 +8,8 @@ export interface UseChatScrollReturn {
 }
 
 /**
- * Manages scroll behavior for chat messages.
- * Handles auto-scrolling when new messages arrive.
+ * Chat message의 scroll 동작 관리
+ * 새 message 도착 시 자동 scrolling 처리
  */
 export function useChatScroll(
   dependencies: { messagesLength: number; isTyping: boolean }
@@ -20,7 +20,7 @@ export function useChatScroll(
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  // Auto-scroll on new messages or typing state change
+  // 새 message 또는 typing state 변경 시 자동 scroll
   useEffect(() => {
     scrollToBottom();
   }, [dependencies.messagesLength, dependencies.isTyping, scrollToBottom]);
