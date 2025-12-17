@@ -17,7 +17,7 @@ export function Stage1Panel({ responses, streamingContent = {}, isLoading, wasAb
   const [activeTab, setActiveTab] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Combine completed responses and streaming models
+  // 완료된 response와 streaming model 결합
   const allModels = useMemo(() => {
     const completedModels = responses.map((r) => r.model);
     const streamingModels = Object.keys(streamingContent).filter(
@@ -26,14 +26,14 @@ export function Stage1Panel({ responses, streamingContent = {}, isLoading, wasAb
     return [...completedModels, ...streamingModels];
   }, [responses, streamingContent]);
 
-  // Auto-scroll to bottom when streaming content updates
+  // Streaming content 업데이트 시 하단으로 자동 scroll
   useEffect(() => {
     if (contentRef.current) {
       contentRef.current.scrollTop = contentRef.current.scrollHeight;
     }
   }, [streamingContent]);
 
-  // Get content for active tab (completed response or streaming)
+  // 활성 tab의 content 가져오기 (완료된 response 또는 streaming)
   const activeModel = allModels[activeTab];
   const completedResponse = responses.find((r) => r.model === activeModel);
   const isStreaming = !completedResponse && !!streamingContent[activeModel];
@@ -51,7 +51,7 @@ export function Stage1Panel({ responses, streamingContent = {}, isLoading, wasAb
         </h3>
       </div>
 
-      {/* Tab buttons */}
+      {/* Tab button */}
       <div className="flex overflow-x-auto border-b border-slate-700 bg-slate-800/30">
         {allModels.map((model, index) => {
           const isModelStreaming = !responses.find((r) => r.model === model);

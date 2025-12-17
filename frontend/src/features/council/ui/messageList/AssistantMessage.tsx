@@ -1,6 +1,6 @@
 /**
  * Assistant Message Component
- * Displays a completed assistant message with all three stages
+ * 3개 stage가 모두 포함된 완료된 assistant message 표시
  */
 
 "use client";
@@ -17,9 +17,6 @@ interface AssistantMessageProps {
   message: CouncilAssistantMessage;
 }
 
-/**
- * Aborted indicator banner
- */
 function AbortedIndicator() {
   return (
     <div className="bg-red-900/20 border border-red-700/30 rounded-lg px-4 py-2 flex items-center gap-2">
@@ -44,7 +41,7 @@ function AbortedIndicator() {
 }
 
 export const AssistantMessage = memo(function AssistantMessage({ message }: AssistantMessageProps) {
-  // Compute display data from message using domain layer
+  // Domain layer를 사용하여 message로부터 표시 데이터 계산
   const { labelToModel, aggregateRankings } = computeMessageDisplayData(message);
 
   return (
@@ -53,13 +50,13 @@ export const AssistantMessage = memo(function AssistantMessage({ message }: Assi
       animate={{ opacity: 1, y: 0 }}
       className="space-y-4"
     >
-      {/* Aborted message indicator */}
+      {/* 중단된 message 표시 */}
       {message.wasAborted && <AbortedIndicator />}
 
-      {/* Stage 1: Individual responses */}
+      {/* Stage 1: 개별 response */}
       <Stage1Panel responses={message.stage1} />
 
-      {/* Stage 2: Peer reviews */}
+      {/* Stage 2: Peer review */}
       {message.stage2 && message.stage2.length > 0 && (
         <Stage2Panel
           reviews={message.stage2}

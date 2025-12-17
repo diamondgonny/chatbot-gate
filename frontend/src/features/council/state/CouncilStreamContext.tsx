@@ -1,7 +1,7 @@
 /**
  * Council Stream Context
- * Isolated context for streaming state to prevent unnecessary re-renders
- * when messages or status changes.
+ * Message나 status 변경 시 불필요한 re-render를 방지하기 위해
+ * streaming state를 분리된 context로 관리
  */
 
 "use client";
@@ -22,9 +22,6 @@ import type {
 } from "../domain";
 import type { CurrentStage, StreamState } from "../domain";
 
-/**
- * Stream context value shape
- */
 export interface CouncilStreamContextValue {
   // State
   currentStage: CurrentStage;
@@ -45,21 +42,18 @@ export interface CouncilStreamContextValue {
   resetStreamState: () => void;
 }
 
-// Create context with undefined default
+// undefined 기본값으로 context 생성
 const CouncilStreamContext = createContext<
   CouncilStreamContextValue | undefined
 >(undefined);
 
-/**
- * Props for CouncilStreamProvider
- */
 interface CouncilStreamProviderProps {
   children: ReactNode;
 }
 
 /**
- * Council Stream Provider
- * Provides isolated streaming state to prevent re-renders from messages/status changes
+ * Message/status 변경으로 인한 re-render를 방지하기 위해
+ * 분리된 streaming state 제공
  */
 export function CouncilStreamProvider({
   children,
@@ -85,7 +79,7 @@ export function CouncilStreamProvider({
   );
 
   /**
-   * Update multiple stream state fields at once
+   * 여러 stream state field를 한 번에 업데이트
    */
   const updateStreamState = useCallback((partial: Partial<StreamState>) => {
     if (partial.currentStage !== undefined) {
@@ -121,7 +115,7 @@ export function CouncilStreamProvider({
   }, []);
 
   /**
-   * Update streaming content for a specific model (replace)
+   * 특정 model의 streaming content 업데이트 (교체)
    */
   const updateStreamContent = useCallback((model: string, content: string) => {
     setStage1StreamingContent((prev) => ({
@@ -131,7 +125,7 @@ export function CouncilStreamProvider({
   }, []);
 
   /**
-   * Append delta to streaming content for a specific model
+   * 특정 model의 streaming content에 delta 추가
    */
   const appendStreamContent = useCallback((model: string, delta: string) => {
     setStage1StreamingContent((prev) => ({
@@ -141,7 +135,7 @@ export function CouncilStreamProvider({
   }, []);
 
   /**
-   * Reset all stream state to initial values
+   * 모든 stream state를 초기값으로 리셋
    */
   const resetStreamState = useCallback(() => {
     setCurrentStage("idle");
@@ -199,8 +193,7 @@ export function CouncilStreamProvider({
 }
 
 /**
- * Hook to access council stream context
- * Must be used within a CouncilStreamProvider
+ * CouncilStreamProvider 내에서만 사용 가능
  */
 export function useCouncilStreamContext(): CouncilStreamContextValue {
   const context = useContext(CouncilStreamContext);

@@ -27,7 +27,7 @@ export function Stage3Panel({
   const isThinking = !synthesis && !!streamingReasoning;
   const displayContent = synthesis?.response || streamingContent;
   const displayReasoning = synthesis?.reasoning || streamingReasoning;
-  // Consider complete only if synthesis exists AND responseTimeMs > 0 (0ms indicates abort)
+  // Synthesis가 존재하고 responseTimeMs > 0인 경우에만 완료로 간주 (0ms는 중단을 나타냄)
   const isComplete = !!synthesis && (synthesis.responseTimeMs ?? 0) > 0;
 
   if (!synthesis && !streamingContent && !streamingReasoning && !isLoading) {
@@ -63,7 +63,7 @@ export function Stage3Panel({
       </div>
 
       <div className="p-4">
-        {/* Reasoning Section (Collapsible) */}
+        {/* Reasoning Section (접기 가능) */}
         {displayReasoning && (
           <div className="mb-4">
             <button

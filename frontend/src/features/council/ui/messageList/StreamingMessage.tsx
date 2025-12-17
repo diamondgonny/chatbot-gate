@@ -1,6 +1,6 @@
 /**
  * Streaming Message Component
- * Displays the current in-progress message with streaming content
+ * Streaming content와 함께 현재 진행 중인 message 표시
  */
 
 "use client";
@@ -12,9 +12,6 @@ import { Stage1Panel } from "../Stage1Panel";
 import { Stage2Panel } from "../Stage2Panel";
 import { Stage3Panel } from "../Stage3Panel";
 
-/**
- * Aborted indicator banner
- */
 function AbortedIndicator() {
   return (
     <div className="bg-red-900/20 border border-red-700/30 rounded-lg px-4 py-2 flex items-center gap-2">
@@ -39,7 +36,7 @@ function AbortedIndicator() {
 }
 
 export function StreamingMessage() {
-  // Stream state → 분리된 context (리렌더 최적화)
+  // Stream state → 분리된 context (re-render 최적화)
   const {
     currentStage,
     stage1Responses,
@@ -56,7 +53,7 @@ export function StreamingMessage() {
   // Status state → 분리된 context
   const { isProcessing, wasAborted } = useCouncilStatusContext();
 
-  // Only render if processing or was just aborted
+  // 처리 중이거나 방금 중단된 경우에만 render
   if (!isProcessing && !wasAborted) {
     return null;
   }
@@ -78,10 +75,10 @@ export function StreamingMessage() {
       animate={{ opacity: 1 }}
       className="space-y-4"
     >
-      {/* Aborted indicator */}
+      {/* 중단 표시 */}
       {wasAborted && !isProcessing && <AbortedIndicator />}
 
-      {/* Stage progress indicator */}
+      {/* Stage 진행 표시 */}
       <StageProgress
         currentStage={currentStage}
         stage1Count={

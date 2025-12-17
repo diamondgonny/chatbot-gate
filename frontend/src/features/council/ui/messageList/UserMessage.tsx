@@ -1,6 +1,6 @@
 /**
  * User Message Component
- * Displays a user message in the chat
+ * Chat에서 user message 표시
  */
 
 "use client";

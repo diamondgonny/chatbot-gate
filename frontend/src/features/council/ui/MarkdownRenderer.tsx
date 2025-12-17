@@ -18,15 +18,15 @@ interface MarkdownRendererProps {
 }
 
 /**
- * Normalize escaped newlines from API responses
- * Some models (e.g., Gemini) return reasoning with literal \n instead of actual newlines
+ * API response의 이스케이프된 newline 정규화
+ * 일부 model(예: Gemini)은 실제 newline 대신 문자 그대로 \n을 반환
  */
 function normalizeNewlines(text: string): string {
   return text.replace(/\\n/g, "\n");
 }
 
 /**
- * Copy button component for code blocks
+ * Code block용 복사 버튼 component
  */
 function CopyButton({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
@@ -64,7 +64,7 @@ export function MarkdownRenderer({
             const language = match ? match[1] : "";
             const codeString = String(children).replace(/\n$/, "");
 
-            // Check if it's a code block (has language) or inline code
+            // Code block(언어 있음)인지 inline code인지 확인
             const isCodeBlock = match || codeString.includes("\n");
 
             if (isCodeBlock) {

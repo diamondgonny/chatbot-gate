@@ -1,6 +1,6 @@
 /**
  * Message List Component
- * Main container for displaying all messages in a council chat
+ * Council chat의 모든 message를 표시하는 main container
  */
 
 "use client";
@@ -14,18 +14,12 @@ import { PendingMessage } from "./PendingMessage";
 import { StreamingMessage } from "./StreamingMessage";
 import { ErrorMessage } from "./ErrorMessage";
 
-/**
- * Type guard for assistant messages
- */
 function isAssistantMessage(
   msg: CouncilMessage
 ): msg is CouncilAssistantMessage {
   return msg.role === "assistant";
 }
 
-/**
- * Empty state component
- */
 function EmptyState() {
   return (
     <div className="flex items-center justify-center h-full">
@@ -41,7 +35,7 @@ function EmptyState() {
 }
 
 /**
- * Loading state component - returns null for clean UX during brief loading
+ * 짧은 loading 중 깔끔한 UX를 위해 null 반환
  */
 function LoadingState() {
   return null;
@@ -62,7 +56,7 @@ export function MessageList() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Scroll to bottom when content changes
+  // Content 변경 시 하단으로 scroll
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, []);
@@ -78,12 +72,12 @@ export function MessageList() {
     scrollToBottom,
   ]);
 
-  // Show loading state
+  // Loading state 표시
   if (isLoading) {
     return <LoadingState />;
   }
 
-  // Show empty state (hide when input is expanded/multiline)
+  // Empty state 표시 (input이 expanded/multiline일 때는 숨김)
   const isEmpty = messages.length === 0 && !pendingMessage && !isProcessing;
   if (isEmpty && error) {
     return (
@@ -93,19 +87,19 @@ export function MessageList() {
     );
   }
 
-  // Show empty state only for new/empty sessions (not during input expansion)
+  // 새/비어있는 session에서만 empty state 표시 (input expansion 중에는 아님)
   if (isEmpty && !isInputExpanded) {
     return <EmptyState />;
   }
 
-  // Return null when empty but input is expanded (user typing multiline)
+  // 비어있지만 input이 expanded되면 null 반환 (사용자가 multiline 입력 중)
   if (isEmpty) {
     return null;
   }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Existing messages */}
+      {/* 기존 message */}
       {messages.map((message, index) =>
         message.role === "user" ? (
           <UserMessage key={`user-${index}`} message={message} />
@@ -114,10 +108,10 @@ export function MessageList() {
         ) : null
       )}
 
-      {/* Pending message (waiting for confirmation) */}
+      {/* Pending message (확인 대기 중) */}
       <PendingMessage />
 
-      {/* Current streaming message */}
+      {/* 현재 streaming 중인 message */}
       <StreamingMessage />
 
       {/* Error message */}

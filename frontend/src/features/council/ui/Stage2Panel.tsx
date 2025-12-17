@@ -17,8 +17,8 @@ interface Stage2PanelProps {
 }
 
 /**
- * Replace "Response X" labels with actual model names for markdown rendering
- * Uses word boundary to avoid matching inside words (e.g., "Evaluations")
+ * Markdown rendering을 위해 "Response X" 레이블을 실제 model 이름으로 교체
+ * 단어 경계를 사용하여 단어 내부 매칭 방지 (예: "Evaluations")
  */
 function deAnonymizeForMarkdown(
   text: string,
@@ -42,10 +42,10 @@ export function Stage2Panel({
   hideResults = false,
   wasAborted,
 }: Stage2PanelProps) {
-  // Tab index: 0 = Results, 1+ = individual reviews
+  // Tab index: 0 = Results, 1+ = 개별 review
   const [activeTab, setActiveTab] = useState(0);
 
-  // Combine completed reviews and streaming models
+  // 완료된 review와 streaming model 결합
   const allModels = useMemo(() => {
     const completedModels = reviews.map((r) => r.model);
     const streamingModels = Object.keys(streamingContent).filter(
@@ -54,10 +54,10 @@ export function Stage2Panel({
     return [...completedModels, ...streamingModels];
   }, [reviews, streamingContent]);
 
-  // Reset tab when reviews change or hideResults changes
+  // Review 변경이나 hideResults 변경 시 tab 리셋
   useEffect(() => {
-    // If results are hidden, default to first model tab (index 0 without results tab)
-    // Otherwise, default to Results tab (index 0)
+    // Result가 숨겨진 경우 첫 번째 model tab으로 기본 설정 (results tab 없이 index 0)
+    // 그렇지 않으면 Results tab으로 기본 설정 (index 0)
     // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional reset on data change
     setActiveTab(0);
   }, [reviews.length, hideResults]);
@@ -91,9 +91,9 @@ export function Stage2Panel({
         </p>
       </div>
 
-      {/* Tab buttons */}
+      {/* Tab button */}
       <div className="flex overflow-x-auto border-b border-slate-700 bg-slate-800/30">
-        {/* Results tab (first) */}
+        {/* Results tab (첫 번째) */}
         {hasResults && (
           <button
             onClick={() => setActiveTab(0)}
@@ -184,7 +184,7 @@ export function Stage2Panel({
           </motion.div>
         )}
 
-        {/* Individual review tab content */}
+        {/* 개별 review tab content */}
         {(() => {
           const reviewIndex = hasResults ? activeTab - 1 : activeTab;
           const isReviewTab = hasResults ? activeTab > 0 : activeTab >= 0;
@@ -223,7 +223,7 @@ export function Stage2Panel({
                 )}
               </div>
 
-              {/* De-anonymized review text with Markdown */}
+              {/* 익명 해제된 review 텍스트와 Markdown */}
               <div>
                 <MarkdownRenderer
                   content={deAnonymizeForMarkdown(activeContent, labelToModel)}

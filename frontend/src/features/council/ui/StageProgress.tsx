@@ -23,12 +23,12 @@ export function StageProgress({
     { id: "stage3", label: "Final Synthesis", count: hasStage3 ? 1 : 0 },
   ];
 
-  // Determine which stage was aborted (if any)
+  // 어느 stage가 중단되었는지 판단 (있는 경우)
   const getAbortedStageIndex = (): number => {
     if (!wasAborted) return -1;
-    if (hasStage3) return 2;  // stage3 aborted
-    if (stage2Count > 0) return 1;  // stage2 aborted
-    return 0;  // stage1 aborted
+    if (hasStage3) return 2;  // stage3 중단
+    if (stage2Count > 0) return 1;  // stage2 중단
+    return 0;  // stage1 중단
   };
 
   const abortedStageIndex = getAbortedStageIndex();
@@ -39,7 +39,7 @@ export function StageProgress({
     const stageIndex = stageOrder.indexOf(stageId);
 
     if (currentStage === "idle") {
-      // Check if stage has data
+      // Stage에 데이터가 있는지 확인
       if (stageId === "stage1" && stage1Count > 0) return "completed";
       if (stageId === "stage2" && stage2Count > 0) return "completed";
       if (stageId === "stage3" && hasStage3) return "completed";
@@ -51,7 +51,7 @@ export function StageProgress({
     return "pending";
   };
 
-  // Determine if this stage is the one that was aborted
+  // 이 stage가 중단된 stage인지 판단
   const isAbortedStage = (stageIndex: number): boolean => {
     return wasAborted && stageIndex === abortedStageIndex;
   };
@@ -62,7 +62,7 @@ export function StageProgress({
         const status = getStageStatus(stage.id);
         const aborted = isAbortedStage(index);
 
-        // Determine background color
+        // 배경색 결정
         const getBgColor = () => {
           if (status === "completed") {
             if (aborted) return "bg-red-500";
@@ -72,7 +72,7 @@ export function StageProgress({
           return "bg-slate-700";
         };
 
-        // Determine text color
+        // 텍스트 색상 결정
         const getTextColor = () => {
           if (status === "completed" || status === "active") return "text-white";
           return "text-slate-400";

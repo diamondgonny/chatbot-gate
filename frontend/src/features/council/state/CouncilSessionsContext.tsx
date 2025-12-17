@@ -1,7 +1,7 @@
 /**
  * Council Sessions Context Provider
- * Manages session list state separately from individual session state
- * This allows the sidebar to persist across session navigation
+ * Session navigation 간에도 sidebar가 유지되도록
+ * session list state를 개별 session state와 분리하여 관리
  */
 
 "use client";
@@ -10,9 +10,6 @@ import { createContext, useContext, type ReactNode } from "react";
 import { useCouncilSessions as useCouncilSessionsHook } from "./useCouncilSessions";
 import type { CouncilSession } from "../domain";
 
-/**
- * Council sessions context value shape
- */
 export interface CouncilSessionsContextValue {
   sessions: CouncilSession[];
   isLoading: boolean;
@@ -21,32 +18,28 @@ export interface CouncilSessionsContextValue {
   loadSessions: () => Promise<void>;
   createSession: () => Promise<string | null>;
   removeSession: (sessionId: string) => Promise<boolean>;
-  /** Optimistically remove session from UI (returns the removed session for potential restore) */
+  /** UI에서 낙관적으로 session 제거 (복원 가능하도록 제거된 session 반환) */
   removeSessionOptimistic: (sessionId: string) => CouncilSession | null;
-  /** Restore a session to the UI (e.g., after failed deletion) */
+  /** UI에 session 복원 (예: 삭제 실패 후) */
   restoreSession: (session: CouncilSession) => void;
-  /** Delete session API call only (without UI update) */
+  /** API 호출만 수행 (UI 업데이트 없음) */
   deleteSessionApi: (sessionId: string) => Promise<void>;
   updateSessionTitle: (sessionId: string, title: string) => void;
   updateSessionTimestamp: (sessionId: string) => void;
 }
 
-// Create context with undefined default (must be used within provider)
+// Provider 내에서만 사용 가능 (undefined 기본값)
 const CouncilSessionsContext = createContext<
   CouncilSessionsContextValue | undefined
 >(undefined);
 
-/**
- * Props for CouncilSessionsProvider
- */
 interface CouncilSessionsProviderProps {
   children: ReactNode;
 }
 
 /**
- * Council Sessions Provider component
- * Wraps children with session list state
- * Place this at the layout level to persist sessions across page navigation
+ * Page navigation 간 session을 유지하기 위해
+ * layout 레벨에 배치
  */
 export function CouncilSessionsProvider({
   children,
@@ -61,8 +54,7 @@ export function CouncilSessionsProvider({
 }
 
 /**
- * Hook to access council sessions context
- * Must be used within a CouncilSessionsProvider
+ * CouncilSessionsProvider 내에서만 사용 가능
  */
 export function useCouncilSessionsContext(): CouncilSessionsContextValue {
   const context = useContext(CouncilSessionsContext);

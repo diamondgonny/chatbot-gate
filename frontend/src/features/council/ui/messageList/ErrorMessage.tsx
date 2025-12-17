@@ -1,6 +1,6 @@
 /**
  * Error Message Component
- * Displays error messages with dismiss button
+ * 해제 버튼과 함께 error message 표시
  */
 
 "use client";

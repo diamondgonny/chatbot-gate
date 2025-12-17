@@ -1,7 +1,7 @@
 /**
  * Council Status Context
- * Isolated context for status flags to prevent unnecessary re-renders
- * when messages or stream changes.
+ * Message나 stream 변경 시 불필요한 re-render를 방지하기 위해
+ * status flag를 분리된 context로 관리
  */
 
 "use client";
@@ -15,9 +15,6 @@ import {
   type ReactNode,
 } from "react";
 
-/**
- * Status context value shape
- */
 export interface CouncilStatusContextValue {
   // State
   isProcessing: boolean;
@@ -37,21 +34,18 @@ export interface CouncilStatusContextValue {
   resetStatus: () => void;
 }
 
-// Create context with undefined default
+// undefined 기본값으로 context 생성
 const CouncilStatusContext = createContext<
   CouncilStatusContextValue | undefined
 >(undefined);
 
-/**
- * Props for CouncilStatusProvider
- */
 interface CouncilStatusProviderProps {
   children: ReactNode;
 }
 
 /**
- * Council Status Provider
- * Provides isolated status state to prevent re-renders from messages/stream changes
+ * Message/stream 변경으로 인한 re-render를 방지하기 위해
+ * 분리된 status state 제공
  */
 export function CouncilStatusProvider({
   children,
@@ -132,8 +126,7 @@ export function CouncilStatusProvider({
 }
 
 /**
- * Hook to access council status context
- * Must be used within a CouncilStatusProvider
+ * CouncilStatusProvider 내에서만 사용 가능
  */
 export function useCouncilStatusContext(): CouncilStatusContextValue {
   const context = useContext(CouncilStatusContext);

@@ -1,6 +1,6 @@
 /**
  * Pending Message Component
- * Displays a user message that's waiting for confirmation
+ * 확인 대기 중인 user message 표시
  */
 
 "use client";
