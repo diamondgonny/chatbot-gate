@@ -1,6 +1,6 @@
 /**
- * SSE Broadcaster
- * Broadcasts events to connected SSE clients.
+ * SSE 브로드캐스터
+ * 연결된 SSE 클라이언트에 이벤트 브로드캐스트
  */
 
 import type { SSEEvent } from '@shared';
@@ -8,7 +8,7 @@ import { ActiveProcessing } from './sseJobTracker';
 
 export class SSEBroadcaster {
   /**
-   * Broadcast event to all connected clients
+   * 연결된 모든 클라이언트에 이벤트 브로드캐스트
    */
   broadcast(processing: ActiveProcessing, event: SSEEvent): void {
     const eventData = `data: ${JSON.stringify(event)}\n\n`;

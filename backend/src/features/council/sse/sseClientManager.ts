@@ -1,6 +1,6 @@
 /**
- * SSE Client Manager
- * Manages SSE client connections.
+ * SSE 클라이언트 매니저
+ * SSE 클라이언트 연결 관리
  */
 
 import { Response } from 'express';
@@ -8,7 +8,7 @@ import { ActiveProcessing } from './sseJobTracker';
 
 export class SSEClientManager {
   /**
-   * Add client to processing
+   * 처리에 클라이언트 추가
    */
   addClient(processing: ActiveProcessing, client: Response): void {
     processing.clients.add(client);
@@ -18,7 +18,7 @@ export class SSEClientManager {
   }
 
   /**
-   * Remove client from processing
+   * 처리에서 클라이언트 제거
    */
   removeClient(processing: ActiveProcessing, client: Response): boolean {
     const deleted = processing.clients.delete(client);
@@ -31,8 +31,8 @@ export class SSEClientManager {
   }
 
   /**
-   * Close all connected clients
-   * @returns Number of clients that were closed
+   * 연결된 모든 클라이언트 닫기
+   * @returns 닫힌 클라이언트 수
    */
   closeAllClients(processing: ActiveProcessing): number {
     const count = processing.clients.size;
@@ -46,14 +46,14 @@ export class SSEClientManager {
   }
 
   /**
-   * Get client count
+   * 클라이언트 수 가져오기
    */
   getClientCount(processing: ActiveProcessing): number {
     return processing.clients.size;
   }
 
   /**
-   * Check if there are any connected clients
+   * 연결된 클라이언트가 있는지 확인
    */
   hasClients(processing: ActiveProcessing): boolean {
     return processing.clients.size > 0;

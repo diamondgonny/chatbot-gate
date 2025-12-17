@@ -1,42 +1,42 @@
-// Re-export from shared/observability for backward compatibility
+// 하위 호환성을 위해 shared/observability에서 재export
 export {
   register,
   getDeploymentEnv,
   stopMetricsCollection,
-  // HTTP Metrics
+  // HTTP 메트릭
   httpRequestsTotal,
   httpRequestDuration,
   httpRequestsInProgress,
-  // Business Metrics - Gate
+  // 비즈니스 메트릭 - Gate
   gateAuthAttempts,
-  // Business Metrics - Chat
+  // 비즈니스 메트릭 - Chat
   chatMessagesTotal,
   chatMessageDuration,
-  // Business Metrics - Sessions
+  // 비즈니스 메트릭 - Sessions
   activeSessions,
   sessionOperations,
-  // Infrastructure Metrics - MongoDB
+  // 인프라 메트릭 - MongoDB
   mongoConnectionState,
-  // Infrastructure Metrics - OpenAI
+  // 인프라 메트릭 - OpenAI
   openaiApiCalls,
   openaiApiDuration,
   openaiTokensUsed,
-  // Infrastructure Metrics - Rate Limiting
+  // 인프라 메트릭 - Rate Limiting
   rateLimitHits,
-  // Business Metrics - Council
+  // 비즈니스 메트릭 - Council
   councilMessagesTotal,
   councilSessionsTotal,
   councilStageDuration,
   councilSseConnections,
   councilAbortsTotal,
-  // Infrastructure Metrics - OpenRouter
+  // 인프라 메트릭 - OpenRouter
   openrouterApiCalls,
   openrouterResponseTime,
   openrouterTokensUsed,
 } from '@shared/observability';
 
-// Middleware
+// 미들웨어
 export { metricsMiddleware } from './metrics.middleware';
 
-// Routes
+// 라우트
 export { default as metricsRoutes } from './routes/metrics.routes';

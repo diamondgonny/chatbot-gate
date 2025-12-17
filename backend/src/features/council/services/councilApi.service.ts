@@ -1,6 +1,6 @@
 /**
- * Council API Service
- * Council-specific OpenRouter API functions for multi-model orchestration.
+ * Council API 서비스
+ * 멀티 모델 오케스트레이션을 위한 Council 전용 OpenRouter API 함수
  */
 
 import {
@@ -39,15 +39,15 @@ export interface ModelStreamComplete {
 export type ModelStreamEvent = ModelStreamChunk | ModelStreamComplete;
 
 /**
- * Query multiple council models in parallel
- * Returns successful responses, gracefully handling individual failures
+ * 여러 council 모델을 병렬로 쿼리
+ * 개별 실패를 정상적으로 처리하며 성공한 응답 반환
  */
 export const queryCouncilModels = async (
   messages: OpenRouterMessage[],
   mode: CouncilMode = 'lite',
   signal?: AbortSignal
 ): Promise<ModelResponse[]> => {
-  // If already aborted, return empty array immediately
+  // 이미 중단된 경우 즉시 빈 배열 반환
   if (signal?.aborted) {
     return [];
   }
@@ -86,7 +86,7 @@ export const queryCouncilModels = async (
 };
 
 /**
- * Query the chairman model for final synthesis
+ * 최종 통합을 위해 chairman 모델 쿼리
  */
 export const queryChairman = async (
   messages: OpenRouterMessage[],
@@ -99,7 +99,7 @@ export const queryChairman = async (
     messages,
     COUNCIL.CHAIRMAN_MAX_TOKENS,
     signal,
-    COUNCIL.STAGE3_TIMEOUT_MS  // Chairman gets 5 min timeout
+    COUNCIL.STAGE3_TIMEOUT_MS  // Chairman은 5분 timeout
   );
   return {
     model: chairmanModel,
@@ -110,12 +110,12 @@ export const queryChairman = async (
   };
 };
 
-// Batching configuration
+// 배칭 설정
 const BATCH_INTERVAL_MS = 50;
 
 /**
- * Query multiple council models in parallel with streaming
- * Yields chunks from all models as they arrive (batched for efficiency)
+ * 스트리밍으로 여러 council 모델을 병렬로 쿼리
+ * 도착하는 모든 모델의 청크를 효율성을 위해 배칭하여 yield
  */
 export async function* queryCouncilModelsStreaming(
   messages: OpenRouterMessage[],
@@ -138,7 +138,7 @@ export async function* queryCouncilModelsStreaming(
   type StreamPromiseResult = { stream: StreamState; result: IteratorResult<StreamEvent, void> };
 
   const models = getModelsForMode(mode);
-  // Initialize streams for all models
+  // 모든 모델에 대한 스트림 초기화
   const streams: StreamState[] = models.map((model) => ({
     model,
     generator: chatCompletionStream(model, messages, COUNCIL.MAX_TOKENS, signal, timeoutMs),
@@ -147,7 +147,7 @@ export async function* queryCouncilModelsStreaming(
     pendingChunks: [],
   }));
 
-  // Helper to create a promise for a stream's next chunk
+  // 스트림의 다음 청크에 대한 promise 생성 헬퍼
   const createPromiseForStream = (stream: StreamState): Promise<StreamPromiseResult> => {
     return stream.generator.next().then(
       (result) => ({ stream, result }),
@@ -158,10 +158,10 @@ export async function* queryCouncilModelsStreaming(
     );
   };
 
-  // Track pending promises per stream (key = model name)
+  // 스트림별 대기 중인 promise 추적 (key = 모델 이름)
   const pendingPromises = new Map<string, Promise<StreamPromiseResult>>();
 
-  // Initialize pending promises for all streams
+  // 모든 스트림에 대한 대기 중인 promise 초기화
   for (const stream of streams) {
     pendingPromises.set(stream.model, createPromiseForStream(stream));
   }
@@ -169,7 +169,7 @@ export async function* queryCouncilModelsStreaming(
   let activeStreams = streams.length;
   let lastFlush = Date.now();
 
-  // Helper to flush batched chunks
+  // 배칭된 청크를 플러시하는 헬퍼
   const flushBatch = function* (): Generator<ModelStreamEvent> {
     for (const stream of streams) {
       if (stream.pendingChunks.length > 0) {
@@ -181,31 +181,31 @@ export async function* queryCouncilModelsStreaming(
     lastFlush = Date.now();
   };
 
-  // Process all streams concurrently
+  // 모든 스트림을 동시에 처리
   while (activeStreams > 0) {
     if (signal?.aborted) return;
 
-    // Get all pending promises
+    // 모든 대기 중인 promise 가져오기
     const promiseArray = Array.from(pendingPromises.values());
     if (promiseArray.length === 0) break;
 
-    // Wait for any stream to yield
+    // 어떤 스트림이든 yield할 때까지 대기
     const { stream, result } = await Promise.race(promiseArray);
 
-    // Remove the resolved promise from tracking
+    // 추적에서 해결된 promise 제거
     pendingPromises.delete(stream.model);
 
     if (result.done) {
       stream.done = true;
       activeStreams--;
 
-      // Flush any remaining chunks for this model
+      // 이 모델의 남은 청크 플러시
       if (stream.pendingChunks.length > 0) {
         yield { model: stream.model, delta: stream.pendingChunks.join('') };
         stream.pendingChunks = [];
       }
 
-      // Yield completion event
+      // 완료 이벤트 yield
       yield {
         model: stream.model,
         done: true,
@@ -217,32 +217,32 @@ export async function* queryCouncilModelsStreaming(
       const event = result.value;
 
       if ('delta' in event) {
-        // Batch chunks
+        // 청크 배칭
         stream.pendingChunks.push(event.delta);
 
-        // Flush if batch interval exceeded
+        // 배치 간격 초과 시 플러시
         if (Date.now() - lastFlush >= BATCH_INTERVAL_MS) {
           yield* flushBatch();
         }
       } else if ('done' in event) {
-        // Store usage for completion event
+        // 완료 이벤트를 위한 사용량 저장
         stream.promptTokens = event.promptTokens;
         stream.completionTokens = event.completionTokens;
       }
 
-      // Create a new promise ONLY for the stream that just resolved
+      // 방금 해결된 스트림에 대해서만 새 promise 생성
       pendingPromises.set(stream.model, createPromiseForStream(stream));
     }
 
-    // Yield remaining batches periodically
+    // 주기적으로 남은 배치 yield
     if (Date.now() - lastFlush >= BATCH_INTERVAL_MS) {
       yield* flushBatch();
     }
   }
 
-  // Final flush
+  // 최종 플러시
   yield* flushBatch();
 }
 
-// Re-export chatCompletionStreamWithReasoning for Stage 3 (chairman with reasoning)
+// Stage 3 (reasoning 포함 chairman)을 위한 chatCompletionStreamWithReasoning 재export
 export { chatCompletionStreamWithReasoning } from '@shared';

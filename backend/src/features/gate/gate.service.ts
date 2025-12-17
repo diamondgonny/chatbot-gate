@@ -1,6 +1,6 @@
 /**
- * Gate Service
- * Handles authentication logic: code validation, backoff management, and logging.
+ * Gate 서비스
+ * 인증 로직 처리: 코드 검증, backoff 관리 및 로깅
  */
 
 import { appendFileSync } from 'fs';
@@ -10,13 +10,13 @@ import { config, BACKOFF, signToken } from '@shared';
 import type { BackoffCheckResult, FailureBucket } from '@shared';
 import { gateAuthAttempts, getDeploymentEnv } from '@shared';
 
-// In-memory storage for failure tracking
+// 실패 추적을 위한 메모리 내 스토리지
 const failureBuckets = new Map<string, FailureBucket>();
 
 const nowMs = () => Date.now();
 
-// Periodic cleanup to prevent memory leaks from IP churn
-const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+// IP 변경으로 인한 메모리 누수 방지를 위한 주기적 정리
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5분
 setInterval(() => {
   const now = nowMs();
   for (const [ip, bucket] of failureBuckets) {
@@ -27,13 +27,13 @@ setInterval(() => {
 }, CLEANUP_INTERVAL_MS).unref();
 
 /**
- * Get the current failure bucket for an IP, with automatic decay
+ * IP에 대한 현재 실패 버킷 가져오기, 자동 감쇠 적용
  */
 const getBucket = (ip: string): FailureBucket => {
   const existing = failureBuckets.get(ip);
   if (!existing) return { count: 0, lastFail: 0 };
 
-  // Decay if outside window - also delete stale entry
+  // 윈도우 밖이면 감쇠 - 오래된 엔트리도 삭제
   if (nowMs() - existing.lastFail > BACKOFF.FAILURE_WINDOW_MS) {
     failureBuckets.delete(ip);
     return { count: 0, lastFail: 0 };
@@ -42,14 +42,14 @@ const getBucket = (ip: string): FailureBucket => {
 };
 
 /**
- * Validate access code against allowed codes
+ * 허용된 코드에 대해 접근 코드 검증
  */
 export const validateCode = (code: string): boolean => {
   return config.validCodes.includes(code);
 };
 
 /**
- * Check if IP is within backoff period
+ * IP가 backoff 기간 내에 있는지 확인
  */
 export const checkBackoff = (ip: string): BackoffCheckResult => {
   const bucket = getBucket(ip);
@@ -68,8 +68,8 @@ export const checkBackoff = (ip: string): BackoffCheckResult => {
 };
 
 /**
- * Record a failed authentication attempt
- * Returns whether IP is now in backoff state
+ * 실패한 인증 시도 기록
+ * IP가 이제 backoff 상태인지 여부 반환
  */
 export const recordFailure = (ip: string): BackoffCheckResult => {
   const bucket = getBucket(ip);
@@ -92,28 +92,28 @@ export const recordFailure = (ip: string): BackoffCheckResult => {
 };
 
 /**
- * Clear failure record for an IP (after successful auth)
+ * IP의 실패 기록 정리 (성공적인 인증 후)
  */
 export const clearFailure = (ip: string): void => {
   failureBuckets.delete(ip);
 };
 
 /**
- * Generate a new user ID
+ * 새 사용자 ID 생성
  */
 export const generateUserId = (): string => {
   return randomUUID();
 };
 
 /**
- * Create JWT token for user
+ * 사용자를 위한 JWT token 생성
  */
 export const createAuthToken = (userId: string): string => {
   return signToken(userId);
 };
 
 /**
- * Log backoff event to file
+ * backoff 이벤트를 파일에 로깅
  */
 export const logBackoffEvent = (
   ip: string,
@@ -126,12 +126,12 @@ export const logBackoffEvent = (
     const entry = `[${new Date().toISOString()}] ip=${ip} reason=${reason} retryAfter=${retryAfter}s failures=${failures}\n`;
     appendFileSync(logPath, entry);
   } catch {
-    // Fail silently; logging should not break flow
+    // 조용히 실패; 로깅이 흐름을 방해해서는 안 됨
   }
 };
 
 /**
- * Record authentication attempt metric
+ * 인증 시도 메트릭 기록
  */
 export const recordAuthMetric = (
   status: 'success' | 'failure' | 'backoff'

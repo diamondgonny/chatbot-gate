@@ -1,6 +1,6 @@
 /**
- * Council Persistence Service
- * Handles database operations for council messages.
+ * Council 영속성 서비스
+ * Council 메시지의 데이터베이스 작업 처리
  */
 
 import {
@@ -12,8 +12,8 @@ import {
 } from '@shared';
 
 /**
- * Save an aborted council message with partial results
- * Only saves if at least some stage1 results exist
+ * 부분 결과를 포함한 중단된 council 메시지 저장
+ * 최소한 일부 stage1 결과가 존재할 때만 저장
  */
 export const saveAbortedMessage = async (
   session: ICouncilSession,
@@ -24,7 +24,7 @@ export const saveAbortedMessage = async (
   stage3Content: string | null,
   stage3Reasoning?: string | null
 ): Promise<boolean> => {
-  // Only save if we have at least some stage1 results
+  // 최소한 일부 stage1 결과가 있을 때만 저장
   if (stage1.length === 0) {
     console.log('[Council] No results to save on abort');
     return false;
@@ -53,7 +53,7 @@ export const saveAbortedMessage = async (
 };
 
 /**
- * Save a complete council message with all stage results
+ * 모든 stage 결과를 포함한 완전한 council 메시지 저장
  */
 export const saveCompleteMessage = async (
   session: ICouncilSession,
@@ -71,7 +71,7 @@ export const saveCompleteMessage = async (
     timestamp: new Date(),
   });
 
-  // Save both user and assistant messages atomically
-  // Note: Title is saved separately via callback for immediate UI update
+  // 사용자 및 assistant 메시지를 원자적으로 저장
+  // 참고: 제목은 즉각적인 UI 업데이트를 위해 callback을 통해 별도로 저장됨
   await session.save();
 };

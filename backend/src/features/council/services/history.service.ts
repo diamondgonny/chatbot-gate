@@ -1,14 +1,14 @@
 /**
- * Council History Builder
- * Builds conversation history for LLM context.
+ * Council 히스토리 빌더
+ * LLM 컨텍스트를 위한 대화 히스토리 구성
  */
 
 import { COUNCIL } from '@shared';
 import type { ICouncilMessage, OpenRouterMessage } from '@shared';
 
 /**
- * Build conversation history for context
- * Takes recent user messages and assistant stage3 responses
+ * 컨텍스트를 위한 대화 히스토리 구성
+ * 최근 사용자 메시지 및 assistant stage3 응답 포함
  */
 export const buildConversationHistory = (
   messages: ICouncilMessage[]

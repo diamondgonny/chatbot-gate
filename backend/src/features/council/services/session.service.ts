@@ -1,6 +1,6 @@
 /**
- * Council Session Service
- * Handles council session CRUD operations and validation.
+ * Council 세션 서비스
+ * Council 세션 CRUD 작업 및 검증 처리
  */
 
 import { randomUUID } from 'crypto';
@@ -14,14 +14,14 @@ import type {
 import { councilSessionsTotal, getDeploymentEnv } from '@shared';
 
 /**
- * Validate session ID format (UUID v4)
+ * 세션 ID 형식 검증 (UUID v4)
  */
 export const validateSessionId = (sessionId: unknown): boolean => {
   return typeof sessionId === 'string' && SESSION.ID_PATTERN.test(sessionId);
 };
 
 /**
- * Validate message content
+ * 메시지 내용 검증
  */
 export const validateMessage = (
   message: unknown
@@ -36,7 +36,7 @@ export const validateMessage = (
 };
 
 /**
- * Create a new council session
+ * 새 council 세션 생성
  */
 export const createSession = async (userId: string): Promise<CreateSessionResult> => {
   const count = await CouncilSession.countDocuments({ userId });
@@ -57,7 +57,7 @@ export const createSession = async (userId: string): Promise<CreateSessionResult
 
   await session.save();
 
-  // Double-check to prevent race condition
+  // Race condition 방지를 위한 double-check
   const finalCount = await CouncilSession.countDocuments({ userId });
   if (finalCount > COUNCIL.MAX_SESSIONS_PER_USER) {
     await CouncilSession.deleteOne({ sessionId: session.sessionId });
@@ -68,14 +68,14 @@ export const createSession = async (userId: string): Promise<CreateSessionResult
     };
   }
 
-  // Record session creation
+  // 세션 생성 기록
   councilSessionsTotal.labels('create', getDeploymentEnv()).inc();
 
   return { success: true, session };
 };
 
 /**
- * Get all council sessions for a user
+ * 사용자의 모든 council 세션 조회
  */
 export const getSessions = async (userId: string): Promise<GetSessionsResult> => {
   try {
@@ -89,7 +89,7 @@ export const getSessions = async (userId: string): Promise<GetSessionsResult> =>
 };
 
 /**
- * Get a specific council session
+ * 특정 council 세션 조회
  */
 export const getSession = async (
   userId: string,
@@ -103,7 +103,7 @@ export const getSession = async (
 };
 
 /**
- * Delete a council session
+ * Council 세션 삭제
  */
 export const deleteSession = async (
   userId: string,
@@ -114,14 +114,14 @@ export const deleteSession = async (
     return { success: false, error: 'Session not found' };
   }
 
-  // Record session deletion
+  // 세션 삭제 기록
   councilSessionsTotal.labels('delete', getDeploymentEnv()).inc();
 
   return { success: true };
 };
 
 /**
- * Type guard for session limit error
+ * 세션 제한 에러에 대한 Type guard
  */
 export const isSessionLimitError = (
   result: CreateSessionResult

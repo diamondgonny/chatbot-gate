@@ -6,13 +6,13 @@ import {
   getDeploymentEnv,
 } from '@shared/observability';
 
-// Route normalization to avoid high cardinality
+// 높은 카디널리티를 피하기 위한 라우트 정규화
 const normalizeRoute = (req: Request): string => {
-  // Always use baseUrl + route path for consistent full path labels
-  // This ensures OPTIONS (preflight) and actual requests get the same route label
+  // 일관된 전체 경로 레이블을 위해 항상 baseUrl + route path 사용
+  // OPTIONS (preflight)와 실제 요청이 동일한 라우트 레이블을 받도록 보장
   const fullPath = req.baseUrl + (req.route?.path || req.path);
 
-  // Replace UUID patterns with :id placeholder
+  // UUID 패턴을 :id 플레이스홀더로 교체
   return fullPath.replace(
     /[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}/gi,
     ':id'
@@ -34,7 +34,7 @@ export const metricsMiddleware = (req: Request, res: Response, next: NextFunctio
 
   httpRequestsInProgress.labels(req.method, routePrefix, deploymentEnv).inc();
 
-  // Track if we've already recorded metrics to avoid double-counting
+  // 이중 계산을 피하기 위해 메트릭을 이미 기록했는지 추적
   let metricsRecorded = false;
 
   const recordMetrics = (completed: boolean) => {
@@ -44,7 +44,7 @@ export const metricsMiddleware = (req: Request, res: Response, next: NextFunctio
     const endTime = process.hrtime.bigint();
     const durationSeconds = Number(endTime - startTime) / 1e9;
 
-    // Only record request/duration metrics if response completed normally
+    // 응답이 정상적으로 완료된 경우에만 요청/기간 메트릭 기록
     if (completed) {
       const normalizedRoute = normalizeRoute(req);
       const statusCode = res.statusCode.toString();
@@ -56,10 +56,10 @@ export const metricsMiddleware = (req: Request, res: Response, next: NextFunctio
     httpRequestsInProgress.labels(req.method, routePrefix, deploymentEnv).dec();
   };
 
-  // 'finish' fires when response sent successfully
+  // 응답이 성공적으로 전송될 때 'finish' 발생
   res.once('finish', () => recordMetrics(true));
 
-  // 'close' fires if connection terminated before finish (client disconnect)
+  // finish 전에 연결이 종료되면 'close' 발생 (클라이언트 연결 해제)
   res.once('close', () => recordMetrics(false));
 
   next();

@@ -1,9 +1,9 @@
 /**
- * Council Services
- * Barrel export for council-related services.
+ * Council 서비스
+ * Council 관련 서비스의 Barrel export
  */
 
-// Session management
+// 세션 관리
 export {
   validateSessionId,
   validateMessage,
@@ -14,25 +14,25 @@ export {
   isSessionLimitError,
 } from './session.service';
 
-// Ranking utilities
+// 순위 유틸리티
 export {
   parseRankingFromText,
   calculateAggregateRankings,
 } from './ranking.service';
 
-// History utilities
+// 히스토리 유틸리티
 export { buildConversationHistory } from './history.service';
 
-// Orchestration
+// 오케스트레이션
 export { processCouncilMessage } from './orchestrator.service';
 
-// Title generation
+// 제목 생성
 export { generateTitle } from './title.service';
 
-// Persistence
+// 영속성
 export { saveAbortedMessage, saveCompleteMessage } from './persistence.service';
 
-// Council API (OpenRouter multi-model)
+// Council API (OpenRouter 멀티 모델)
 export {
   queryCouncilModels,
   queryChairman,

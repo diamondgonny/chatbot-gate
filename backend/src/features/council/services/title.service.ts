@@ -1,17 +1,17 @@
 /**
- * Title Generation Service
- * Generates concise 3-5 word titles for council sessions using OpenAI.
+ * 제목 생성 서비스
+ * OpenAI를 사용하여 council 세션을 위한 간결한 3-5 단어 제목 생성
  */
 
 import OpenAI from 'openai';
 import { config } from '@shared';
 
-// Use a fast, cheap model for title generation
+// 제목 생성을 위한 빠르고 저렴한 모델 사용
 const TITLE_MODEL = 'gpt-4o-mini';
 const MAX_TITLE_LENGTH = 50;
 const DEFAULT_TITLE = 'New Conversation';
 
-// Reuse the existing OpenAI client configuration
+// 기존 OpenAI client 설정 재사용
 const openai = new OpenAI({
   apiKey: config.openaiApiKey,
 });
@@ -22,8 +22,8 @@ The title should be concise and descriptive. Do not use quotes or punctuation in
 Message: `;
 
 /**
- * Generate a title for a conversation based on the first user message.
- * Returns the generated title or a fallback on error.
+ * 첫 사용자 메시지를 기반으로 대화 제목 생성
+ * 생성된 제목 또는 에러 시 대체 제목 반환
  */
 export const generateTitle = async (userMessage: string): Promise<string> => {
   try {
@@ -38,10 +38,10 @@ export const generateTitle = async (userMessage: string): Promise<string> => {
 
     let title = completion.choices[0]?.message?.content?.trim() || DEFAULT_TITLE;
 
-    // Clean up the title - remove quotes and extra whitespace
+    // 제목 정리 - 따옴표 및 추가 공백 제거
     title = title.replace(/^["']|["']$/g, '').trim();
 
-    // Truncate if too long
+    // 너무 길면 자르기
     if (title.length > MAX_TITLE_LENGTH) {
       title = title.substring(0, MAX_TITLE_LENGTH - 3) + '...';
     }
