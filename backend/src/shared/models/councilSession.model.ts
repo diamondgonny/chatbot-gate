@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-// Stage 1: Individual model response
+// Stage 1: 개별 모델 응답
 export interface IStage1Response {
   model: string;
   response: string;
@@ -20,7 +20,7 @@ const Stage1ResponseSchema = new Schema<IStage1Response>(
   { _id: false }
 );
 
-// Stage 2: Peer review with ranking
+// Stage 2: 순위를 포함한 상호 평가
 export interface IStage2Review {
   model: string;
   ranking: string;
@@ -42,7 +42,7 @@ const Stage2ReviewSchema = new Schema<IStage2Review>(
   { _id: false }
 );
 
-// Stage 3: Chairman synthesis
+// Stage 3: Chairman 종합
 export interface IStage3Synthesis {
   model: string;
   response: string;
@@ -66,33 +66,33 @@ const Stage3SynthesisSchema = new Schema<IStage3Synthesis>(
   { _id: false }
 );
 
-// User message
+// 사용자 메시지
 export interface ICouncilUserMessage {
   role: 'user';
   content: string;
   timestamp: Date;
 }
 
-// Assistant message with 3 stages
+// 3단계를 포함한 Assistant 메시지
 export interface ICouncilAssistantMessage {
   role: 'assistant';
-  mode?: 'lite' | 'ultra';     // council mode used for this response
+  mode?: 'lite' | 'ultra';     // 이 응답에 사용된 council 모드
   stage1: IStage1Response[];
-  stage2?: IStage2Review[];    // optional for abort cases
-  stage3?: IStage3Synthesis;   // optional for abort cases
-  wasAborted?: boolean;        // true if processing was aborted
+  stage2?: IStage2Review[];    // 중단 케이스용 선택 사항
+  stage3?: IStage3Synthesis;   // 중단 케이스용 선택 사항
+  wasAborted?: boolean;        // 처리가 중단된 경우 true
   timestamp: Date;
 }
 
 export type ICouncilMessage = ICouncilUserMessage | ICouncilAssistantMessage;
 
-// Council message schema (discriminated by role)
+// Council 메시지 스키마 (role로 구분)
 const CouncilMessageSchema = new Schema(
   {
     role: { type: String, enum: ['user', 'assistant'], required: true },
-    // User message fields
+    // 사용자 메시지 필드
     content: { type: String },
-    // Assistant message fields
+    // Assistant 메시지 필드
     mode: { type: String, enum: ['lite', 'ultra'] },
     stage1: [Stage1ResponseSchema],
     stage2: [Stage2ReviewSchema],
@@ -103,7 +103,7 @@ const CouncilMessageSchema = new Schema(
   { _id: false }
 );
 
-// Council session
+// Council 세션
 export interface ICouncilSession extends Document {
   userId: string;
   sessionId: string;

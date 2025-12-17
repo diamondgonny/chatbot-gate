@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-// Message interface and schema
+// Message 인터페이스 및 스키마
 export interface IMessage {
   role: 'user' | 'ai' | 'system';
   content: string;
@@ -13,11 +13,11 @@ const MessageSchema = new Schema<IMessage>({
   timestamp: { type: Date, default: Date.now },
 });
 
-// ChatSession interface and schema
+// ChatSession 인터페이스 및 스키마
 export interface IChatSession extends Document {
-  userId: string;         // UUID for user identification
-  sessionId: string;      // UUID for individual chat session
-  title: string;          // Session title (defaults to first message)
+  userId: string;         // 사용자 식별을 위한 UUID
+  sessionId: string;      // 개별 채팅 세션을 위한 UUID
+  title: string;          // 세션 제목 (첫 메시지로 기본 설정)
   messages: IMessage[];
   createdAt: Date;
   updatedAt: Date;
@@ -31,9 +31,9 @@ const ChatSessionSchema = new Schema<IChatSession>(
     messages: [MessageSchema],
   },
   {
-    timestamps: true, // Automatically adds createdAt and updatedAt
+    timestamps: true, // createdAt과 updatedAt 자동 추가
   }
 );
 
-// Models
+// 모델
 export const ChatSession = mongoose.model<IChatSession>('ChatSession', ChatSessionSchema);
