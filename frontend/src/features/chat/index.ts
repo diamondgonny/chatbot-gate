@@ -37,4 +37,4 @@ export type {
 export { SessionSidebar } from "./ui";
 
 // Utils
-export { formatTimeAgo } from "./utils";
+export { formatTimeAgo } from "@/shared/utils";
