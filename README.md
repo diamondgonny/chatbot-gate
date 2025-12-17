@@ -2,10 +2,10 @@
 
 ## 프로젝트 개요
 
-- 간단한 인프라 구축, 배포, 모니터링을 연습하고자 토이 프로젝트로 만든 풀스택 애플리케이션입니다.
+- 간단한 인프라 구축, 배포, 모니터링을 연습하고자 토이 프로젝트로 시작한 풀스택 애플리케이션입니다.
 - 접속 코드를 통해 이용할 수 있습니다.
 - **AI Chat**에서 편하게 대화할 수 있습니다.
-- **AI Council**에서 어려운 문제를 인공지능에게 물어볼 수 있습니다.
+- **AI Council**에서 어려운 문제를 인공지능에게 물어볼 수 있습니다. ([llm-council](https://github.com/karpathy/llm-council) 미니 프로젝트에서 영감을 받았습니다.)
 
 ## 사용 방법
 
@@ -16,13 +16,15 @@
 
 ## 스크린샷
 
-<img width="1701" height="1226" alt="Screenshot 2025-12-06 at 11 44 30" src="https://github.com/user-attachments/assets/93a26ab9-787c-4f37-b4ec-0afb1e9f32dd" />
-<img width="1701" height="1224" alt="Screenshot 2025-12-06 at 11 44 43" src="https://github.com/user-attachments/assets/9f3cbbed-03d6-4d9a-8d34-bf9615494f51" />
-<img width="1701" height="1235" alt="Screenshot 2025-12-06 at 11 50 31" src="https://github.com/user-attachments/assets/826d0dcc-9ffd-4dfd-b602-3b50a1125c32" />
+<img width="2579" height="1976" alt="Screenshot 2025-12-16 at 11 09 29" src="https://github.com/user-attachments/assets/7347420a-566e-415a-a5e3-a2d458170a82" />
+<img width="2577" height="1974" alt="Screenshot 2025-12-16 at 11 18 13" src="https://github.com/user-attachments/assets/65799cb3-d534-4987-a60a-8e6d669b958f" />
+<img width="2579" height="1981" alt="Screenshot 2025-12-16 at 11 17 19" src="https://github.com/user-attachments/assets/5d08c51d-e914-4aed-a3e9-997e11d805f4" />
+<img width="2583" height="1970" alt="Screenshot 2025-12-16 at 12 14 03" src="https://github.com/user-attachments/assets/778f3134-ae3a-4362-9533-9f6568cad0ab" />
 
 ## 모니터링 대시보드
 
-<img width="1701" height="1131" alt="Screenshot 2025-12-07 at 12 32 30" src="https://github.com/user-attachments/assets/6e30c0a1-75d0-4451-994e-60cc8c722f0c" />
+<img width="2587" height="1577" alt="Screenshot 2025-12-16 at 17 22 53" src="https://github.com/user-attachments/assets/97f805be-418e-4669-a5b2-300850f9e323" />
+
 
 ## 기술 스택
 
