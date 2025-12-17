@@ -10,7 +10,7 @@ export {
   type StreamEvent,
 } from './openRouter.service';
 
-// SSE and fetch utilities (internal use, exported for testing and reusability)
+// SSE 및 fetch 유틸리티 (내부 사용, 테스트 및 재사용성을 위해 export)
 export { parseSSEStream } from './sseParser';
 export {
   fetchWithAbort,

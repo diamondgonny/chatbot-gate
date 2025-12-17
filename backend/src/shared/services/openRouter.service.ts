@@ -1,6 +1,6 @@
 /**
  * OpenRouter Service
- * Generic OpenRouter API client with streaming support.
+ * 스트리밍 지원을 포함한 범용 OpenRouter API 클라이언트
  */
 
 import { config } from '../config';
@@ -10,25 +10,25 @@ import { fetchWithAbort } from './fetchWithAbort';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
-// Retry configuration
+// Retry 설정
 const MAX_RETRIES = 2;
 const INITIAL_BACKOFF_MS = 1000;
 
 /**
- * Sleep utility for backoff
+ * Backoff를 위한 sleep 유틸리티
  */
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Check if an error is retryable (transient network/server issues)
+ * 에러가 재시도 가능한지 확인 (일시적인 네트워크/서버 문제)
  */
 const isRetryableError = (error: Error, status?: number): boolean => {
-  // Network errors (socket hangup, ECONNRESET, etc.)
+  // 네트워크 에러 (socket hangup, ECONNRESET 등)
   const networkErrors = ['socket', 'ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'EAI_AGAIN'];
   if (networkErrors.some((e) => error.message.includes(e))) return true;
   // Timeout
   if (error.name === 'AbortError') return true;
-  // 5xx server errors
+  // 5xx 서버 에러
   if (status && status >= 500) return true;
   return false;
 };
@@ -53,14 +53,14 @@ interface OpenRouterResponse {
 }
 
 /**
- * Check if OpenRouter API key is configured
+ * OpenRouter API 키가 설정되어 있는지 확인
  */
 export const isOpenRouterConfigured = (): boolean => {
   return !!config.openRouterApiKey;
 };
 
 /**
- * Send a chat completion request to OpenRouter with retry logic
+ * retry 로직을 포함한 OpenRouter로 chat completion 요청 전송
  */
 export const chatCompletion = async (
   model: string,
@@ -72,7 +72,7 @@ export const chatCompletion = async (
   const startTime = Date.now();
   let lastError: Error | null = null;
 
-  // Check if already aborted before starting
+  // 시작 전에 이미 중단되었는지 확인
   if (externalSignal?.aborted) {
     throw new Error(`Request aborted for model ${model}`);
   }
@@ -81,7 +81,7 @@ export const chatCompletion = async (
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-    // Listen to external abort signal
+    // 외부 abort 시그널 리스닝
     const abortHandler = () => controller.abort();
     externalSignal?.addEventListener('abort', abortHandler);
 
@@ -109,9 +109,9 @@ export const chatCompletion = async (
         const errorText = await response.text();
         const error = new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
 
-        // Retry on 5xx errors
+        // 5xx 에러 시 재시도
         if (response.status >= 500 && attempt < MAX_RETRIES) {
-          // Cleanup listener before retry to prevent accumulation
+          // 재시도 전 리스너 정리하여 누적 방지
           externalSignal?.removeEventListener('abort', abortHandler);
 
           console.warn(`[Retry ${attempt + 1}/${MAX_RETRIES}] ${model}: ${response.status} error, retrying...`);
@@ -130,7 +130,7 @@ export const chatCompletion = async (
         console.log(`[Retry success] ${model}: succeeded after ${attempt} retries`);
       }
 
-      // Cleanup before returning
+      // 반환 전 정리
       externalSignal?.removeEventListener('abort', abortHandler);
 
       return {
@@ -147,14 +147,14 @@ export const chatCompletion = async (
         throw error;
       }
 
-      // If externally aborted, don't retry - throw immediately
+      // 외부에서 중단된 경우, 재시도하지 않고 즉시 throw
       if (externalSignal?.aborted) {
         throw new Error(`Request aborted for model ${model}`);
       }
 
       lastError = error;
 
-      // Check if we should retry
+      // 재시도 여부 확인
       if (attempt < MAX_RETRIES && isRetryableError(error)) {
         console.warn(`[Retry ${attempt + 1}/${MAX_RETRIES}] ${model}: ${error.message}, retrying...`);
         const backoff = INITIAL_BACKOFF_MS * Math.pow(2, attempt);
@@ -162,7 +162,7 @@ export const chatCompletion = async (
         continue;
       }
 
-      // Final failure - throw with context
+      // 최종 실패 - 컨텍스트와 함께 throw
       if (error.name === 'AbortError') {
         throw new Error(`OpenRouter API timeout for model ${model} after ${attempt + 1} attempts`);
       }
@@ -170,7 +170,7 @@ export const chatCompletion = async (
     }
   }
 
-  // Should not reach here, but TypeScript needs this
+  // 여기에 도달하면 안 되지만, TypeScript를 위해 필요
   throw lastError || new Error(`OpenRouter API failed for model ${model}`);
 };
 
@@ -193,8 +193,8 @@ export interface StreamComplete {
 export type StreamEvent = StreamChunk | StreamComplete;
 
 /**
- * Send a streaming chat completion request to OpenRouter
- * Yields delta chunks as they arrive, then a completion event with usage stats
+ * OpenRouter로 스트리밍 chat completion 요청 전송
+ * Delta 청크를 도착하는 대로 yield하고, 마지막에 사용량 통계와 함께 completion 이벤트 yield
  */
 export async function* chatCompletionStream(
   model: string,
@@ -241,19 +241,19 @@ export async function* chatCompletionStream(
       try {
         const data = JSON.parse(jsonStr);
 
-        // Extract delta content
+        // Delta content 추출
         const content = data.choices?.[0]?.delta?.content;
         if (content) {
           yield { delta: content };
         }
 
-        // Extract usage (usually in the last chunk)
+        // Usage 추출 (보통 마지막 청크에 포함)
         if (data.usage) {
           promptTokens = data.usage.prompt_tokens;
           completionTokens = data.usage.completion_tokens;
         }
       } catch {
-        // Ignore parse errors for malformed chunks
+        // 잘못된 청크의 파싱 에러 무시
       }
     }
 
@@ -264,8 +264,8 @@ export async function* chatCompletionStream(
 }
 
 /**
- * Send a streaming chat completion request with reasoning enabled (for Stage 3)
- * Yields delta chunks with both content and reasoning as they arrive
+ * Reasoning 활성화와 함께 스트리밍 chat completion 요청 전송 (Stage 3용)
+ * Content와 reasoning을 모두 포함한 delta 청크를 도착하는 대로 yield
  */
 export async function* chatCompletionStreamWithReasoning(
   model: string,
@@ -314,7 +314,7 @@ export async function* chatCompletionStreamWithReasoning(
       try {
         const data = JSON.parse(jsonStr);
 
-        // Extract delta content and reasoning
+        // Delta content 및 reasoning 추출
         const delta = data.choices?.[0]?.delta;
         const content = delta?.content;
         const reasoning = delta?.reasoning;
@@ -323,14 +323,14 @@ export async function* chatCompletionStreamWithReasoning(
           yield { delta: content || '', reasoning };
         }
 
-        // Extract usage (usually in the last chunk)
+        // Usage 추출 (보통 마지막 청크에 포함)
         if (data.usage) {
           promptTokens = data.usage.prompt_tokens;
           completionTokens = data.usage.completion_tokens;
           reasoningTokens = data.usage.completion_tokens_details?.reasoning_tokens;
         }
       } catch {
-        // Ignore parse errors for malformed chunks
+        // 잘못된 청크의 파싱 에러 무시
       }
     }
 

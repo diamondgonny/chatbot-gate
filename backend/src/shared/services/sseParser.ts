@@ -1,26 +1,26 @@
 /**
  * SSE Stream Parser
- * Parses Server-Sent Events from a Response body with buffering and [DONE] termination handling.
+ * Response body에서 Server-Sent Events를 파싱하며 버퍼링 및 [DONE] 종료 처리 지원
  *
- * Responsibilities:
- * - Read chunks from Response body
- * - Buffer incomplete lines across chunks
- * - Parse SSE protocol (data: prefix, [DONE] termination)
- * - Yield raw JSON strings (caller handles business logic)
+ * 책임:
+ * - Response body에서 청크 읽기
+ * - 청크 간 불완전한 라인을 버퍼링
+ * - SSE 프로토콜 파싱 (data: 접두사, [DONE] 종료)
+ * - raw JSON 문자열 yield (호출자가 비즈니스 로직 처리)
  */
 
 /**
- * Parse SSE stream from a Response and yield raw JSON strings.
- * Handles buffering, line splitting, and SSE protocol parsing.
+ * Response에서 SSE 스트림을 파싱하여 raw JSON 문자열 yield
+ * 버퍼링, 라인 분할 및 SSE 프로토콜 파싱 처리
  *
- * @param response - Fetch Response with body stream
- * @yields Raw JSON strings from SSE data lines (without 'data: ' prefix)
- * @throws Error if response body is null
+ * @param response - body 스트림이 있는 Fetch Response
+ * @yields SSE data 라인의 raw JSON 문자열 ('data: ' 접두사 제외)
+ * @throws response body가 null인 경우 에러
  *
  * @example
  * for await (const jsonStr of parseSSEStream(response)) {
  *   const data = JSON.parse(jsonStr);
- *   // Handle parsed data...
+ *   // 파싱된 데이터 처리...
  * }
  */
 export async function* parseSSEStream(response: Response): AsyncGenerator<string> {
@@ -39,25 +39,25 @@ export async function* parseSSEStream(response: Response): AsyncGenerator<string
 
       buffer += decoder.decode(value, { stream: true });
 
-      // Split by newlines, keeping incomplete line in buffer
+      // 개행으로 분할하고 불완전한 라인은 buffer에 보관
       const lines = buffer.split('\n');
       buffer = lines.pop() || '';
 
       for (const line of lines) {
         const trimmed = line.trim();
 
-        // Skip empty lines and [DONE] marker
+        // 빈 라인과 [DONE] 마커 건너뛰기
         if (!trimmed || trimmed === 'data: [DONE]') continue;
 
-        // Yield data content (strip 'data: ' prefix)
+        // data 내용 yield ('data: ' 접두사 제거)
         if (trimmed.startsWith('data: ')) {
           yield trimmed.slice(6);
         }
       }
     }
   } finally {
-    // Cancel any pending reads and release the lock
-    // This ensures the underlying connection is properly closed on early exit
+    // 대기 중인 읽기를 취소하고 lock 해제
+    // 조기 종료 시 기본 연결이 올바르게 닫히도록 보장
     await reader.cancel();
     reader.releaseLock();
   }
