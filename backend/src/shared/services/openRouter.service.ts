@@ -23,12 +23,9 @@ const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout
  * 에러가 재시도 가능한지 확인 (일시적인 네트워크/서버 문제)
  */
 const isRetryableError = (error: Error, status?: number): boolean => {
-  // 네트워크 에러 (socket hangup, ECONNRESET 등)
   const networkErrors = ['socket', 'ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'EAI_AGAIN'];
   if (networkErrors.some((e) => error.message.includes(e))) return true;
-  // Timeout
   if (error.name === 'AbortError') return true;
-  // 5xx 서버 에러
   if (status && status >= 500) return true;
   return false;
 };
