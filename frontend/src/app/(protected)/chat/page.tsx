@@ -67,7 +67,7 @@ export default function ChatInterface() {
       />
 
       {/* Chat Interface */}
-      <div className="flex flex-col flex-1 bg-slate-900/50 shadow-2xl border-x border-slate-800">
+      <div className="flex flex-col flex-1 min-w-0 bg-slate-900/50 shadow-2xl border-x border-slate-800">
         {/* 헤더 */}
         <header className="p-4 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-10 min-h-[88px] flex flex-col justify-center">
           <h2 className="text-xl font-semibold text-slate-200">
@@ -96,7 +96,7 @@ export default function ChatInterface() {
             >
               <div
                 className={twMerge(
-                  "max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm",
+                  "max-w-[80%] p-4 rounded-2xl text-sm leading-relaxed shadow-sm break-words",
                   msg.role === "user"
                     ? "bg-blue-600 text-white rounded-br-none"
                     : "bg-slate-800 text-slate-200 rounded-bl-none border border-slate-700"

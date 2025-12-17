@@ -21,7 +21,7 @@ export const UserMessage = memo(function UserMessage({ message }: UserMessagePro
       className="flex justify-end"
     >
       <div className="bg-blue-600 text-white px-4 py-3 rounded-2xl rounded-br-md max-w-xl">
-        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+        <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
       </div>
     </motion.div>
   );
