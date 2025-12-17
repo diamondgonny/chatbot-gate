@@ -1,6 +1,15 @@
 /**
- * Council Orchestrator
- * Handles 3-stage LLM Council orchestration and SSE streaming.
+ * Council 오케스트레이터
+ *
+ * 3단계 LLM Council 처리 흐름:
+ * 1. Stage 1: 각 모델이 독립적으로 응답 생성
+ * 2. Stage 2: 각 모델이 익명화된 응답들을 평가/순위 매김
+ * 3. Stage 3: Chairman이 모든 입력을 종합하여 최종 응답 생성
+ *
+ * abort 처리 전략:
+ * - 각 스테이지 진행 중 abort 시, 현재까지 수신된 부분 결과를 DB에 저장
+ * - stage*StreamingContent 변수로 스트리밍 중인 데이터를 추적하여 abort 시 복구
+ * - fetch AbortError는 try-catch로 잡아서 정상적인 abort 흐름으로 처리
  */
 
 import {
@@ -32,10 +41,7 @@ import {
   getDeploymentEnv,
 } from '@shared';
 
-/**
- * Stage 1: Collect individual responses from all council models (streaming)
- * Yields chunk events as responses stream in, then complete events with full responses
- */
+/** Stage 1: 각 Council 모델로부터 개별 응답 수집 (스트리밍) */
 async function* stage1CollectResponses(
   userMessage: string,
   history: OpenRouterMessage[],
@@ -52,22 +58,20 @@ async function* stage1CollectResponses(
     { role: 'user', content: userMessage },
   ];
 
-  // Track accumulated content and metadata per model
+  // 모델별 누적 콘텐츠 및 메타데이터 추적
   const modelContents: Record<string, string> = {};
   const modelMeta: Record<string, { responseTimeMs: number; promptTokens?: number; completionTokens?: number }> = {};
 
-  // Stream responses from all models (Stage 1: 3 min timeout)
   for await (const event of queryCouncilModelsStreaming(messages, mode, signal, COUNCIL.STAGE1_TIMEOUT_MS)) {
     if (signal?.aborted) return;
 
     if ('done' in event && event.done === true) {
-      // Model complete event (ModelStreamComplete)
+      // 모델 응답 완료 이벤트
       modelMeta[event.model] = {
         responseTimeMs: event.responseTimeMs,
         promptTokens: event.promptTokens,
         completionTokens: event.completionTokens,
       };
-      // Record OpenRouter metrics
       openrouterApiCalls.labels(event.model, '1', 'success', deploymentEnv).inc();
       openrouterResponseTime.labels(event.model, '1', deploymentEnv).observe(event.responseTimeMs / 1000);
       if (event.promptTokens) {
@@ -84,7 +88,7 @@ async function* stage1CollectResponses(
         completionTokens: event.completionTokens,
       };
     } else if ('delta' in event) {
-      // Chunk event (ModelStreamChunk) - accumulate and forward
+      // 청크 이벤트 - 누적 후 클라이언트로 전달
       if (!modelContents[event.model]) {
         modelContents[event.model] = '';
       }
@@ -93,7 +97,7 @@ async function* stage1CollectResponses(
     }
   }
 
-  // Build final results for Stage 2/3 processing
+  // Stage 2/3에서 사용할 최종 결과 빌드
   const stage1Results: IStage1Response[] = [];
   for (const [model, content] of Object.entries(modelContents)) {
     const meta = modelMeta[model] || { responseTimeMs: 0 };
@@ -108,16 +112,13 @@ async function* stage1CollectResponses(
     yield { type: 'stage1_response', data: result };
   }
 
-  // Record stage 1 duration
   councilStageDuration.labels('1', deploymentEnv).observe((Date.now() - stageStartTime) / 1000);
   yield { type: 'stage1_complete' };
 
   return stage1Results;
 }
 
-/**
- * Stage 2: Each model ranks the anonymized responses
- */
+/** Stage 2: 각 모델이 익명화된 응답들을 평가하고 순위 매김 */
 async function* stage2CollectRankings(
   userMessage: string,
   stage1Results: IStage1Response[],
@@ -128,16 +129,15 @@ async function* stage2CollectRankings(
   const deploymentEnv = getDeploymentEnv();
   yield { type: 'stage2_start' };
 
-  // Create anonymized labels
-  const labels = stage1Results.map((_, i) => String.fromCharCode(65 + i)); // A, B, C, ...
+  // 익명화 라벨 생성 (A, B, C, ...)
+  const labels = stage1Results.map((_, i) => String.fromCharCode(65 + i));
 
-  // Create mapping from label to model
+  // 라벨 → 모델 매핑 (나중에 결과 해석용)
   const labelToModel: Record<string, string> = {};
   labels.forEach((label, i) => {
     labelToModel[`Response ${label}`] = stage1Results[i].model;
   });
 
-  // Build ranking prompt
   const responsesText = labels
     .map((label, i) => `Response ${label}:\n${stage1Results[i].response}`)
     .join('\n\n');
@@ -175,22 +175,19 @@ Now provide your evaluation and ranking, in English:`;
 
   const messages: OpenRouterMessage[] = [{ role: 'user', content: rankingPrompt }];
 
-  // Track accumulated content and metadata per model
+  // 모델별 누적 콘텐츠 및 메타데이터 추적
   const modelContents: Record<string, string> = {};
   const modelMeta: Record<string, { responseTimeMs: number; promptTokens?: number; completionTokens?: number }> = {};
 
-  // Stream responses from all models (Stage 2: 3 min timeout)
   for await (const event of queryCouncilModelsStreaming(messages, mode, signal, COUNCIL.STAGE2_TIMEOUT_MS)) {
     if (signal?.aborted) return { reviews: [], labelToModel };
 
     if ('done' in event && event.done === true) {
-      // Model complete event
       modelMeta[event.model] = {
         responseTimeMs: event.responseTimeMs,
         promptTokens: event.promptTokens,
         completionTokens: event.completionTokens,
       };
-      // Record OpenRouter metrics
       openrouterApiCalls.labels(event.model, '2', 'success', deploymentEnv).inc();
       openrouterResponseTime.labels(event.model, '2', deploymentEnv).observe(event.responseTimeMs / 1000);
       if (event.promptTokens) {
@@ -207,7 +204,6 @@ Now provide your evaluation and ranking, in English:`;
         completionTokens: event.completionTokens,
       };
     } else if ('delta' in event) {
-      // Chunk event - accumulate and forward
       if (!modelContents[event.model]) {
         modelContents[event.model] = '';
       }
@@ -216,7 +212,6 @@ Now provide your evaluation and ranking, in English:`;
     }
   }
 
-  // Build final results
   const stage2Results: IStage2Review[] = [];
   for (const [model, content] of Object.entries(modelContents)) {
     const meta = modelMeta[model] || { responseTimeMs: 0 };
@@ -235,21 +230,18 @@ Now provide your evaluation and ranking, in English:`;
 
   const aggregateRankings = calculateAggregateRankings(stage2Results, labelToModel);
 
-  // Record stage 2 duration
   councilStageDuration.labels('2', deploymentEnv).observe((Date.now() - stageStartTime) / 1000);
   yield { type: 'stage2_complete', data: { labelToModel, aggregateRankings } };
 
   return { reviews: stage2Results, labelToModel };
 }
 
-/**
- * Stage 3: Chairman synthesizes final response with reasoning
- */
+/** Stage 3: Chairman이 모든 입력을 종합하여 최종 응답 생성 (reasoning 포함) */
 async function* stage3Synthesize(
   userMessage: string,
   stage1Results: IStage1Response[],
   stage2Results: IStage2Review[],
-  _labelToModel: Record<string, string>,  // Unused - Chairman receives anonymized data
+  _labelToModel: Record<string, string>,  // 미사용 - Chairman은 익명화된 데이터만 수신
   mode: CouncilMode,
   signal?: AbortSignal
 ): AsyncGenerator<SSEEvent, IStage3Synthesis> {
@@ -257,7 +249,7 @@ async function* stage3Synthesize(
   const deploymentEnv = getDeploymentEnv();
   yield { type: 'stage3_start' };
 
-  // Build anonymized context for chairman (blind evaluation)
+  // Chairman용 익명화 컨텍스트 (블라인드 평가)
   const stage1Text = stage1Results
     .map((r, i) => `Response ${String.fromCharCode(65 + i)}:\n${r.response}`)
     .join('\n\n');
@@ -289,7 +281,6 @@ Provide the council's collective wisdom as your own authoritative answer:`;
 
   const messages: OpenRouterMessage[] = [{ role: 'user', content: chairmanPrompt }];
 
-  // Stream chairman response with reasoning enabled
   const chairmanModel = getChairmanForMode(mode);
   const startTime = Date.now();
   let content = '';
@@ -298,7 +289,6 @@ Provide the council's collective wisdom as your own authoritative answer:`;
   let completionTokens: number | undefined;
   let reasoningTokens: number | undefined;
 
-  // Stage 3: 5 min timeout for chairman synthesis
   for await (const event of chatCompletionStreamWithReasoning(
     chairmanModel,
     messages,
@@ -316,12 +306,10 @@ Provide the council's collective wisdom as your own authoritative answer:`;
     }
 
     if ('delta' in event) {
-      // Emit content chunk
       if (event.delta) {
         content += event.delta;
         yield { type: 'stage3_chunk', delta: event.delta };
       }
-      // Emit reasoning chunk
       if (event.reasoning) {
         reasoning += event.reasoning;
         yield { type: 'stage3_reasoning_chunk', delta: event.reasoning };
@@ -333,7 +321,6 @@ Provide the council's collective wisdom as your own authoritative answer:`;
     }
   }
 
-  // Record OpenRouter metrics for Chairman
   const responseTimeMs = Date.now() - startTime;
   openrouterApiCalls.labels(chairmanModel, '3', 'success', deploymentEnv).inc();
   openrouterResponseTime.labels(chairmanModel, '3', deploymentEnv).observe(responseTimeMs / 1000);
@@ -357,16 +344,13 @@ Provide the council's collective wisdom as your own authoritative answer:`;
     reasoningTokens,
   };
 
-  // Record stage 3 duration
   councilStageDuration.labels('3', deploymentEnv).observe((Date.now() - stageStartTime) / 1000);
   yield { type: 'stage3_response', data: stage3Result };
 
   return stage3Result;
 }
 
-/**
- * Process a council message with 3 stages (SSE streaming)
- */
+/** 3단계 Council 메시지 처리 (SSE 스트리밍) */
 export async function* processCouncilMessage(
   userId: string,
   sessionId: string,
@@ -378,30 +362,26 @@ export async function* processCouncilMessage(
   const deploymentEnv = getDeploymentEnv();
   const chairmanModel = getChairmanForMode(mode);
 
-  // Find session
   const session = await CouncilSession.findOne({ userId, sessionId });
   if (!session) {
     yield { type: 'error', error: 'Session not found' };
     return;
   }
 
-  // Record user message
   councilMessagesTotal.labels('user', deploymentEnv).inc();
 
-  // Add user message to in-memory session (for history building)
-  // Note: We don't save here - both user and assistant messages are saved atomically
-  // at the end to avoid orphan user messages if processing is aborted
+  // 메모리상 세션에 사용자 메시지 추가 (히스토리 빌드용)
+  // DB 저장은 마지막에 user+assistant 메시지를 원자적으로 저장
+  // (abort 시 고아 user 메시지 방지)
   session.messages.push({
     role: 'user',
     content: userMessage,
     timestamp: new Date(),
   });
 
-  // Build conversation history
   const history = buildConversationHistory(session.messages);
 
-  // Start title generation in parallel for first message
-  // Note: session.messages.length === 1 means only user message added so far
+  // 첫 메시지인 경우 제목 생성을 병렬로 시작
   const isFirstMessage = session.messages.length === 1;
   if (isFirstMessage && onTitleGenerated) {
     const TITLE_TIMEOUT_MS = 30000;
@@ -414,24 +394,24 @@ export async function* processCouncilMessage(
           () => reject(new Error('Title generation timeout')),
           TITLE_TIMEOUT_MS
         );
-        timeoutHandle.unref();  // Don't block process exit
+        timeoutHandle.unref();  // 프로세스 종료 차단 방지
       }),
     ]);
 
     titleWithTimeout
       .then(async (title) => {
-        clearTimeout(timeoutHandle);  // Clean up timer on success
+        clearTimeout(timeoutHandle);
         session.title = title;
-        await session.save();  // Save title immediately
-        onTitleGenerated(title);  // Notify via callback
+        await session.save();
+        onTitleGenerated(title);
       })
       .catch((err) => {
-        clearTimeout(timeoutHandle);  // Clean up timer on failure too
+        clearTimeout(timeoutHandle);
         console.error('[Council] Title generation failed:', err);
       });
   }
 
-  // Helper to save partial results on abort (delegates to persistence service)
+  // abort 시 부분 결과 저장 헬퍼 (persistence service로 위임)
   const saveAborted = (
     stage1: IStage1Response[],
     stage2: IStage2Review[],
@@ -440,15 +420,15 @@ export async function* processCouncilMessage(
   ) => saveAbortedMessage(session, mode, chairmanModel, stage1, stage2, stage3Content, stage3Reasoning);
 
   try {
-    // Check for abort before starting
     if (signal?.aborted) {
       console.log('[Council] Processing aborted before Stage 1');
       return;
     }
 
-    // Stage 1: Collect individual responses
+    // === Stage 1 ===
     const stage1Results: IStage1Response[] = [];
-    const stage1StreamingContent: Record<string, string> = {};  // Track streaming content for abort
+    // abort 시 복구용 스트리밍 콘텐츠 추적
+    const stage1StreamingContent: Record<string, string> = {};
     const stage1Gen = stage1CollectResponses(userMessage, history, mode, signal);
     try {
       for await (const event of stage1Gen) {
@@ -460,7 +440,6 @@ export async function* processCouncilMessage(
         }
         yield event;
 
-        // Track streaming content
         if (event.type === 'stage1_chunk' && 'model' in event && 'delta' in event) {
           if (!stage1StreamingContent[event.model]) {
             stage1StreamingContent[event.model] = '';
@@ -468,24 +447,24 @@ export async function* processCouncilMessage(
           stage1StreamingContent[event.model] += event.delta;
         }
 
-        // Clear streaming content when model completes
+        // 모델 응답 완료 시 스트리밍 콘텐츠 정리 (이미 stage1Results에 포함됨)
         if (event.type === 'stage1_response') {
           stage1Results.push(event.data);
           delete stage1StreamingContent[event.data.model];
         }
       }
     } catch (error) {
-      // Catch AbortError thrown by fetch when signal is aborted
+      // fetch의 AbortError를 정상적인 abort 흐름으로 처리
       if (signal?.aborted) {
         console.log('[Council] Processing aborted during Stage 1 (caught exception)');
         const partialStage1 = buildPartialStage1Responses(stage1Results, stage1StreamingContent);
         await saveAborted(partialStage1, [], null);
         return;
       }
-      throw error;  // Re-throw non-abort errors
+      throw error;
     }
 
-    // Check for abort after Stage 1 loop (handles case where loop exits normally without exception)
+    // 루프가 정상 종료된 경우에도 abort 체크 (예외 없이 종료된 케이스)
     if (signal?.aborted) {
       console.log('[Council] Processing aborted after Stage 1 loop');
       const partialStage1 = buildPartialStage1Responses(stage1Results, stage1StreamingContent);
@@ -498,22 +477,22 @@ export async function* processCouncilMessage(
       return;
     }
 
-    // Stage 2: Collect rankings
+    // === Stage 2 ===
     let stage2Results: IStage2Review[] = [];
     let labelToModel: Record<string, string> = {};
-    const stage2StreamingContent: Record<string, string> = {};  // Track streaming content for abort
+    // abort 시 복구용 스트리밍 콘텐츠 추적
+    const stage2StreamingContent: Record<string, string> = {};
     const stage2Gen = stage2CollectRankings(userMessage, stage1Results, mode, signal);
     for await (const event of stage2Gen) {
       if (signal?.aborted) {
         console.log('[Council] Processing aborted during Stage 2');
-        // Convert streaming content to partial reviews
+        // 스트리밍 콘텐츠를 부분 리뷰로 변환
         const partialStage2 = buildPartialStage2Reviews(stage2Results, stage2StreamingContent, parseRankingFromText);
         await saveAborted(stage1Results, partialStage2, null);
         return;
       }
       yield event;
 
-      // Track streaming content
       if (event.type === 'stage2_chunk' && 'model' in event && 'delta' in event) {
         if (!stage2StreamingContent[event.model]) {
           stage2StreamingContent[event.model] = '';
@@ -521,7 +500,7 @@ export async function* processCouncilMessage(
         stage2StreamingContent[event.model] += event.delta;
       }
 
-      // Clear streaming content when model completes (it's now in stage2Results)
+      // 모델 응답 완료 시 스트리밍 콘텐츠 정리 (이미 stage2Results에 포함됨)
       if (event.type === 'stage2_response') {
         stage2Results.push(event.data);
         delete stage2StreamingContent[event.data.model];
@@ -530,7 +509,6 @@ export async function* processCouncilMessage(
       }
     }
 
-    // Check for abort before Stage 3
     if (signal?.aborted) {
       console.log('[Council] Processing aborted before Stage 3');
       const partialStage2 = buildPartialStage2Reviews(stage2Results, stage2StreamingContent, parseRankingFromText);
@@ -538,10 +516,11 @@ export async function* processCouncilMessage(
       return;
     }
 
-    // Stage 3: Chairman synthesis (with label mapping for context)
+    // === Stage 3 ===
     let stage3Result: IStage3Synthesis | null = null;
-    let stage3StreamingContent = '';  // Track streaming content for abort
-    let stage3StreamingReasoning = '';  // Track reasoning content for abort
+    // abort 시 복구용 스트리밍 콘텐츠/reasoning 추적
+    let stage3StreamingContent = '';
+    let stage3StreamingReasoning = '';
     const stage3Gen = stage3Synthesize(userMessage, stage1Results, stage2Results, labelToModel, mode, signal);
     try {
       for await (const event of stage3Gen) {
@@ -562,13 +541,13 @@ export async function* processCouncilMessage(
         }
       }
     } catch (error) {
-      // Catch AbortError thrown by fetch when signal is aborted
+      // fetch의 AbortError를 정상적인 abort 흐름으로 처리
       if (signal?.aborted) {
         console.log('[Council] Processing aborted during Stage 3 (caught exception)');
         await saveAborted(stage1Results, stage2Results, stage3StreamingContent || null, stage3StreamingReasoning || null);
         return;
       }
-      throw error;  // Re-throw non-abort errors
+      throw error;
     }
 
     if (!stage3Result) {
@@ -576,10 +555,7 @@ export async function* processCouncilMessage(
       return;
     }
 
-    // Save complete message via persistence service
     await saveCompleteMessage(session, mode, stage1Results, stage2Results, stage3Result);
-
-    // Record AI message
     councilMessagesTotal.labels('ai', deploymentEnv).inc();
 
     yield { type: 'complete' };

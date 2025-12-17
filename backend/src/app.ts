@@ -1,6 +1,6 @@
 /**
- * Express Application Factory
- * Creates Express app with configurable middleware for production and testing.
+ * Express 앱 팩토리
+ * 프로덕션과 테스트 환경에 맞게 미들웨어를 구성한 Express 앱 생성
  */
 
 import express, { Request, Response, NextFunction, Express } from 'express';
@@ -10,7 +10,6 @@ import { randomBytes } from 'crypto';
 import { cookieConfig } from './shared/config';
 import { errorHandler } from './shared/middleware';
 
-// Route imports
 import { gateRoutes } from './features/gate';
 import { authRoutes } from './features/auth';
 import { chatRoutes } from './features/chat';
@@ -18,24 +17,25 @@ import { councilRoutes } from './features/council';
 import { metricsRoutes, metricsMiddleware } from './features/metrics';
 
 export interface AppOptions {
-  /** Enable Morgan request logging (default: true) */
+  /** Morgan 요청 로깅 활성화 (기본값: true) */
   enableLogging?: boolean;
-  /** Enable metrics middleware and routes (default: true) */
+  /** 메트릭 미들웨어 및 라우트 활성화 (기본값: true) */
   enableMetrics?: boolean;
-  /** Enable CORS middleware (default: true) */
+  /** CORS 미들웨어 활성화 (기본값: true) */
   enableCors?: boolean;
-  /** Enable security headers (default: true) */
+  /** 보안 헤더 활성화 (기본값: true) */
   enableSecurityHeaders?: boolean;
-  /** Enable council feature routes (default: true) */
+  /** Council 기능 라우트 활성화 (기본값: true) */
   enableCouncil?: boolean;
-  /** Use simplified CSRF for testing (default: false) */
+  /** 테스트용 간소화 CSRF 사용 (기본값: false) */
   testMode?: boolean;
 }
 
 /**
- * CSRF middleware factory
- * Production: crypto-generated token
- * Test: predictable static token
+ * CSRF 미들웨어 팩토리
+ * - 프로덕션: crypto 랜덤 토큰 (보안)
+ * - 테스트: 정적 토큰 'test-csrf-token'
+ *   (테스트 코드에서 토큰 값을 예측하여 헤더에 포함 가능)
  */
 const createCsrfMiddleware = (testMode: boolean) => {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -44,14 +44,14 @@ const createCsrfMiddleware = (testMode: boolean) => {
     const method = req.method.toUpperCase();
     const requiresCsrf = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
 
-    // Issue a CSRF token if none present
+    // CSRF 토큰이 없으면 발급
     if (!csrfCookie) {
       const token = testMode
         ? 'test-csrf-token'
         : randomBytes(16).toString('hex');
 
       res.cookie('csrfToken', token, {
-        httpOnly: false, // CSRF token must be readable by frontend
+        httpOnly: false, // CSRF 토큰은 프론트엔드에서 읽어야 하므로 httpOnly: false
         sameSite: testMode ? 'lax' : cookieConfig.sameSite,
         secure: testMode ? false : cookieConfig.secure,
         domain: testMode ? undefined : cookieConfig.domain,
@@ -59,7 +59,7 @@ const createCsrfMiddleware = (testMode: boolean) => {
         path: '/',
       });
 
-      // Reject state-changing requests without a token
+      // 상태 변경 요청에 토큰 없으면 거부
       if (requiresCsrf) {
         return res.status(403).json({ error: 'CSRF token required' });
       }
@@ -67,7 +67,7 @@ const createCsrfMiddleware = (testMode: boolean) => {
       return next();
     }
 
-    // For state-changing requests, require header to match cookie
+    // 상태 변경 요청은 헤더와 쿠키 토큰이 일치해야 함
     if (requiresCsrf && csrfHeader !== csrfCookie) {
       return res.status(403).json({ error: 'CSRF token mismatch' });
     }
@@ -76,9 +76,7 @@ const createCsrfMiddleware = (testMode: boolean) => {
   };
 };
 
-/**
- * Security headers middleware
- */
+/** 보안 헤더 미들웨어 */
 const securityHeadersMiddleware = (req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'SAMEORIGIN');
@@ -96,9 +94,7 @@ const securityHeadersMiddleware = (req: Request, res: Response, next: NextFuncti
 };
 
 
-/**
- * Create CORS configuration
- */
+/** CORS 설정 생성 */
 const createCorsConfig = () => {
   const allowedOrigins = (
     process.env.FRONTEND_URLS || process.env.FRONTEND_URL || 'http://localhost:3000'
@@ -112,7 +108,7 @@ const createCorsConfig = () => {
       origin: string | undefined,
       callback: (err: Error | null, allow?: boolean) => void
     ) => {
-      if (!origin) return callback(null, true); // Allow non-browser tools
+      if (!origin) return callback(null, true); // 비브라우저 도구 허용 (curl 등)
       if (allowedOrigins.length === 0) {
         return callback(new Error('CORS origin not configured'), false);
       }
@@ -130,17 +126,17 @@ const createCorsConfig = () => {
 };
 
 /**
- * Create Express application with configurable middleware
+ * 미들웨어를 구성 가능한 Express 앱 생성
  *
- * @param options - Configuration options for middleware
- * @returns Configured Express application
+ * @param options - 미들웨어 구성 옵션
+ * @returns 구성된 Express 앱
  *
  * @example
- * // Production (default)
+ * // 프로덕션 (기본값)
  * const app = createApp();
  *
  * @example
- * // Testing (minimal middleware)
+ * // 테스트 (최소 미들웨어)
  * const app = createApp({
  *   enableLogging: false,
  *   enableMetrics: false,
@@ -162,64 +158,51 @@ export const createApp = (options?: AppOptions): Express => {
 
   const app = express();
 
-  // Trust proxy for correct client IP (rate limiting, logging)
+  // 프록시 뒤에서 정확한 클라이언트 IP 획득 (레이트 리미팅, 로깅용)
   app.set('trust proxy', 1);
 
-  // Metrics collection (must be early to capture all requests)
+  // 메트릭 수집 (모든 요청 캡처를 위해 최상단에 배치)
   if (enableMetrics) {
     app.use(metricsMiddleware);
   }
 
-  // CORS
   if (enableCors) {
     app.use(cors(createCorsConfig()));
   }
 
-  // Core middleware
   app.use(cookieParser());
   app.use(express.json({ limit: '1mb' }));
 
-  // Security headers
   if (enableSecurityHeaders) {
     app.use(securityHeadersMiddleware);
   }
 
-  // Request logging (requires external setup for file streaming)
-  // Note: Morgan is conditionally imported and configured in index.ts
-  // when enableLogging is true, to avoid file system operations in tests
+  // Morgan 로깅은 index.ts에서 조건부로 설정 (테스트 시 파일 시스템 작업 방지)
 
-  // CSRF protection
   app.use(createCsrfMiddleware(testMode));
 
-  // Core API routes
   app.use('/api/gate', gateRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/chat', chatRoutes);
 
-  // Council routes (SSE, complex state)
   if (enableCouncil) {
     app.use('/api/council', councilRoutes);
   }
 
-  // Health check
   app.get('/health', (req: Request, res: Response) => {
     res.json({ status: 'ok', message: 'Chatbot Gate Backend is running' });
   });
 
-  // Metrics endpoint (internal)
   if (enableMetrics) {
     app.use('/metrics', metricsRoutes);
   }
 
-  // Error handler
   app.use(errorHandler);
 
   return app;
 };
 
-/**
- * Create test application with minimal middleware
- */
+/** 최소 미들웨어로 테스트용 앱 생성 */
 export const createTestApp = (): Express => {
   return createApp({
     enableLogging: false,
