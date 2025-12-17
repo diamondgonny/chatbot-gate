@@ -40,12 +40,9 @@ chatbot-gate/
 │
 ├── backend/
 │   ├── src/
+│   │   ├── index.ts
 │   │   ├── app.ts
 │   │   ├── features/
-│   │   │   ├── gate/
-│   │   │   │   ├── routes/
-│   │   │   │   ├── controllers/
-│   │   │   │   └── services/
 │   │   │   ├── auth/
 │   │   │   │   └── routes/
 │   │   │   ├── chat/
@@ -58,13 +55,17 @@ chatbot-gate/
 │   │   │   │   ├── services/
 │   │   │   │   ├── sse/
 │   │   │   │   └── utils/
+│   │   │   ├── gate/
+│   │   │   │   ├── routes/
+│   │   │   │   ├── controllers/
+│   │   │   │   └── services/
 │   │   │   └── metrics/
 │   │   │       ├── middleware/
 │   │   │       └── routes/
 │   │   └── shared/
-│   │       ├── config/
-│   │       ├── db/
-│   │       ├── env/
+│   │       ├── config.ts
+│   │       ├── db.ts
+│   │       ├── env.ts
 │   │       ├── constants/
 │   │       ├── errors/
 │   │       ├── middleware/
@@ -82,10 +83,10 @@ chatbot-gate/
 │       │   └── (public)/
 │       ├── features/
 │       │   ├── council/
-│       │   │   ├── domain/     # 순수 비즈니스 로직
-│       │   │   ├── services/   # HTTP/SSE 통신
-│       │   │   ├── state/      # React 상태 관리
-│       │   │   └── ui/         # UI 컴포넌트
+│       │   │   ├── domain/
+│       │   │   ├── services/
+│       │   │   ├── state/
+│       │   │   └── ui/
 │       │   └── chat/
 │       │       ├── domain/
 │       │       ├── services/
