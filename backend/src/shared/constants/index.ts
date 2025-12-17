@@ -41,7 +41,7 @@ export const COUNCIL = {
   /** Ultra council 멤버 모델 (OpenRouter 경유) */
   ULTRA_MODELS: [
     'anthropic/claude-opus-4.5',
-    'openai/gpt-5.1',
+    'openai/gpt-5.2',
     'google/gemini-3-pro-preview',
     'x-ai/grok-4',
     'deepseek/deepseek-v3.2-speciale'
