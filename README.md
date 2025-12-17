@@ -40,24 +40,38 @@ chatbot-gate/
 │
 ├── backend/
 │   ├── src/
+│   │   ├── app.ts
 │   │   ├── features/
+│   │   │   ├── gate/
+│   │   │   │   ├── routes/
+│   │   │   │   ├── controllers/
+│   │   │   │   └── services/
 │   │   │   ├── auth/
+│   │   │   │   └── routes/
+│   │   │   ├── chat/
+│   │   │   │   ├── routes/
+│   │   │   │   ├── controllers/
+│   │   │   │   └── services/
 │   │   │   ├── council/
+│   │   │   │   ├── routes/
+│   │   │   │   ├── controllers/
 │   │   │   │   ├── services/
 │   │   │   │   ├── sse/
 │   │   │   │   └── utils/
-│   │   │   ├── chat/
-│   │   │   │   └── services/
-│   │   │   ├── gate/
 │   │   │   └── metrics/
+│   │   │       ├── middleware/
+│   │   │       └── routes/
 │   │   └── shared/
+│   │       ├── config/
+│   │       ├── db/
+│   │       ├── env/
 │   │       ├── constants/
 │   │       ├── errors/
 │   │       ├── middleware/
 │   │       ├── models/
-│   │       ├── observability/
 │   │       ├── services/
-│   │       └── types/
+│   │       ├── types/
+│   │       └── observability/
 │   ├── docker-compose*.yml
 │   └── monitoring-config/
 │
@@ -66,7 +80,7 @@ chatbot-gate/
 │       ├── app/
 │       │   ├── (protected)/
 │       │   └── (public)/
-│       ├── features/           # Feature 모듈 (4-Layer)
+│       ├── features/
 │       │   ├── council/
 │       │   │   ├── domain/     # 순수 비즈니스 로직
 │       │   │   ├── services/   # HTTP/SSE 통신
@@ -77,7 +91,7 @@ chatbot-gate/
 │       │       ├── services/
 │       │       ├── state/
 │       │       └── ui/
-│       └── shared/             # 공유 모듈 (leaf)
+│       └── shared/
 │           ├── apis/
 │           ├── components/
 │           ├── hooks/
