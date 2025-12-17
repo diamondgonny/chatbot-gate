@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "../setup/msw-handlers";
-import * as navigationModule from "@/shared/apis/navigation";
+import * as navigationModule from "@/shared/api/navigation";
 import { apiClient } from "@/shared";
 
 describe("apiClient", () => {

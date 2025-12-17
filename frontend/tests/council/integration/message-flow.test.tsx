@@ -34,8 +34,8 @@ import {
   CouncilStatusProvider,
   useCouncilContext,
 } from "@/features/council";
-import { MessageList, InputArea } from "@/features/council/ui";
-import type { CouncilMessage } from "@/features/council/domain";
+import { MessageList, InputArea } from "@/features/council/components";
+import type { CouncilMessage } from "@/features/council/types";
 
 /**
  * Test wrapper with providers

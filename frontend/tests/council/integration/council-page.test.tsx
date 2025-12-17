@@ -34,7 +34,7 @@ import {
   CouncilStreamProvider,
   CouncilStatusProvider,
 } from "@/features/council";
-import { MessageList, InputArea } from "@/features/council/ui";
+import { MessageList, InputArea } from "@/features/council/components";
 
 /**
  * Test wrapper with all necessary providers

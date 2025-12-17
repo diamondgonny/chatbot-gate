@@ -32,8 +32,8 @@ import {
   useCouncilStreamContext,
   useCouncilStatusContext,
 } from "@/features/council";
-import { StreamingMessage, InputArea } from "@/features/council/ui";
-import type { CurrentStage, Stage1Response } from "@/features/council/domain";
+import { StreamingMessage, InputArea } from "@/features/council/components";
+import type { CurrentStage, Stage1Response } from "@/features/council/types";
 
 /**
  * Test wrapper with providers

@@ -18,7 +18,7 @@ import {
   useCouncilStreamContext,
   CouncilStatusProvider,
   useCouncilStatusContext,
-} from "@/features/council/state";
+} from "@/features/council/hooks";
 
 // ============================================
 // Test Components that track render counts
