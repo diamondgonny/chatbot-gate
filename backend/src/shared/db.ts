@@ -3,15 +3,13 @@ import { config } from './config';
 import { mongoConnectionState, activeSessions, getDeploymentEnv } from './observability';
 import { ChatSession } from './models/chatSession.model';
 
-// Active sessions tracking interval handle
+// 활성 세션 추적 인터벌 핸들
 let activeSessionsInterval: ReturnType<typeof setInterval> | null = null;
 
-// Prevent duplicate listener registration on multiple connectDB() calls
+// 여러 번 connectDB() 호출 시 중복 리스너 등록 방지
 let listenersRegistered = false;
 
-/**
- * Stop active sessions tracking (for graceful shutdown)
- */
+/** 활성 세션 추적 중지 (graceful shutdown용) */
 export const stopActiveSessionsTracking = (): void => {
   if (activeSessionsInterval) {
     clearInterval(activeSessionsInterval);
@@ -19,15 +17,15 @@ export const stopActiveSessionsTracking = (): void => {
   }
 };
 
-// Connect to MongoDB
-// Mongoose handles connection pooling automatically
-// Note: MONGO_URI validation is handled by validateEnv() at startup
+// MongoDB 연결
+// Mongoose가 connection pooling을 자동으로 처리
+// 참고: MONGO_URI 검증은 시작 시 validateEnv()에서 처리됨
 export const connectDB = async () => {
   try {
     await mongoose.connect(config.mongoUri);
     console.log('✅ MongoDB connected successfully');
 
-    // Set up MongoDB connection state metrics (only once to prevent listener accumulation)
+    // MongoDB 연결 상태 metrics 설정 (리스너 누적 방지를 위해 한 번만)
     const deploymentEnv = getDeploymentEnv();
 
     if (!listenersRegistered) {
@@ -50,12 +48,12 @@ export const connectDB = async () => {
       listenersRegistered = true;
     }
 
-    // Set initial state (always update on connect)
+    // 초기 상태 설정 (연결 시 항상 업데이트)
     mongoConnectionState.labels(deploymentEnv).set(mongoose.connection.readyState);
 
-    // Start periodic active sessions tracking (sessions with activity in last 5 minutes)
-    const ACTIVE_SESSION_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
-    const UPDATE_INTERVAL_MS = 30 * 1000; // Update every 30 seconds
+    // 주기적 활성 세션 추적 시작 (최근 5분 내 활동이 있는 세션)
+    const ACTIVE_SESSION_WINDOW_MS = 5 * 60 * 1000; // 5분
+    const UPDATE_INTERVAL_MS = 30 * 1000; // 30초마다 업데이트
 
     const updateActiveSessions = async () => {
       try {
@@ -67,14 +65,14 @@ export const connectDB = async () => {
       }
     };
 
-    // Initial update
+    // 초기 업데이트
     await updateActiveSessions();
     console.log('[Metrics] Active sessions tracking started (5-minute window, 30s interval)');
 
-    // Clear existing interval before creating new one (prevents accumulation on reconnect)
+    // 새 인터벌 생성 전에 기존 인터벌 정리 (재연결 시 누적 방지)
     stopActiveSessionsTracking();
 
-    // Periodic updates (store handle for cleanup on shutdown)
+    // 주기적 업데이트 (shutdown 시 cleanup을 위해 핸들 저장)
     activeSessionsInterval = setInterval(updateActiveSessions, UPDATE_INTERVAL_MS);
     activeSessionsInterval.unref();
   } catch (error) {
@@ -83,5 +81,5 @@ export const connectDB = async () => {
   }
 };
 
-// Export mongoose for use in models
+// 모델에서 사용하기 위해 mongoose export
 export default mongoose;

@@ -1,15 +1,15 @@
 /**
- * Error Handler Middleware
- * Centralized error handling with AppError support.
+ * 에러 핸들러 미들웨어
+ * AppError를 지원하는 중앙화된 에러 처리
  */
 
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../errors';
 
 /**
- * Express error handling middleware.
- * Handles AppError instances with proper status codes and error codes.
- * Falls back to 500 for unknown errors.
+ * Express 에러 처리 미들웨어
+ * - AppError: 적절한 상태 코드 및 에러 코드와 함께 처리
+ * - 알 수 없는 에러: 500으로 폴백 (내부 세부사항 노출 방지)
  */
 export const errorHandler = (
   err: Error,
@@ -19,10 +19,9 @@ export const errorHandler = (
 ): void => {
   const errorId = Date.now().toString(36);
 
-  // Log error with ID for correlation
   console.error(`[${errorId}]`, err);
 
-  // Handle known application errors
+  // 애플리케이션 에러 처리
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
       error: err.message,
@@ -32,7 +31,7 @@ export const errorHandler = (
     return;
   }
 
-  // Handle unknown errors (don't leak internal details)
+  // 알 수 없는 에러 처리 (내부 세부사항 노출 방지)
   const statusCode = res.statusCode >= 400 ? res.statusCode : 500;
   res.status(statusCode).json({
     error: 'Internal server error',

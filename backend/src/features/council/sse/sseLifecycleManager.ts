@@ -1,6 +1,6 @@
 /**
- * SSE Lifecycle Manager
- * Manages grace periods, cleanup, and shutdown.
+ * SSE 라이프사이클 관리자
+ * grace period, cleanup, shutdown 관리
  */
 
 import { SSEJobTracker } from './sseJobTracker';
@@ -16,18 +16,16 @@ export class SSELifecycleManager {
     private jobTracker: SSEJobTracker,
     private clientManager: SSEClientManager
   ) {
-    // Cleanup stale processing at configured interval
+    // 설정된 간격으로 stale 처리 정리
     this.cleanupInterval = setInterval(
       () => this.cleanupStale(),
       COUNCIL.SSE.CLEANUP_INTERVAL_MS
     );
-    // Don't let this timer prevent process from exiting
+    // 이 타이머가 프로세스 종료를 차단하지 않도록 함
     this.cleanupInterval.unref();
   }
 
-  /**
-   * Start grace period before aborting (allows reconnection)
-   */
+  /** abort 전 grace period 시작 (재연결 허용) */
   startGracePeriod(userId: string, sessionId: string): void {
     if (this.isShuttingDown) return;
 
@@ -45,15 +43,13 @@ export class SSELifecycleManager {
       }
       this.gracePeriodTimers.delete(key);
     }, gracePeriodMs);
-    // Don't let grace period timers prevent process exit during shutdown
+    // grace period 타이머가 shutdown 중 프로세스 종료를 차단하지 않도록 함
     timer.unref();
 
     this.gracePeriodTimers.set(key, timer);
   }
 
-  /**
-   * Cancel grace period (client reconnected)
-   */
+  /** grace period 취소 (클라이언트 재연결) */
   cancelGracePeriod(userId: string, sessionId: string): void {
     const key = this.jobTracker.getKey(userId, sessionId);
     const existingTimer = this.gracePeriodTimers.get(key);
@@ -65,33 +61,33 @@ export class SSELifecycleManager {
   }
 
   /**
-   * Mark processing as complete (success or error)
-   * @param forAbortController - If provided, only complete if it matches current processing
+   * 처리 완료 표시 (성공 또는 에러)
+   * @param forAbortController - 제공된 경우, 현재 처리의 abortController와 일치할 때만 완료 처리
    */
   complete(userId: string, sessionId: string, forAbortController?: AbortController): void {
     const key = this.jobTracker.getKey(userId, sessionId);
     const processing = this.jobTracker.get(userId, sessionId);
 
-    // Already cleaned up
+    // 이미 정리됨
     if (!processing) {
       console.log(`[SSELifecycleManager] Processing already cleaned up for ${key}`);
       return;
     }
 
-    // Skip if this is a stale call (abortController doesn't match current processing)
+    // stale 호출인 경우 스킵 (abortController가 현재 처리와 일치하지 않음)
     if (forAbortController && processing.abortController !== forAbortController) {
       console.log(`[SSELifecycleManager] Skipping stale complete call for ${key}`);
       return;
     }
 
-    // Cancel any grace period timer
+    // grace period 타이머 취소
     const timer = this.gracePeriodTimers.get(key);
     if (timer) {
       clearTimeout(timer);
       this.gracePeriodTimers.delete(key);
     }
 
-    // Close all connected clients before removing
+    // 제거 전에 모든 연결된 클라이언트 닫기
     const closedCount = this.clientManager.closeAllClients(processing);
     this.decrementConnectionGauge(closedCount);
 
@@ -99,23 +95,19 @@ export class SSELifecycleManager {
     console.log(`[SSELifecycleManager] Completed processing for ${key}`);
   }
 
-  /**
-   * Abort processing and cleanup
-   */
+  /** 처리 abort 및 cleanup */
   abort(userId: string, sessionId: string): void {
     const processing = this.jobTracker.get(userId, sessionId);
 
     if (processing) {
       processing.abortController.abort();
       console.log(`[SSELifecycleManager] Aborted processing for ${this.jobTracker.getKey(userId, sessionId)}`);
-      // Pass the abortController to ensure we only clean up this specific processing
+      // 이 특정 처리만 정리하도록 abortController 전달
       this.complete(userId, sessionId, processing.abortController);
     }
   }
 
-  /**
-   * Cleanup stale processing (no activity within threshold)
-   */
+  /** stale 처리 정리 (임계값 내에 활동 없음) */
   private cleanupStale(): void {
     const now = Date.now();
 
@@ -127,7 +119,7 @@ export class SSELifecycleManager {
         processing.abortController.abort();
         this.jobTracker.remove(processing.userId, processing.sessionId);
 
-        // Clean up any grace period timer
+        // grace period 타이머 정리
         const timer = this.gracePeriodTimers.get(key);
         if (timer) {
           clearTimeout(timer);
@@ -137,20 +129,18 @@ export class SSELifecycleManager {
     }
   }
 
-  /**
-   * Shutdown lifecycle manager (cleanup)
-   */
+  /** 라이프사이클 관리자 shutdown (cleanup) */
   shutdown(): void {
     this.isShuttingDown = true;
     clearInterval(this.cleanupInterval);
 
-    // Clear all grace period timers
+    // 모든 grace period 타이머 정리
     for (const timer of this.gracePeriodTimers.values()) {
       clearTimeout(timer);
     }
     this.gracePeriodTimers.clear();
 
-    // Close all clients and abort all active processing
+    // 모든 클라이언트 닫기 및 활성 처리 abort
     for (const [key, processing] of this.jobTracker.getAll()) {
       console.log(`[SSELifecycleManager] Shutting down processing: ${key}`);
       const closedCount = this.clientManager.closeAllClients(processing);
@@ -160,9 +150,7 @@ export class SSELifecycleManager {
     this.jobTracker.clear();
   }
 
-  /**
-   * Decrement connection gauge for closed clients
-   */
+  /** 닫힌 클라이언트에 대한 connection gauge 감소 */
   private decrementConnectionGauge(count: number): void {
     const env = getDeploymentEnv();
     for (let i = 0; i < count; i++) {

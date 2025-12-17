@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../services/jwt.service';
 
-// Extend Express Request interface to include userId
+// Express Request 인터페이스 확장 (userId 추가)
 declare global {
   namespace Express {
     interface Request {
@@ -10,13 +10,9 @@ declare global {
   }
 }
 
-/**
- * JWT Authentication Middleware
- * Verifies JWT token from cookie and attaches userId to request
- */
+/** JWT 인증 미들웨어 - 쿠키에서 JWT 검증 후 userId를 request에 첨부 */
 export const authMiddleware = (req: Request, res: Response, next: NextFunction): void => {
   try {
-    // Extract token from cookie
     const token = req.cookies?.jwt;
 
     if (!token) {
@@ -24,10 +20,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
       return;
     }
 
-    // Verify token and extract userId
     const payload = verifyToken(token);
-
-    // Attach userId to request object for use in controllers
     req.userId = payload.userId;
 
     next();

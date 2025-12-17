@@ -1,6 +1,6 @@
 /**
- * Environment Validation
- * Centralized validation for required environment variables.
+ * 환경 변수 검증
+ * 필수 환경 변수에 대한 중앙화된 검증
  */
 
 export interface RequiredEnv {
@@ -9,10 +9,10 @@ export interface RequiredEnv {
 }
 
 /**
- * Validate required environment variables at startup.
- * Exits process if any required variable is missing.
+ * 시작 시 필수 환경 변수 검증
+ * 누락된 변수가 있으면 프로세스 종료
  *
- * @returns Validated environment variables
+ * @returns 검증된 환경 변수
  */
 export const validateEnv = (): RequiredEnv => {
   const missing: string[] = [];

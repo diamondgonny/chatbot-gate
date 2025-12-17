@@ -1,15 +1,14 @@
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
 
-// JWT Payload Interface
 export interface JWTPayload {
   userId: string;
 }
 
 /**
- * Signs a JWT token with the given userId
- * @param userId - The UUID user identifier
- * @returns Signed JWT token string
+ * JWT 토큰 생성
+ * @param userId - UUID 사용자 식별자
+ * @returns 서명된 JWT 토큰
  */
 export const signToken = (userId: string): string => {
   const payload: JWTPayload = { userId };
@@ -20,10 +19,10 @@ export const signToken = (userId: string): string => {
 };
 
 /**
- * Verifies and decodes a JWT token
- * @param token - The JWT token string
- * @returns Decoded payload with userId
- * @throws Error if token is invalid or expired
+ * JWT 토큰 검증 및 디코드
+ * @param token - JWT 토큰 문자열
+ * @returns userId를 포함한 페이로드
+ * @throws 토큰이 유효하지 않거나 만료된 경우 에러
  */
 export const verifyToken = (token: string): JWTPayload => {
   try {

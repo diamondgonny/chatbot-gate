@@ -1,13 +1,13 @@
 /**
- * Async Handler Middleware
- * Wraps async route handlers to automatically catch errors and forward to error middleware.
+ * Async Handler 미들웨어
+ * 비동기 라우트 핸들러를 래핑하여 에러를 자동으로 캐치하고 에러 미들웨어로 전달
  */
 
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 
 /**
- * Wraps an async route handler to catch errors and pass them to Express error middleware.
- * Eliminates the need for try/catch blocks in every controller.
+ * 비동기 라우트 핸들러를 래핑하여 에러를 캐치하고 Express 에러 미들웨어로 전달
+ * 모든 컨트롤러에 try/catch 블록을 작성할 필요 제거
  *
  * @example
  * router.get('/users', asyncHandler(async (req, res) => {
