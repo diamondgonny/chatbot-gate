@@ -8,12 +8,12 @@ const apiClient = axios.create({
   withCredentials: true,
 });
 
-// Ensure baseURL is set (for test environments where env var might be empty string)
+// baseURL이 설정되었는지 확인 (env var가 빈 문자열일 수 있는 test 환경용)
 if (!apiClient.defaults.baseURL) {
   apiClient.defaults.baseURL = "http://localhost:4000";
 }
 
-// Attach CSRF token from cookie to every state-changing request
+// 모든 state 변경 요청에 cookie에서 CSRF token 첨부
 apiClient.interceptors.request.use((config) => {
   if (typeof document !== "undefined") {
     const match = document.cookie.match(/(?:^|;\s*)csrfToken=([^;]+)/);
@@ -25,7 +25,7 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle auth errors (401/403) globally - delegate to authErrorHandler
+// Auth error (401/403)를 전역적으로 처리 - authErrorHandler에 위임
 apiClient.interceptors.response.use(
   (response) => response,
   handleAuthError

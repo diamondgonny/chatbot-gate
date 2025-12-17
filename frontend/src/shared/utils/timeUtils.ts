@@ -1,7 +1,7 @@
 /**
- * Format a date to English "time ago" format
- * @param date - Date string or Date object
- * @returns Formatted string like "Just now", "2h ago", "3d ago"
+ * Date를 영어 "time ago" 형식으로 변환
+ * @param date - Date string 또는 Date object
+ * @returns "Just now", "2h ago", "3d ago" 같은 형식의 문자열
  */
 export const formatTimeAgo = (date: string | Date): string => {
   const now = new Date();

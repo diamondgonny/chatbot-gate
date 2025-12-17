@@ -28,7 +28,7 @@ export function useToast() {
       const id = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       setToasts((prev) => [...prev, { id, message, type }]);
 
-      // Auto-remove after 3 seconds
+      // 3초 후 자동 제거
       const timeoutId = setTimeout(() => {
         removeToast(id);
       }, 3000);
@@ -39,7 +39,7 @@ export function useToast() {
     [removeToast]
   );
 
-  // Cleanup timeouts on unmount
+  // Unmount 시 timeout 정리
   useEffect(() => {
     const currentTimeouts = timeoutRefs.current;
     return () => {
