@@ -1,6 +1,6 @@
 /**
- * Council Types
- * Type definitions for Council SSE events and service results.
+ * Council 타입 정의
+ * Council SSE 이벤트 및 서비스 결과에 대한 타입 정의
  */
 
 import {
@@ -10,14 +10,14 @@ import {
   IStage3Synthesis,
 } from '../models/councilSession.model';
 
-// Aggregate ranking result from Stage 2
+// Stage 2에서 집계된 순위 결과
 export interface AggregateRanking {
   model: string;
   averageRank: number;
   rankingsCount: number;
 }
 
-// SSE Event types for real-time streaming
+// 실시간 스트리밍을 위한 SSE 이벤트 타입
 export type SSEEvent =
   | { type: 'heartbeat'; timestamp: number }
   | { type: 'stage1_start' }
@@ -38,7 +38,7 @@ export type SSEEvent =
   | { type: 'complete' }
   | { type: 'error'; error: string };
 
-// Session service result types (discriminated unions)
+// 세션 서비스 결과 타입 (discriminated unions)
 export type CreateSessionResult =
   | { success: true; session: ICouncilSession }
   | { success: false; error: string; code: string };

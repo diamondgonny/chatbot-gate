@@ -1,13 +1,13 @@
 /**
- * Request/Response type definitions for API endpoints.
- * Provides type safety for controller and service layers.
+ * API endpoint를 위한 Request/Response 타입 정의
+ * Controller 및 Service 레이어에 타입 안전성 제공
  */
 
-// ===== Gate Types =====
+// ===== Gate 타입 =====
 
 export interface GateValidateRequest {
   code: string;
-  userId?: string; // For reusing existing userId
+  userId?: string; // 기존 userId 재사용을 위해
 }
 
 export interface GateValidateSuccessResponse {
@@ -32,7 +32,7 @@ export type GateValidateResponse =
   | GateValidateFailureResponse
   | GateBackoffResponse;
 
-// ===== Chat Types =====
+// ===== 채팅 타입 =====
 
 export interface ChatMessageRequest {
   message: string;
@@ -54,7 +54,7 @@ export interface ChatHistoryResponse {
   messages: ChatHistoryMessage[];
 }
 
-// ===== Session Types =====
+// ===== 세션 타입 =====
 
 export interface SessionResponse {
   sessionId: string;
@@ -85,7 +85,7 @@ export interface SessionListResponse {
   sessions: SessionListItem[];
 }
 
-// ===== Error Types =====
+// ===== 에러 타입 =====
 
 export interface ErrorResponse {
   error: string;
@@ -106,7 +106,7 @@ export interface RateLimitError {
   retryAfter: number;
 }
 
-// ===== Backoff State Types (for gateService) =====
+// ===== Backoff 상태 타입 (gateService용) =====
 
 export interface BackoffCheckResult {
   blocked: boolean;

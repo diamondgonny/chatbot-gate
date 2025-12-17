@@ -1,6 +1,6 @@
 /**
  * Application Error
- * Custom error class with code and status for consistent error handling.
+ * 일관된 에러 처리를 위한 코드 및 상태를 포함하는 커스텀 에러 클래스
  */
 
 export class AppError extends Error {
@@ -16,10 +16,10 @@ export class AppError extends Error {
 }
 
 /**
- * Common error codes for consistency across the application
+ * 애플리케이션 전반의 일관성을 위한 공통 에러 코드
  */
 export const ErrorCodes = {
-  // Validation errors (4xx)
+  // 검증 에러 (4xx)
   VALIDATION_ERROR: 'VALIDATION_ERROR',
   UNAUTHORIZED: 'UNAUTHORIZED',
   FORBIDDEN: 'FORBIDDEN',
@@ -27,7 +27,7 @@ export const ErrorCodes = {
   RATE_LIMITED: 'RATE_LIMITED',
   PAYLOAD_TOO_LARGE: 'PAYLOAD_TOO_LARGE',
 
-  // Server errors (5xx)
+  // 서버 에러 (5xx)
   INTERNAL_ERROR: 'INTERNAL_ERROR',
   SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
   EXTERNAL_API_ERROR: 'EXTERNAL_API_ERROR',
