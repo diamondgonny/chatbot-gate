@@ -1,39 +1,39 @@
 /**
- * Observability (Cross-cutting Concern)
- * Metrics registry and related utilities.
+ * 관찰성 (횡단 관심사)
+ * 메트릭 레지스트리 및 관련 유틸리티
  */
 
 export {
   register,
   getDeploymentEnv,
   stopMetricsCollection,
-  // HTTP Metrics
+  // HTTP 메트릭
   httpRequestsTotal,
   httpRequestDuration,
   httpRequestsInProgress,
-  // Business Metrics - Gate
+  // 비즈니스 메트릭 - Gate
   gateAuthAttempts,
-  // Business Metrics - Chat
+  // 비즈니스 메트릭 - 채팅
   chatMessagesTotal,
   chatMessageDuration,
-  // Business Metrics - Sessions
+  // 비즈니스 메트릭 - 세션
   activeSessions,
   sessionOperations,
-  // Infrastructure Metrics - MongoDB
+  // 인프라 메트릭 - MongoDB
   mongoConnectionState,
-  // Infrastructure Metrics - OpenAI
+  // 인프라 메트릭 - OpenAI
   openaiApiCalls,
   openaiApiDuration,
   openaiTokensUsed,
-  // Infrastructure Metrics - Rate Limiting
+  // 인프라 메트릭 - Rate Limiting
   rateLimitHits,
-  // Business Metrics - Council
+  // 비즈니스 메트릭 - Council
   councilMessagesTotal,
   councilSessionsTotal,
   councilStageDuration,
   councilSseConnections,
   councilAbortsTotal,
-  // Infrastructure Metrics - OpenRouter
+  // 인프라 메트릭 - OpenRouter
   openrouterApiCalls,
   openrouterResponseTime,
   openrouterTokensUsed,
