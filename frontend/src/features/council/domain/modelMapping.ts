@@ -1,13 +1,13 @@
 /**
- * Model mapping utilities for Council feature
- * Handles conversion between model identifiers and display names
+ * Council feature용 model mapping utility
+ * Model identifier와 표시 이름 간 변환 처리
  */
 
 import type { Stage1Response } from "./council.types";
 import type { ModelMapping } from "./types";
 
 /**
- * Format a model identifier into a human-readable display name
+ * Model identifier를 읽기 쉬운 표시 이름으로 변환
  *
  * @example
  * formatModelName("anthropic/claude-sonnet-4") // "Claude Sonnet 4"
@@ -23,8 +23,8 @@ export function formatModelName(model: string): string {
 }
 
 /**
- * Build a label-to-model mapping from stage1 responses
- * Maps anonymized labels ("Response A", "Response B", etc.) to actual model names
+ * stage1 response에서 label-to-model mapping 구성
+ * 익명화된 label("Response A", "Response B" 등)을 실제 model 이름으로 mapping
  *
  * @example
  * const stage1 = [
@@ -44,7 +44,7 @@ export function buildLabelToModel(stage1: Stage1Response[]): Record<string, stri
 }
 
 /**
- * Build a model-to-label mapping (reverse of buildLabelToModel)
+ * model-to-label mapping 구성 (buildLabelToModel의 역방향)
  *
  * @example
  * buildModelToLabel(stage1);
@@ -60,7 +60,7 @@ export function buildModelToLabel(stage1: Stage1Response[]): Record<string, stri
 }
 
 /**
- * Build both label-to-model and model-to-label mappings
+ * label-to-model 및 model-to-label mapping 모두 구성
  */
 export function buildModelMapping(stage1: Stage1Response[]): ModelMapping {
   return {
@@ -70,7 +70,7 @@ export function buildModelMapping(stage1: Stage1Response[]): ModelMapping {
 }
 
 /**
- * Get the label for a model (e.g., "Response A")
+ * Model의 label 조회 (예: "Response A")
  */
 export function getLabelForModel(
   model: string,
@@ -80,7 +80,7 @@ export function getLabelForModel(
 }
 
 /**
- * Get the model for a label (e.g., "anthropic/claude-sonnet-4")
+ * Label의 model 조회 (예: "anthropic/claude-sonnet-4")
  */
 export function getModelForLabel(
   label: string,

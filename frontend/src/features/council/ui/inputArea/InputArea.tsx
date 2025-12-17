@@ -1,6 +1,6 @@
 /**
  * Input Area Component
- * Handles message input form and abort button
+ * Message 입력 form 및 abort 버튼 처리
  */
 
 "use client";
@@ -19,7 +19,7 @@ interface InputAreaProps {
 }
 
 /**
- * Send icon SVG (matches chat style)
+ * Send icon SVG (chat 스타일과 일치)
  */
 function SendIcon() {
   return (
