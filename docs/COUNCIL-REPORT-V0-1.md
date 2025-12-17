@@ -4,7 +4,7 @@
 **작업 기간**: 2025-12-11 ~ 12-12
 **브랜치**: `council` (아키텍처 리팩토링)
 **커밋 범위**: `ef3ea08c`..`b2f2356`
-**이전 단계**:  [COUNCIL-REPORT-V0.md](./COUNCIL-REPORT-V0.md) (초기 개발)
+**이전 단계**:  [COUNCIL-REPORT-V0-0.md](./COUNCIL-REPORT-V0-0.md) (초기 개발)
 
 ---
 

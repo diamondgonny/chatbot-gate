@@ -4,7 +4,7 @@
 **작업 기간**: 2025-12-11
 **브랜치**: `council-v0` (초기 개발)
 **커밋 범위**: `11e2a22f`..`15f4c60`
-**다음 단계**:  [COUNCIL-REPORT-V1.md](./COUNCIL-REPORT-V1.md) (아키텍처 리팩토링)
+**다음 단계**:  [COUNCIL-REPORT-V0-1.md](./COUNCIL-REPORT-V0-1.md) (아키텍처 리팩토링)
 
 ---
 

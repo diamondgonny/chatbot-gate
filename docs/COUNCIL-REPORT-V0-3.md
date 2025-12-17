@@ -1,10 +1,10 @@
-# AI Council Architecture Report V3
+# AI Council Architecture Report V0.3
 
 **프로젝트**: Chatbot Gate
 **작업 기간**: 2025-12-14 ~ 12-17
 **브랜치**: `council` (구조 정합성 + 성능/안정성 개선)
 **커밋 범위**: `09ef801`..`7620cda`
-**이전 단계**: [COUNCIL-REPORT-V2.md](./COUNCIL-REPORT-V2.md) (Feature-Based 아키텍처 전환)
+**이전 단계**: [COUNCIL-REPORT-V0-2.md](./COUNCIL-REPORT-V0-2.md) (Feature-Based 아키텍처 전환)
 
 ---
 
