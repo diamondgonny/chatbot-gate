@@ -57,7 +57,7 @@ export function Stage3Panel({
             <span className="ml-2 text-xs text-blue-400/70">● Thinking...</span>
           )}
           {isStreaming && !wasAborted && (
-            <span className="ml-2 text-xs text-slate-400">● Streaming...</span>
+            <span className="ml-2 text-xs text-green-400">● Streaming...</span>
           )}
         </h3>
       </div>
