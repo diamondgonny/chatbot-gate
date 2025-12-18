@@ -2,18 +2,27 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Stage1Response } from "../types";
+import type { Stage1Response, CurrentStage } from "../types";
 import { formatModelName } from "../utils";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface Stage1PanelProps {
   responses: Stage1Response[];
   streamingContent?: Record<string, string>;
+  completedModels?: string[];
+  currentStage?: CurrentStage;
   isLoading?: boolean;
   wasAborted?: boolean;
 }
 
-export function Stage1Panel({ responses, streamingContent = {}, isLoading, wasAborted }: Stage1PanelProps) {
+export function Stage1Panel({
+  responses,
+  streamingContent = {},
+  completedModels = [],
+  currentStage,
+  isLoading,
+  wasAborted
+}: Stage1PanelProps) {
   const [activeTab, setActiveTab] = useState(0);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -36,7 +45,9 @@ export function Stage1Panel({ responses, streamingContent = {}, isLoading, wasAb
   // 활성 tab의 content 가져오기 (완료된 response 또는 streaming)
   const activeModel = allModels[activeTab];
   const completedResponse = responses.find((r) => r.model === activeModel);
-  const isStreaming = !completedResponse && !!streamingContent[activeModel];
+  const isModelInCompletedList = completedModels.includes(activeModel);
+  const isStreaming = !completedResponse && !!streamingContent[activeModel] && !isModelInCompletedList;
+  const isComplete = isModelInCompletedList && currentStage === "stage1";
   const activeContent = completedResponse?.response || streamingContent[activeModel] || "";
 
   if (allModels.length === 0 && !isLoading) {
@@ -54,7 +65,8 @@ export function Stage1Panel({ responses, streamingContent = {}, isLoading, wasAb
       {/* Tab button */}
       <div className="flex overflow-x-auto border-b border-slate-700 bg-slate-800/30">
         {allModels.map((model, index) => {
-          const isModelStreaming = !responses.find((r) => r.model === model);
+          const isModelStreaming = !responses.find((r) => r.model === model) && !completedModels.includes(model);
+          const isModelComplete = completedModels.includes(model) && currentStage === "stage1";
           return (
             <button
               key={model}
@@ -68,6 +80,9 @@ export function Stage1Panel({ responses, streamingContent = {}, isLoading, wasAb
               {formatModelName(model)}
               {isModelStreaming && !wasAborted && (
                 <span className="ml-1 inline-block w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+              )}
+              {isModelComplete && !wasAborted && (
+                <span className="ml-1 text-green-400 text-xs">✓</span>
               )}
             </button>
           );
@@ -94,6 +109,9 @@ export function Stage1Panel({ responses, streamingContent = {}, isLoading, wasAb
                 {formatModelName(activeModel)}
                 {isStreaming && !wasAborted && (
                   <span className="ml-2 text-green-400">● Streaming...</span>
+                )}
+                {isComplete && !wasAborted && (
+                  <span className="ml-2 text-green-400">✓ Complete!</span>
                 )}
               </span>
               {completedResponse && (

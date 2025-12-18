@@ -27,8 +27,10 @@ export interface CouncilStreamContextValue {
   currentStage: CurrentStage;
   stage1Responses: Stage1Response[];
   stage1StreamingContent: Record<string, string>;
+  stage1CompletedModels: string[];
   stage2Reviews: Stage2Review[];
   stage2StreamingContent: Record<string, string>;
+  stage2CompletedModels: string[];
   stage3Synthesis: Stage3Synthesis | null;
   stage3StreamingContent: string;
   stage3ReasoningContent: string;
@@ -63,10 +65,12 @@ export function CouncilStreamProvider({
   const [stage1StreamingContent, setStage1StreamingContent] = useState<
     Record<string, string>
   >({});
+  const [stage1CompletedModels, setStage1CompletedModels] = useState<string[]>([]);
   const [stage2Reviews, setStage2Reviews] = useState<Stage2Review[]>([]);
   const [stage2StreamingContent, setStage2StreamingContent] = useState<
     Record<string, string>
   >({});
+  const [stage2CompletedModels, setStage2CompletedModels] = useState<string[]>([]);
   const [stage3Synthesis, setStage3Synthesis] =
     useState<Stage3Synthesis | null>(null);
   const [stage3StreamingContent, setStage3StreamingContent] =
@@ -91,11 +95,17 @@ export function CouncilStreamProvider({
     if (partial.stage1StreamingContent !== undefined) {
       setStage1StreamingContent(partial.stage1StreamingContent);
     }
+    if (partial.stage1CompletedModels !== undefined) {
+      setStage1CompletedModels(partial.stage1CompletedModels);
+    }
     if (partial.stage2Reviews !== undefined) {
       setStage2Reviews(partial.stage2Reviews);
     }
     if (partial.stage2StreamingContent !== undefined) {
       setStage2StreamingContent(partial.stage2StreamingContent);
+    }
+    if (partial.stage2CompletedModels !== undefined) {
+      setStage2CompletedModels(partial.stage2CompletedModels);
     }
     if (partial.stage3Synthesis !== undefined) {
       setStage3Synthesis(partial.stage3Synthesis);
@@ -141,8 +151,10 @@ export function CouncilStreamProvider({
     setCurrentStage("idle");
     setStage1Responses([]);
     setStage1StreamingContent({});
+    setStage1CompletedModels([]);
     setStage2Reviews([]);
     setStage2StreamingContent({});
+    setStage2CompletedModels([]);
     setStage3Synthesis(null);
     setStage3StreamingContent("");
     setStage3ReasoningContent("");
@@ -155,8 +167,10 @@ export function CouncilStreamProvider({
       currentStage,
       stage1Responses,
       stage1StreamingContent,
+      stage1CompletedModels,
       stage2Reviews,
       stage2StreamingContent,
+      stage2CompletedModels,
       stage3Synthesis,
       stage3StreamingContent,
       stage3ReasoningContent,
@@ -171,8 +185,10 @@ export function CouncilStreamProvider({
       currentStage,
       stage1Responses,
       stage1StreamingContent,
+      stage1CompletedModels,
       stage2Reviews,
       stage2StreamingContent,
+      stage2CompletedModels,
       stage3Synthesis,
       stage3StreamingContent,
       stage3ReasoningContent,

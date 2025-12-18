@@ -39,8 +39,10 @@ export interface ComputedMessageData {
 export interface StreamState {
   stage1Responses: Stage1Response[];
   stage1StreamingContent: Record<string, string>;
+  stage1CompletedModels: string[];
   stage2Reviews: Stage2Review[];
   stage2StreamingContent: Record<string, string>;
+  stage2CompletedModels: string[];
   stage3Synthesis: Stage3Synthesis | null;
   stage3StreamingContent: string;
   stage3ReasoningContent: string;
@@ -56,8 +58,10 @@ export function createInitialStreamState(): StreamState {
   return {
     stage1Responses: [],
     stage1StreamingContent: {},
+    stage1CompletedModels: [],
     stage2Reviews: [],
     stage2StreamingContent: {},
+    stage2CompletedModels: [],
     stage3Synthesis: null,
     stage3StreamingContent: "",
     stage3ReasoningContent: "",

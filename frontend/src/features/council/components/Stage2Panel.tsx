@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import type { Stage2Review, AggregateRanking } from "../types";
+import type { Stage2Review, AggregateRanking, CurrentStage } from "../types";
 import { formatModelName } from "../utils";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface Stage2PanelProps {
   reviews: Stage2Review[];
   streamingContent?: Record<string, string>;
+  completedModels?: string[];
+  currentStage?: CurrentStage;
   labelToModel: Record<string, string>;
   aggregateRankings: AggregateRanking[];
   isLoading?: boolean;
@@ -36,6 +38,8 @@ function deAnonymizeForMarkdown(
 export function Stage2Panel({
   reviews,
   streamingContent = {},
+  completedModels = [],
+  currentStage,
   labelToModel,
   aggregateRankings,
   isLoading,
@@ -107,7 +111,8 @@ export function Stage2Panel({
           </button>
         )}
         {allModels.map((model, index) => {
-          const isModelStreaming = !reviews.find((r) => r.model === model);
+          const isModelStreaming = !reviews.find((r) => r.model === model) && !completedModels.includes(model);
+          const isModelComplete = completedModels.includes(model) && currentStage === "stage2";
           return (
             <button
               key={model}
@@ -121,6 +126,9 @@ export function Stage2Panel({
               {formatModelName(model)}
               {isModelStreaming && !wasAborted && (
                 <span className="ml-1 inline-block w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+              )}
+              {isModelComplete && !wasAborted && (
+                <span className="ml-1 text-green-400 text-xs">✓</span>
               )}
             </button>
           );
@@ -193,7 +201,9 @@ export function Stage2Panel({
 
           const activeModel = allModels[reviewIndex];
           const completedReview = reviews.find((r) => r.model === activeModel);
-          const isStreaming = !completedReview && !!streamingContent[activeModel];
+          const isModelInCompletedList = completedModels.includes(activeModel);
+          const isStreaming = !completedReview && !!streamingContent[activeModel] && !isModelInCompletedList;
+          const isComplete = isModelInCompletedList && currentStage === "stage2";
           const activeContent = completedReview?.ranking || streamingContent[activeModel] || "";
 
           if (!activeModel) return null;
@@ -211,6 +221,9 @@ export function Stage2Panel({
                   Reviewed by: {formatModelName(activeModel)}
                   {isStreaming && !wasAborted && (
                     <span className="ml-2 text-green-400">● Streaming...</span>
+                  )}
+                  {isComplete && !wasAborted && (
+                    <span className="ml-2 text-green-400">✓ Complete!</span>
                   )}
                 </span>
                 {completedReview && (

@@ -41,8 +41,10 @@ export function StreamingMessage() {
     currentStage,
     stage1Responses,
     stage1StreamingContent,
+    stage1CompletedModels,
     stage2Reviews,
     stage2StreamingContent,
+    stage2CompletedModels,
     stage3Synthesis,
     stage3StreamingContent,
     stage3ReasoningContent,
@@ -98,6 +100,8 @@ export function StreamingMessage() {
             key="stage1-panel"
             responses={stage1Responses}
             streamingContent={stage1StreamingContent}
+            completedModels={stage1CompletedModels}
+            currentStage={currentStage}
             isLoading={currentStage === "stage1"}
             wasAborted={wasAborted}
           />
@@ -109,6 +113,8 @@ export function StreamingMessage() {
             key="stage2-panel"
             reviews={stage2Reviews}
             streamingContent={stage2StreamingContent}
+            completedModels={stage2CompletedModels}
+            currentStage={currentStage}
             labelToModel={labelToModel}
             aggregateRankings={aggregateRankings}
             isLoading={currentStage === "stage2"}

@@ -51,6 +51,10 @@ export class StreamEventProcessor {
   private stage3StreamingContent = "";
   private stage3ReasoningContent = "";
 
+  // 완료된 모델 추적 (stage 진행 중 UI 표시용)
+  private stage1CompletedModels: string[] = [];
+  private stage2CompletedModels: string[] = [];
+
   // rAF batching으로 streaming 업데이트 최적화
   private pendingStateUpdate: Partial<StreamState> = {};
   private rafId: number | null = null;
@@ -111,7 +115,7 @@ export class StreamEventProcessor {
         this.handleStage1Chunk(event);
         break;
       case "stage1_model_complete":
-        // Metadata만 있음, content는 이미 누적됨
+        this.handleStage1ModelComplete(event);
         break;
       case "stage1_response":
         this.handleStage1Response(event);
@@ -125,7 +129,7 @@ export class StreamEventProcessor {
         this.handleStage2Chunk(event);
         break;
       case "stage2_model_complete":
-        // Metadata만 있음
+        this.handleStage2ModelComplete(event);
         break;
       case "stage2_response":
         this.handleStage2Response(event);
@@ -182,6 +186,8 @@ export class StreamEventProcessor {
     this.stage2StreamingContent = {};
     this.stage3StreamingContent = "";
     this.stage3ReasoningContent = "";
+    this.stage1CompletedModels = [];
+    this.stage2CompletedModels = [];
   }
 
   buildAssistantMessage(): CouncilAssistantMessage | null {
@@ -247,6 +253,15 @@ export class StreamEventProcessor {
     }
   }
 
+  private handleStage1ModelComplete(event: SSEEvent): void {
+    if (event.model && !this.stage1CompletedModels.includes(event.model)) {
+      this.stage1CompletedModels = [...this.stage1CompletedModels, event.model];
+      this.callbacks.onStateChange({
+        stage1CompletedModels: [...this.stage1CompletedModels],
+      });
+    }
+  }
+
   private handleStage1Response(event: SSEEvent): void {
     if (event.data) {
       // Response 전에 pending streaming 업데이트 flush
@@ -267,8 +282,10 @@ export class StreamEventProcessor {
 
   private handleStage1Complete(): void {
     this.stage1StreamingContent = {};
+    this.stage1CompletedModels = [];
     this.callbacks.onStateChange({
       stage1StreamingContent: {},
+      stage1CompletedModels: [],
     });
   }
 
@@ -282,6 +299,15 @@ export class StreamEventProcessor {
       // Streaming chunk에 rAF batching 사용
       this.scheduleStateUpdate({
         stage2StreamingContent: { ...this.stage2StreamingContent },
+      });
+    }
+  }
+
+  private handleStage2ModelComplete(event: SSEEvent): void {
+    if (event.model && !this.stage2CompletedModels.includes(event.model)) {
+      this.stage2CompletedModels = [...this.stage2CompletedModels, event.model];
+      this.callbacks.onStateChange({
+        stage2CompletedModels: [...this.stage2CompletedModels],
       });
     }
   }
@@ -306,6 +332,7 @@ export class StreamEventProcessor {
 
   private handleStage2Complete(event: SSEEvent): void {
     this.stage2StreamingContent = {};
+    this.stage2CompletedModels = [];
 
     // Backend 제공값 사용, 없으면 domain 함수로 계산
     const eventData = event.data as
@@ -320,6 +347,7 @@ export class StreamEventProcessor {
 
     this.callbacks.onStateChange({
       stage2StreamingContent: {},
+      stage2CompletedModels: [],
       labelToModel: this.tempLabelToModel,
       aggregateRankings: this.tempAggregateRankings,
     });
