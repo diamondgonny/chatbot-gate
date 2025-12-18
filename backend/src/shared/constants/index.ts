@@ -50,14 +50,14 @@ export const COUNCIL = {
   LITE_MODELS: [
     'anthropic/claude-haiku-4.5',
     'openai/gpt-5-mini',
-    'google/gemini-2.5-flash',
+    'google/gemini-3-flash-preview',
     'moonshotai/kimi-k2-0905',
     'deepseek/deepseek-v3.2'
   ] as const,
   /** 최종 종합을 위한 Ultra chairman 모델 */
   ULTRA_CHAIRMAN_MODEL: 'google/gemini-3-pro-preview',
   /** 최종 종합을 위한 Lite chairman 모델 */
-  LITE_CHAIRMAN_MODEL: 'google/gemini-2.5-flash',
+  LITE_CHAIRMAN_MODEL: 'google/gemini-3-flash-preview',
   /** Council 멤버용 system prompt */
   SYSTEM_PROMPT: `You are a helpful AI assistant participating in a council discussion.
 Provide a complete, comprehensive answer in a single response.
