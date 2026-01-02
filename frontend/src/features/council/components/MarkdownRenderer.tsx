@@ -10,7 +10,6 @@ import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/cjs/styles/prism";
-import "katex/dist/katex.min.css";
 
 interface MarkdownRendererProps {
   content: string;

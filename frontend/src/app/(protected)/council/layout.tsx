@@ -1,5 +1,6 @@
 "use client";
 
+import "katex/dist/katex.min.css";
 import { useCallback, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
