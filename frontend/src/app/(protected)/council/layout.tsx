@@ -1,7 +1,6 @@
 "use client";
 
-import "katex/dist/katex.min.css";
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   CouncilSidebar,
@@ -146,6 +145,11 @@ export default function CouncilLayout({
 }: {
   children: React.ReactNode;
 }) {
+  useEffect(() => {
+    // @ts-ignore - CSS dynamic import
+    import("katex/dist/katex.min.css");
+  }, []);
+
   return (
     <CouncilSessionsProvider>
       <CouncilMessagesProvider>
