@@ -7,7 +7,7 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
-import { useCouncilSessions as useCouncilSessionsHook } from "./useCouncilSessions";
+import { useCouncilSessions as useCouncilSessionsHook } from "../hooks/useCouncilSessions";
 import type { CouncilSession } from "../types";
 
 export interface CouncilSessionsContextValue {

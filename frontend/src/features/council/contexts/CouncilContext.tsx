@@ -20,8 +20,8 @@ import {
 } from "react";
 import type { CouncilMessage, CouncilAssistantMessage, CouncilMode } from "../types";
 import type { CurrentStage } from "../types";
-import type { CouncilState } from "./useCouncilState";
-import { useCouncilStream } from "./useCouncilStream";
+import type { CouncilState } from "../hooks/useCouncilState";
+import { useCouncilStream } from "../hooks/useCouncilStream";
 import {
   getCouncilSession,
   getProcessingStatus,

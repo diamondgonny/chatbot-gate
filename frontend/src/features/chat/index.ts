@@ -35,6 +35,3 @@ export type {
 
 // Components (Component)
 export { SessionSidebar } from "./components";
-
-// Utils
-export { formatTimeAgo } from "@/shared/utils";
