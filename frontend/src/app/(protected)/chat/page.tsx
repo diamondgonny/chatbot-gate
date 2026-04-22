@@ -190,7 +190,7 @@ export default function ChatInterface() {
               <p className="text-slate-400 mb-6 max-w-md">
                 Chat with Joonman AI.
                 <br />
-                Ask anything and get a direct answer.
+                He is fun, cool, and sexy.
               </p>
               <button
                 onClick={handleNewChat}
