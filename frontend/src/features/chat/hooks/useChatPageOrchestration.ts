@@ -148,18 +148,8 @@ export function useChatPageOrchestration(
     e.preventDefault();
     if (!input.trim()) return;
 
-    let sessionId = currentSessionId;
-
-    // Session이 없으면 지연 생성
-    if (!sessionId) {
-      const newSession = await handleCreateSession();
-      if (!newSession) return;
-
-      sessionId = newSession.sessionId;
-      intendedSessionRef.current = sessionId;
-      setCurrentSessionId(sessionId);
-      setSessions((prev) => [newSession, ...prev]);
-    }
+    const sessionId = currentSessionId;
+    if (!sessionId) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -178,13 +168,9 @@ export function useChatPageOrchestration(
   }, [
     input,
     currentSessionId,
-    handleCreateSession,
-    setCurrentSessionId,
-    setSessions,
     setMessages,
     setInput,
     sendMessage,
-    intendedSessionRef,
   ]);
 
   const handleNewChat = useCallback(async () => {
@@ -194,8 +180,8 @@ export function useChatPageOrchestration(
     intendedSessionRef.current = newSession.sessionId;
     setCurrentSessionId(newSession.sessionId);
     setMessages([]);
-    await loadSessions();
-  }, [handleCreateSession, setCurrentSessionId, setMessages, loadSessions, intendedSessionRef]);
+    setSessions((prev) => [newSession, ...prev]);
+  }, [handleCreateSession, setCurrentSessionId, setMessages, setSessions, intendedSessionRef]);
 
   const handleSessionSelect = useCallback(async (sessionId: string) => {
     if (sessionId === currentSessionId) return;
@@ -221,7 +207,7 @@ export function useChatPageOrchestration(
       // 1. UI에서 즉시 제거 (optimistic)
       removeSessionOptimistic(deletedSessionId);
 
-      // 2. 현재 session 삭제 시 이동
+      // 2. 현재 session 삭제 시 이동 또는 empty-state 전환
       if (currentSessionId === deletedSessionId) {
         const remainingSessions = sessions.filter(
           (s) => s.sessionId !== deletedSessionId
@@ -229,14 +215,16 @@ export function useChatPageOrchestration(
         if (remainingSessions.length > 0) {
           await handleSessionSelect(remainingSessions[0].sessionId);
         } else {
-          await handleNewChat();
+          intendedSessionRef.current = null;
+          setCurrentSessionId(null);
+          setMessages([]);
         }
       }
     },
     onError: () => {
       callbacks.onDeleteError?.("Failed to delete. Please refresh and try again.");
     },
-  }), [deleteSessionApi, removeSessionOptimistic, currentSessionId, sessions, handleSessionSelect, handleNewChat, callbacks]);
+  }), [deleteSessionApi, removeSessionOptimistic, currentSessionId, sessions, handleSessionSelect, setCurrentSessionId, setMessages, intendedSessionRef, callbacks]);
 
   const {
     sessionToDelete,
