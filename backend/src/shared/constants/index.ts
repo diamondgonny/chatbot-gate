@@ -40,11 +40,11 @@ export const COUNCIL = {
   },
   /** Ultra council 멤버 모델 (OpenRouter 경유) */
   ULTRA_MODELS: [
-    'anthropic/claude-opus-4.5',
-    'openai/gpt-5.2',
-    'google/gemini-3-pro-preview',
-    'x-ai/grok-4',
-    'deepseek/deepseek-v3.2-speciale'
+    'anthropic/claude-opus-4.6',
+    'openai/gpt-5.4',
+    'google/gemini-3.1-pro-preview',
+    'moonshotai/kimi-k2.5',
+    'minimax/minimax-m2.5'
   ] as const,
   /** Lite council 멤버 모델 (OpenRouter 경유) */
   LITE_MODELS: [
@@ -55,7 +55,7 @@ export const COUNCIL = {
     'deepseek/deepseek-v3.2'
   ] as const,
   /** 최종 종합을 위한 Ultra chairman 모델 */
-  ULTRA_CHAIRMAN_MODEL: 'google/gemini-3-pro-preview',
+  ULTRA_CHAIRMAN_MODEL: 'google/gemini-3.1-pro-preview',
   /** 최종 종합을 위한 Lite chairman 모델 */
   LITE_CHAIRMAN_MODEL: 'google/gemini-3-flash-preview',
   /** Council 멤버용 system prompt */
