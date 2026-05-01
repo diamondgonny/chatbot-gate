@@ -72,6 +72,10 @@ COPY --chown=expressjs:nodejs package.json ./
 # Create logs directory with proper permissions
 RUN mkdir -p /app/logs && chown -R expressjs:nodejs /app/logs
 
+# Security: Remove npm/npx from production runtime (not needed; reduces attack surface
+# and clears CVE alerts on bundled npm dependencies such as picomatch / brace-expansion)
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+
 # Security: Switch to non-root user
 USER expressjs
 
