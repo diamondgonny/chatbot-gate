@@ -14,6 +14,21 @@ on:
     paths:
       - 'backend/**'
       - 'backend/docker-compose*.yml'
+  # Deploys an image that already passed the checks, for example a rollback.
+  # Only the deploy job runs, and only from main.
+  workflow_dispatch:
+    inputs:
+      image_ref:
+        description: 'Image to deploy: ghcr.io/<owner>/<repo>/chatbot-gate-backend@sha256:<digest>'
+        required: true
+        type: string
+
+# Pushes to main and manual runs deploy one at a time, in the order they were
+# created. A running deployment is never cancelled; a run that is still
+# waiting is replaced by a newer one.
+concurrency:
+  group: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && 'production' || format('ci-{0}', github.ref) }}
+  cancel-in-progress: false
 
 env:
   DOCKER_BUILDKIT: 1
@@ -23,6 +38,7 @@ jobs:
   lint-and-typecheck:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_dispatch'
 
     steps:
       - name: Checkout code
@@ -59,7 +75,8 @@ jobs:
     outputs:
       image-tags: ${{ steps.meta.outputs.tags }}
       image-digest: ${{ steps.build.outputs.digest }}
-      primary-tag: ${{ steps.primary.outputs.tag }}
+      # The one reference that test, scan and deploy all use
+      image-ref: ${{ steps.ref.outputs.image-ref }}
 
     steps:
       - name: Checkout code
@@ -100,16 +117,18 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64
 
-      - name: Image digest
+      - name: Image reference
+        id: ref
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          echo "Image digest: ${{ steps.build.outputs.digest }}"
-
-      - name: Extract primary tag
-        id: primary
-        run: |
-          PRIMARY_TAG=$(echo "${{ steps.meta.outputs.tags }}" | head -n 1)
-          echo "tag=${PRIMARY_TAG}" >> $GITHUB_OUTPUT
-          echo "Primary tag: ${PRIMARY_TAG}"
+          if [[ ! "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Build did not report a digest: '$DIGEST'" >&2
+            exit 1
+          fi
+          IMAGE_REF="ghcr.io/${GITHUB_REPOSITORY}/chatbot-gate-backend@${DIGEST}"
+          echo "image-ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+          echo "Image reference: ${IMAGE_REF}"
 
   build-and-test:
     name: Build & Test Docker Image
@@ -134,44 +153,32 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Pull and test GHCR image
+        env:
+          IMAGE_REF: ${{ needs.build-and-push.outputs.image-ref }}
         run: |
-          IMAGE_TAG="${{ needs.build-and-push.outputs.primary-tag }}"
-          echo "Pulling image: $IMAGE_TAG"
-          docker pull $IMAGE_TAG
+          echo "Pulling image: $IMAGE_REF"
+          docker pull "$IMAGE_REF"
 
       - name: Check image size
+        env:
+          IMAGE_REF: ${{ needs.build-and-push.outputs.image-ref }}
         run: |
-          IMAGE_TAG="${{ needs.build-and-push.outputs.primary-tag }}"
-          IMAGE_SIZE=$(docker images $IMAGE_TAG --format "{{.Size}}" | head -1)
-          echo "Image size: $IMAGE_SIZE"
-
-          # Extract numeric value (handles both MB and GB)
-          SIZE_VALUE=$(echo "$IMAGE_SIZE" | grep -oE '[0-9]+(\.[0-9]+)?')
-          SIZE_UNIT=$(echo "$IMAGE_SIZE" | grep -oE '[A-Z]+')
-
-          echo "Size value: $SIZE_VALUE $SIZE_UNIT"
+          IMAGE_BYTES=$(docker image inspect --format '{{.Size}}' "$IMAGE_REF")
+          echo "Image size: $((IMAGE_BYTES / 1000000)) MB"
 
           # Fail if image is larger than 200MB
-          if [ "$SIZE_UNIT" = "GB" ]; then
-            echo "Error: Image size ($IMAGE_SIZE) exceeds 200MB limit"
+          if (( IMAGE_BYTES > 200000000 )); then
+            echo "Error: Image size exceeds 200MB limit"
             exit 1
-          elif [ "$SIZE_UNIT" = "MB" ]; then
-            if (( $(echo "$SIZE_VALUE > 200" | bc -l) )); then
-              echo "Error: Image size ($SIZE_VALUE MB) exceeds 200MB limit"
-              exit 1
-            fi
           fi
 
-          echo "✅ Image size check passed: $IMAGE_SIZE"
+          echo "✅ Image size check passed"
 
       - name: Test container startup
+        env:
+          IMAGE_REF: ${{ needs.build-and-push.outputs.image-ref }}
         run: |
-          # Extract VERSION from primary-tag (e.g., ghcr.io/owner/repo:main-abc123 -> main-abc123)
-          PRIMARY_TAG="${{ needs.build-and-push.outputs.primary-tag }}"
-          VERSION=$(echo "$PRIMARY_TAG" | awk -F: '{print $NF}')
-
-          echo "Using GITHUB_REPO=${{ github.repository }}"
-          echo "Using VERSION=$VERSION"
+          echo "Using IMAGE_REF=$IMAGE_REF"
 
           # Create test .env file
           cat > backend/.env.test << EOF
@@ -182,8 +189,7 @@ jobs:
           OPENAI_API_KEY=sk-test-fake-key
           OPENROUTER_API_KEY=sk-test-fake-router-key
           FRONTEND_URLS=http://localhost:3000
-          GITHUB_REPO=${{ github.repository }}
-          VERSION=$VERSION
+          IMAGE_REF=$IMAGE_REF
           EOF
 
           # Start services using CI compose configuration
@@ -209,8 +215,11 @@ jobs:
             exit 1
           fi
 
-          # Test health endpoint
-          curl -f http://localhost:4000/health || exit 1
+          # Test health endpoint. The deploy script relies on env and build.
+          HEALTH_BODY=$(curl -fsS http://localhost:4000/health)
+          echo "$HEALTH_BODY"
+          echo "$HEALTH_BODY" | grep -q "\"env\":\"ci\"" || { echo "❌ /health does not report env"; exit 1; }
+          echo "$HEALTH_BODY" | grep -q "\"build\":\"${GITHUB_SHA}\"" || { echo "❌ /health does not report this build"; exit 1; }
 
           # Cleanup
           docker compose --profile db -f backend/docker-compose.yml -f backend/docker-compose.ci.yml --env-file backend/.env.test down -v
@@ -239,7 +248,7 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: 'image'
-          image-ref: ${{ needs.build-and-push.outputs.primary-tag }}
+          image-ref: ${{ needs.build-and-push.outputs.image-ref }}
           format: 'sarif'
           output: 'trivy-results.sarif'
           severity: 'CRITICAL,HIGH'
@@ -254,13 +263,64 @@ jobs:
     name: Deploy to Production
     runs-on: ubuntu-latest
     needs: [build-and-push, build-and-test, security-scan]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # A push deploys what its own run built, tested and scanned. A manual run
+    # skips those jobs and deploys the given digest. Neither runs off main.
+    if: >-
+      !cancelled() && github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' &&
+        needs.build-and-test.result == 'success' &&
+        needs.security-scan.result == 'success'))
     environment:
       name: production
       url: https://chatbotgate.click
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      # An automatic deployment goes ahead only if what this run built is
+      # still what main holds for the backend paths. A newer backend commit
+      # deploys from its own run; this one is skipped without failing.
+      - name: Check that this build is still current
+        id: gate
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "Manual run: the content check does not apply"
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          RESULT=0
+          backend/scripts/ci-compare-content.sh "$GITHUB_SHA" origin main || RESULT=$?
+          if [[ $RESULT -eq 0 ]]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          elif [[ $RESULT -eq 10 ]]; then
+            echo "::notice::Skipping deployment: main no longer holds the backend content of ${GITHUB_SHA}"
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "❌ Could not compare this build with main" >&2
+            exit 1
+          fi
+
+      - name: Resolve image reference
+        id: image
+        if: steps.gate.outputs.deploy == 'true'
+        env:
+          IMAGE_REF: ${{ github.event_name == 'workflow_dispatch' && inputs.image_ref || needs.build-and-push.outputs.image-ref }}
+        run: |
+          PATTERN="^ghcr\.io/${GITHUB_REPOSITORY}/chatbot-gate-backend@sha256:[0-9a-f]{64}$"
+          if [[ ! "$IMAGE_REF" =~ $PATTERN ]]; then
+            echo "❌ Not a digest reference of this repository's image: '$IMAGE_REF'" >&2
+            exit 1
+          fi
+          echo "image-ref=${IMAGE_REF}" >> "$GITHUB_OUTPUT"
+          echo "Deploying ${IMAGE_REF}"
+
       - name: Connect to Tailscale
+        if: steps.gate.outputs.deploy == 'true'
         uses: tailscale/github-action@v4
         with:
           oauth-client-id: ${{ secrets.TAILSCALE_OAUTH_CLIENT_ID }}
@@ -269,6 +329,7 @@ jobs:
           version: latest
 
       - name: Tailscale network info
+        if: steps.gate.outputs.deploy == 'true'
         run: |
           echo "=== Runner netcheck ==="
           tailscale netcheck
@@ -281,6 +342,7 @@ jobs:
           tailscale ping --verbose --c 1 ${{ secrets.PRODUCTION_TAILSCALE_HOST }} || true
 
       - name: Wait for Tailscale & SSH port
+        if: steps.gate.outputs.deploy == 'true'
         run: |
           HOST=${{ secrets.PRODUCTION_TAILSCALE_HOST }}
           for i in {1..18}; do
@@ -317,6 +379,7 @@ jobs:
           exit 1
 
       - name: Setup SSH key
+        if: steps.gate.outputs.deploy == 'true'
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.PRODUCTION_SSH_KEY }}" > ~/.ssh/deploy_key
@@ -329,58 +392,39 @@ jobs:
           EOF
 
       - name: Deploy via SSH (Blue-Green)
+        if: steps.gate.outputs.deploy == 'true'
         env:
           DEPLOY_HOST: ${{ secrets.PRODUCTION_TAILSCALE_HOST }}
           DEPLOY_USER: ${{ secrets.PRODUCTION_USER }}
           GHCR_DEPLOY_TOKEN: ${{ secrets.GHCR_DEPLOY_TOKEN }}
           GHCR_DEPLOY_USER: ${{ secrets.GHCR_DEPLOY_USER }}
-          PRIMARY_TAG: ${{ needs.build-and-push.outputs.primary-tag }}
-          GITHUB_REPO: ${{ github.repository }}
+          IMAGE_REF: ${{ steps.image.outputs.image-ref }}
         run: |
-          # Pre-calculate version from primary tag
-          VERSION=$(echo "$PRIMARY_TAG" | awk -F: '{print $NF}')
+          # Authenticate to GHCR (private package). The token travels on stdin.
+          printf '%s' "$GHCR_DEPLOY_TOKEN" | \
+            ssh "${DEPLOY_USER}@${DEPLOY_HOST}" "docker login ghcr.io -u '${GHCR_DEPLOY_USER}' --password-stdin"
 
-          ssh ${DEPLOY_USER}@${DEPLOY_HOST} bash -s << DEPLOY_EOF
-            set -e
+          # IMAGE_REF was checked against a strict pattern above, and the
+          # script body below is sent as is, with nothing interpolated into it.
+          # The deploy script exits 1 or 2 on failure; either fails this step.
+          ssh "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            "IMAGE_REF='${IMAGE_REF}' GITHUB_REPO='${GITHUB_REPOSITORY}' bash -s" << 'DEPLOY_EOF'
+            set -euo pipefail
 
-            # Set working directory
             cd /home/user/lab/apps/chatbot-gate-backend
+            export IMAGE_REF GITHUB_REPO
 
-            # Authenticate to GHCR (private package)
-            echo "${GHCR_DEPLOY_TOKEN}" | docker login ghcr.io -u "${GHCR_DEPLOY_USER}" --password-stdin
+            echo "Deploying IMAGE_REF=$IMAGE_REF"
 
-            # Set environment variables for deployment
-            export VERSION="${VERSION}"
-            export GITHUB_REPO="${GITHUB_REPO}"
-
-            echo "Deploying VERSION=\$VERSION from GITHUB_REPO=\$GITHUB_REPO"
-
-            # Verify deployment state exists
-            if [[ ! -f .deployment-state ]]; then
-              echo "❌ ERROR: .deployment-state not found!"
-              echo "Run installation script first: ./scripts/install-deployment-files.sh production"
-              exit 1
-            fi
-
-            # Run blue-green deployment (now pulls from GHCR)
+            # Blue-green deployment. It pulls the digest, switches, saves the
+            # state and cleans up old containers and images under its own lock.
             ./scripts/deploy-blue-green.sh
 
-            # Verify deployment
-            sleep 5
-            source .deployment-state
-            echo "Active environment: \${ACTIVE_ENV}"
-            ACTIVE_CONTAINER="chatbot-gate-backend-\${ACTIVE_ENV}"
-            docker exec "\${ACTIVE_CONTAINER}" wget -qO- http://localhost:4000/health || exit 1
-
-            # Cleanup old images (keep current version and last 2 versions)
-            docker image prune -f
-            docker images --filter "reference=ghcr.io/${GITHUB_REPO}/chatbot-gate-backend:*" \
-              --format "{{.ID}} {{.Tag}}" | \
-              grep -v "${VERSION}" | \
-              sort -r | \
-              tail -n +3 | \
-              awk '{print \$1}' | \
-              xargs -r docker rmi || true
+            # Verify deployment against the saved state
+            grep -qx "ACTIVE_IMAGE=${IMAGE_REF}" .deployment-state || { echo "❌ State file does not record ${IMAGE_REF}"; exit 1; }
+            ACTIVE_ENV=$(sed -n 's/^ACTIVE_ENV=\(blue\|green\)$/\1/p' .deployment-state)
+            echo "Active environment: ${ACTIVE_ENV}"
+            docker exec "chatbot-gate-backend-${ACTIVE_ENV}" wget -qO- http://localhost:4000/health
 
             docker compose ps
           DEPLOY_EOF
