@@ -9,6 +9,7 @@ import cookieParser from 'cookie-parser';
 import { randomBytes } from 'crypto';
 import { cookieConfig } from './shared/config';
 import { errorHandler } from './shared/middleware';
+import { getDeploymentEnv } from './shared/observability';
 
 import { gateRoutes } from './features/gate';
 import { authRoutes } from './features/auth';
@@ -190,7 +191,13 @@ export const createApp = (options?: AppOptions): Express => {
   }
 
   app.get('/health', (req: Request, res: Response) => {
-    res.json({ status: 'ok', message: 'Chatbot Gate Backend is running' });
+    // env·build는 배포 스크립트가 응답한 컨테이너와 이미지를 식별하는 데 사용
+    res.json({
+      status: 'ok',
+      message: 'Chatbot Gate Backend is running',
+      env: getDeploymentEnv(),
+      build: process.env.BUILD_SHA || 'unknown',
+    });
   });
 
   if (enableMetrics) {
