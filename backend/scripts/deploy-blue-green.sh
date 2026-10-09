@@ -22,9 +22,13 @@ set -Eeuo pipefail
 #      UPSTREAM_AMBIGUOUS UPSTREAM_PATH_MISMATCH UPSTREAM_DEAD
 #      SERVING_UNVERIFIED SERVING_IMAGE_UNKNOWN SERVING_NO_IDENTIFIER STATE_SAVE_FAILED
 #      PULL_FAILED IMAGE_NO_IDENTIFIER START_FAILED NEW_UNHEALTHY IMAGE_MISMATCH
-#      NEW_UNREACHABLE SWITCH_NOT_APPLIED ROLLED_BACK
+#      STALE_REMOVE_FAILED NEW_UNREACHABLE SWITCH_NOT_APPLIED ROLLED_BACK
 #   2  SWITCH_UNKNOWN ROLLBACK_UNCONFIRMED RECOVERY_FAILED STATE_SAVE_FAILED
-#      INTERRUPTED UNCLASSIFIED
+#      UPSTREAM_CHANGED INTERRUPTED UNCLASSIFIED
+#
+# After the switch is verified, the state file is saved first and the old
+# environment is removed after. A failed removal of the old container or of
+# old images is a warning; the result stays 0.
 #
 # A failure the script does not classify, and any signal, ends the run with
 # code 2 without sending another PATCH, stop, rm or state write. The next run
@@ -501,14 +505,16 @@ resolve_serving() {
 
 # Stop and remove a container that must not be serving. The upstream is read
 # again right before; nothing is sent when the container is, or may be, the
-# target. Sets REMOVED.
+# target. Sets REMOVED, and REMOVE_REFUSED when the upstream forbade it.
 remove_container() {
   local env=$1 id=$2 grace=$3
 
   REMOVED=false
+  REMOVE_REFUSED=false
   query_upstream
   if [[ ${UP_OK} == false || ${UP_ENV} == "${env}" ]]; then
     warning "Not removing ${CONTAINER_PREFIX}-${env}: the upstream is ${UP_ENV:-unknown}"
+    REMOVE_REFUSED=true
     return 0
   fi
   if docker stop -t "${grace}" "${id}" > /dev/null && docker rm "${id}" > /dev/null; then
@@ -757,9 +763,24 @@ pull_image() {
 start_inactive_env() {
   log "Starting ${INACTIVE_ENV} environment"
 
-  # Stop and remove if exists
-  log "Cleaning up any existing ${INACTIVE_ENV} containers..."
-  docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} rm -s -f "backend-${INACTIVE_ENV}" 2>/dev/null || true
+  # A container left in the non-serving slot is never reused, whatever state
+  # docker reports for it: it is force-removed and a new one is created.
+  container_info "${CONTAINER_PREFIX}-${INACTIVE_ENV}"
+  if [[ -n ${C_ID} ]]; then
+    local stale=${C_ID}
+    log "Removing leftover ${INACTIVE_ENV} container ${stale}..."
+    query_upstream
+    if [[ ${UP_OK} == false || ${UP_ENV} != "${ACTIVE_ENV}" ]]; then
+      error "The upstream changed during the run (now ${UP_ENV:-unknown}); nothing was removed"
+      finish 1 STALE_REMOVE_FAILED
+    fi
+    docker rm -f "${stale}" > /dev/null || true
+    container_info "${stale}"
+    if [[ -n ${C_ID} ]]; then
+      error "Leftover container ${stale} could not be removed"
+      finish 1 STALE_REMOVE_FAILED
+    fi
+  fi
 
   # Start with profile
   log "Starting backend-${INACTIVE_ENV}..."
@@ -819,19 +840,40 @@ wait_for_healthy() {
   done
 }
 
-# Cleanup old environment
+# Remove the old environment after the switch. The upstream is read once more:
+# if Caddy went back to the old environment, it is still serving and stays.
 cleanup_old_env() {
-  log "Cleaning up old ${ACTIVE_ENV} environment..."
+  if [[ -z ${OLD_ID} ]]; then
+    return 0
+  fi
+  log "Stopping old ${ACTIVE_ENV} container ${OLD_ID}..."
+  remove_container "${ACTIVE_ENV}" "${OLD_ID}" 30
+  if [[ ${REMOVE_REFUSED} == true ]]; then
+    error "Caddy no longer points at ${INACTIVE_ENV}, which was verified a moment ago"
+    error "Both containers are kept. Recreating the Caddy container makes it read ${STATE_FILE} again"
+    finish 2 UPSTREAM_CHANGED
+  fi
+  if [[ ${REMOVED} == true ]]; then
+    success "Old ${ACTIVE_ENV} environment cleaned up"
+  fi
+}
 
-  # Graceful shutdown with 30s timeout
-  log "Stopping ${ACTIVE_ENV} container..."
-  docker compose -f "${COMPOSE_FILE}" --profile "${ACTIVE_ENV}" ${DB_PROFILE} stop -t 30 "backend-${ACTIVE_ENV}" 2>/dev/null || true
-
-  # Remove container
-  log "Removing ${ACTIVE_ENV} container..."
-  docker compose -f "${COMPOSE_FILE}" --profile "${ACTIVE_ENV}" ${DB_PROFILE} rm -f "backend-${ACTIVE_ENV}" 2>/dev/null || true
-
-  success "Old ${ACTIVE_ENV} environment cleaned up"
+# Keep the image now serving and the one that served before, so the previous
+# digest can be deployed again. "docker image prune" is not used: it would
+# delete the previous image, which has no tag.
+cleanup_old_images() {
+  local ids id
+  ids=$(docker image ls --no-trunc --format '{{.ID}}' "${IMAGE_REPO}" 2>/dev/null) || ids=""
+  for id in $(sort -u <<< "${ids}"); do
+    if [[ ${id} == "${NEW_IMAGE_ID}" || ${id} == "${OLD_IMAGE_ID}" ]]; then
+      continue
+    fi
+    if docker rmi -f "${id}" > /dev/null 2>&1; then
+      log "Removed old image ${id}"
+    else
+      warning "Could not remove image ${id}"
+    fi
+  done
 }
 
 # Show deployment banner
@@ -903,16 +945,18 @@ main() {
   switch_traffic
   echo ""
 
-  log "🧹 Cleaning up old environment..."
-  cleanup_old_env
-  echo ""
-
   log "💾 Updating deployment state..."
   save_state "${INACTIVE_ENV}" "${IMAGE_REF}"
   if [[ ${STATE_SAVED} == false ]]; then
-    error "Cannot write ${STATE_FILE}"
+    error "Cannot write ${STATE_FILE}; ${INACTIVE_ENV} is serving but not recorded"
+    error "Both containers are kept and nothing is rolled back. Fix the cause and run again"
     finish 2 STATE_SAVE_FAILED
   fi
+  echo ""
+
+  log "🧹 Cleaning up old environment..."
+  cleanup_old_env
+  cleanup_old_images
   echo ""
 
   show_summary

@@ -812,6 +812,8 @@ def control(cmd, args):
         elif cmd == 'backend':      # backend <env> <label> [tag]: 컨테이너를 세계에 직접 둔다
             ref = f'{REPO}:{args[2]}' if len(args) > 2 else None
             add_backend(w, args[0], args[1], ref)
+        elif cmd == 'image':        # image <라벨>: 컨테이너 없이 로컬에만 둔다
+            add_local(w, args[0], f'{REPO}@{images[args[0]]["digest"]}')
         elif cmd == 'drop':         # drop <컨테이너>: 기록 없이 세계에서 뺀다
             w['containers'].pop(find_container(w, args[0]) or BACKEND + args[0], None)
         elif cmd == 'dial':         # dial <env|placeholder|임의 문자열>

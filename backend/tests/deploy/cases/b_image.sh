@@ -71,3 +71,17 @@ b5_pull_denied() {
 }
 run_case "B5/unknown-digest" b5_unknown_digest
 run_case "B5/pull-denied" b5_pull_denied
+
+b6_image_cleanup() {
+  deploy B
+  deploy C
+  expect_code 0
+  [[ $(sim local) == "B C" ]] || fail "expected images B and C kept, got: $(sim local)"
+  expect_not_called '^image\.prune'
+  # 직전 digest로 되돌린다
+  deploy B
+  expect_code 0
+  expect_serving "green B"
+  [[ $(sim local) == "B C" ]] || fail "expected images B and C kept, got: $(sim local)"
+}
+run_case "B6/keeps-current-and-previous-image" b6_image_cleanup

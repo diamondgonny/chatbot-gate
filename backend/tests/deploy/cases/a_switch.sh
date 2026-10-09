@@ -184,3 +184,72 @@ a5_last_check_fails() {
 run_case "A5/one-transient-failure" a5_one_transient
 run_case "A5/two-transient-failures" a5_two_transient
 run_case "A5/only-last-check-fails" a5_last_check_fails
+
+a1_order() {
+  deploy B
+  expect_code 0
+  expect_order '^pull ' '^compose\.up backend-green' '^caddy\.direct' '^caddy\.admin\.patch' \
+    '^mv \.deployment-state' '^container\.stop chatbot-gate-backend-blue' '^container\.rm chatbot-gate-backend-blue'
+  # 전환과 상태 저장 사이에 Caddy 경유 검증 다섯 번
+  local checks
+  checks=$(ops | awk '/^caddy\.admin\.patch/ { on = 1 } /^mv / { on = 0 } on && /^caddy\.http/ { c++ } END { print c + 0 }')
+  [[ $checks == 5 ]] || fail "expected 5 checks between the switch and the state save, got $checks"
+  # 구 환경은 종료 유예를 두고 멈춘다
+  grep -q $'\tcontainer\\.stop chatbot-gate-backend-blue\t\\["-t", "30"' "$SIM_DIR/calls.log" || fail "old container was not stopped with -t 30"
+  expect_not_called '^(image\.prune|compose\.(rm|stop|down))'
+}
+run_case "A1/order-and-graceful-stop" a1_order
+
+# ---------------------------------------------------------------- A6 전환·저장 뒤의 정리 실패
+
+a6_cleanup_failed() {  # <주입 대상> <경고>
+  fault "$1" fail times=1
+  deploy B
+  expect_code 0
+  expect_reason OK
+  expect_out "$2"
+  expect_serving "green B"
+  expect_state green B
+  expect_called '^caddy\.admin\.patch'
+  [[ $(ops | grep -c '^caddy\.admin\.patch') == 1 ]] || fail "a rollback was attempted"
+}
+a6_stop_fails() {
+  a6_cleanup_failed '^container\.stop chatbot-gate-backend-blue' 'Could not remove chatbot-gate-backend-blue'
+  expect_cid blue same
+  # 남은 컨테이너는 다음 실행이 지우고 새로 만든다
+  deploy C
+  expect_code 0
+  expect_cid blue new
+  expect_serving "blue C"
+}
+a6_rm_fails() {
+  a6_cleanup_failed '^container\.rm chatbot-gate-backend-blue' 'Could not remove chatbot-gate-backend-blue'
+  deploy C
+  expect_code 0
+  expect_cid blue new
+  expect_serving "blue C"
+}
+a6_image_cleanup_fails() {
+  sim image C
+  a6_cleanup_failed '^image\.rm' 'Could not remove image'
+  expect_cid blue absent
+}
+run_case "A6/old-container-stop-fails" a6_stop_fails
+run_case "A6/old-container-rm-fails" a6_rm_fails
+run_case "A6/image-cleanup-fails" a6_image_cleanup_fails
+
+# ---------------------------------------------------------------- A7 정리 전에 upstream이 구 환경으로 복귀
+
+a7_reload_before_cleanup() {
+  fault '^mv \.deployment-state' reload times=1
+  deploy B
+  expect_code 2
+  expect_reason UPSTREAM_CHANGED
+  expect_upstream blue
+  expect_serving "blue A"
+  expect_cid blue same
+  expect_running blue
+  expect_cid green new
+  expect_not_called '^container\.(stop|rm) chatbot-gate-backend-blue'
+}
+run_case "A7/caddy-reload-before-cleanup" a7_reload_before_cleanup

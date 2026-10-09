@@ -341,3 +341,129 @@ c8_recovery_fails() {
   expect_out 'MANUAL> '
 }
 run_case "C8/recovery-verification-fails" c8_recovery_fails
+
+# ---------------------------------------------------------------- C4 전환 검증 뒤 상태 저장 실패
+
+c4_not_saved() {
+  expect_code 2
+  expect_reason STATE_SAVE_FAILED
+  expect_upstream green
+  expect_serving "green B"
+  expect_cid blue same
+  expect_running blue
+  expect_cid green new
+  expect_state_unchanged
+  [[ $(ops | grep -c '^caddy\.admin\.patch') == 1 ]] || fail "a rollback was attempted"
+}
+c4_replace_fails() {
+  fault '^mv \.deployment-state' fail times=1
+  deploy B
+  c4_not_saved
+  # 원인이 없어진 뒤의 실행은 실제 환경과 digest로 상태를 고친다
+  fault '^pull' fail
+  deploy C
+  expect_code 1
+  expect_reason PULL_FAILED
+  expect_state green B
+}
+c4_permission_denied() {
+  touch "$APP/.deploy.lock"
+  chmod 555 "$APP"
+  deploy B
+  chmod 755 "$APP"
+  c4_not_saved
+  deploy C
+  expect_code 0
+  expect_serving "blue C"
+  expect_state blue C
+}
+run_case "C4/state-replace-fails" c4_replace_fails
+run_case "C4/state-dir-not-writable" c4_permission_denied
+
+# ---------------------------------------------------------------- C10 시작 시 남아 있는 비서빙 컨테이너
+
+c10_leftover_container() {
+  sim backend green A
+  deploy B
+  expect_code 0
+  expect_cid green new
+  expect_order '^container\.rm chatbot-gate-backend-green' '^done:container\.rm chatbot-gate-backend-green' '^compose\.up backend-green'
+  grep -q $'\tcontainer\\.rm chatbot-gate-backend-green\t\\["-f"' "$SIM_DIR/calls.log" || fail "leftover container was not force-removed"
+  expect_serving "green B"
+}
+run_case "C10/leftover-non-serving-container" c10_leftover_container
+
+# ---------------------------------------------------------------- 중단 후 재실행
+
+# <멈출 지점> 에서 프로세스 그룹을 SIGKILL하고 다시 실행한다.
+kill_at() {
+  fault "$1" pause:here times=1
+  deploy_bg first B
+  wait_reached here
+  kill_group first KILL
+  wait_bg first
+}
+kill_before_patch() {
+  kill_at '^caddy\.admin\.patch'
+  expect_untouched blue A
+  deploy C
+  expect_code 0
+  expect_serving "green C"
+  expect_state green C
+}
+# 전환이 적용된 뒤의 중단: 과거 상태가 아니라 실제 upstream에서 다시 시작한다
+kill_after_switch() {  # <멈출 지점>
+  kill_at "$1"
+  expect_upstream green
+  expect_state_unchanged
+  deploy C
+  expect_code 0
+  expect_serving "blue C"
+  expect_state blue C
+}
+kill_after_patch_applied() { kill_after_switch '^done:caddy\.admin\.patch'; }
+kill_before_state_replace() {
+  kill_after_switch '^mv \.deployment-state'
+  compgen -G "$APP/.deployment-state.tmp.*" > /dev/null && fail "temporary state file was left behind"
+  return 0
+}
+kill_after_state_replace() {
+  kill_at '^done:mv \.deployment-state'
+  expect_state green B
+  deploy C
+  expect_code 0
+  expect_serving "blue C"
+  expect_state blue C
+}
+kill_during_cleanup() {
+  kill_at '^container\.stop chatbot-gate-backend-blue'
+  expect_state green B
+  deploy C
+  expect_code 0
+  expect_cid blue new
+  expect_serving "blue C"
+  expect_state blue C
+}
+kill_after_cleanup() {
+  kill_at '^done:container\.rm chatbot-gate-backend-blue'
+  expect_state green B
+  deploy C
+  expect_code 0
+  expect_serving "blue C"
+  expect_state blue C
+}
+partial_temp_state_file() {
+  printf 'ACTIVE_ENV=gre' > "$APP/.deployment-state.tmp.999"
+  fault '^pull' fail
+  deploy B
+  expect_code 1
+  expect_state_unchanged
+  [[ ! -e $APP/.deployment-state.tmp.999 ]] || fail "temporary state file was left behind"
+}
+run_case "KILL/before-patch" kill_before_patch
+run_case "KILL/after-patch-applied" kill_after_patch_applied
+run_case "KILL/before-state-replace" kill_before_state_replace
+run_case "KILL/after-state-replace" kill_after_state_replace
+run_case "KILL/during-old-cleanup" kill_during_cleanup
+run_case "KILL/after-old-cleanup" kill_after_cleanup
+run_case "KILL/partial-temp-state-file" partial_temp_state_file

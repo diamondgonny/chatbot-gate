@@ -224,3 +224,14 @@ expect_untouched() {  # <서빙 env> <라벨>
   expect_cid "$1" same
   expect_state_unchanged
 }
+
+# 각 정규식에 처음 걸리는 호출이 적힌 순서대로 일어났다.
+expect_order() {
+  local prev=0 line re
+  for re in "$@"; do
+    line=$(ops | grep -En "$re" | head -n 1 | cut -d: -f1)
+    if [[ -z $line ]]; then fail "expected a call matching: $re"; return; fi
+    ((line > prev)) || fail "expected '$re' after the previous step"
+    prev=$line
+  done
+}
