@@ -1,0 +1,3 @@
+#!/bin/sh
+# 가짜 docker. 실제 Docker로 넘기지 않는다.
+exec python3 -S "$(dirname "$0")/../sim.py" docker "$@"

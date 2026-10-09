@@ -1,0 +1,4 @@
+#!/bin/sh
+# 기다리지 않고 가상 시계만 앞으로 돌린다.
+now=$(cat "$SIM_DIR/clock")
+echo $((now + ${1%%.*})) > "$SIM_DIR/clock"

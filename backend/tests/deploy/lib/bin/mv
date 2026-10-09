@@ -1,0 +1,11 @@
+#!/bin/sh
+# 상태 파일 교체에 정지·실패를 주입할 수 있게 한다.
+sim="$(dirname "$0")/../sim.py"
+for dest; do :; done
+op="mv $(basename "$dest")"
+action=$(python3 -S "$sim" hook "$op") || exit 99
+case "$action" in
+  *fail*) echo "mv: injected failure" >&2; exit 1 ;;
+esac
+/bin/mv "$@" || exit $?
+python3 -S "$sim" hook "done:$op" > /dev/null
