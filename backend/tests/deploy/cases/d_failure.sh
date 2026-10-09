@@ -11,3 +11,16 @@ d2_before_switch() {
   expect_cid green new
 }
 run_case "D2/unclassified-before-switch" d2_before_switch
+
+d2_after_switch() {
+  fault '^done:caddy\.admin\.patch' datefail times=1
+  deploy B
+  expect_code 2
+  expect_reason UNCLASSIFIED
+  expect_quiet_after injected
+  expect_upstream green
+  expect_cid blue same
+  expect_cid green new
+  expect_state_unchanged
+}
+run_case "D2/unclassified-after-switch" d2_after_switch

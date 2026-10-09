@@ -327,3 +327,17 @@ c8_new_host() {
 }
 run_case "C8/active-dead-recovery" c8_active_dead
 run_case "C8/new-host-first-deploy" c8_new_host
+
+# 복구 배포의 검증이 실패하면 죽은 구 환경으로 돌아간 것을 성공으로 치지 않는다.
+c8_recovery_fails() {
+  sim set c.blue.running false
+  verification_fails
+  deploy B
+  expect_code 2
+  expect_reason RECOVERY_FAILED
+  expect_cid blue same
+  expect_cid green new
+  expect_state_unchanged
+  expect_out 'MANUAL> '
+}
+run_case "C8/recovery-verification-fails" c8_recovery_fails

@@ -21,8 +21,10 @@ set -Eeuo pipefail
 #      UPSTREAM_QUERY_FAILED UPSTREAM_TARGET_UNKNOWN UPSTREAM_ENV_UNRESOLVED
 #      UPSTREAM_AMBIGUOUS UPSTREAM_PATH_MISMATCH UPSTREAM_DEAD
 #      SERVING_UNVERIFIED SERVING_IMAGE_UNKNOWN SERVING_NO_IDENTIFIER STATE_SAVE_FAILED
-#      PULL_FAILED IMAGE_NO_IDENTIFIER START_FAILED NEW_UNHEALTHY IMAGE_MISMATCH ROLLED_BACK
-#   2  ROLLBACK_UNCONFIRMED INTERRUPTED UNCLASSIFIED
+#      PULL_FAILED IMAGE_NO_IDENTIFIER START_FAILED NEW_UNHEALTHY IMAGE_MISMATCH
+#      NEW_UNREACHABLE SWITCH_NOT_APPLIED ROLLED_BACK
+#   2  SWITCH_UNKNOWN ROLLBACK_UNCONFIRMED RECOVERY_FAILED STATE_SAVE_FAILED
+#      INTERRUPTED UNCLASSIFIED
 #
 # A failure the script does not classify, and any signal, ends the run with
 # code 2 without sending another PATCH, stop, rm or state write. The next run
@@ -60,7 +62,9 @@ DB_PROFILE="--profile db"
 # Configuration
 HEALTH_CHECK_MAX_WAIT=90
 HEALTH_CHECK_INTERVAL=3
-VALIDATION_PERIOD=10
+VERIFY_CHECKS=5      # Requests through Caddy after a switch or a rollback
+VERIFY_INTERVAL=2    # Seconds between them
+VERIFY_MAX=30        # Seconds for the whole verification
 CADDY_CONTAINER="caddy"  # Caddy container name
 CADDY_ADMIN_HOST="127.0.0.1"  # Internal to Caddy container (IPv4 only)
 CADDY_ADMIN_PORT=2019
@@ -320,6 +324,12 @@ routed_health() {
   classify_health
 }
 
+# /health of an environment's container, asked from the Caddy container
+direct_health() {
+  caddy_request GET "${CONTAINER_PREFIX}-$1" 4000 /health
+  classify_health
+}
+
 dial_body() {
   echo "[{\"dial\":\"${CONTAINER_PREFIX}-$1:4000\"}]"
 }
@@ -328,7 +338,7 @@ dial_body() {
 patch_command() {
   local body
   body=$(dial_body "$1")
-  echo "printf 'PATCH ${UP_PATH} HTTP/1.0\r\nHost: ${CADDY_ADMIN_HOST}:${CADDY_ADMIN_PORT}\r\nContent-Type: application/json\r\nContent-Length: ${#body}\r\n\r\n${body}' | docker exec -i ${CADDY_CONTAINER} nc -w ${HTTP_TIMEOUT} ${CADDY_ADMIN_HOST} ${CADDY_ADMIN_PORT}"
+  echo "printf 'PATCH ${SWITCH_PATH} HTTP/1.0\r\nHost: ${CADDY_ADMIN_HOST}:${CADDY_ADMIN_PORT}\r\nContent-Type: application/json\r\nContent-Length: ${#body}\r\n\r\n${body}' | docker exec -i ${CADDY_CONTAINER} nc -w ${HTTP_TIMEOUT} ${CADDY_ADMIN_HOST} ${CADDY_ADMIN_PORT}"
 }
 
 manual() {
@@ -422,6 +432,7 @@ resolve_serving() {
     finish 1 "${UP_REASON}"
   fi
   log "Upstream ${UP_PATH} points at ${UP_ENV}"
+  SWITCH_PATH=${UP_PATH}
 
   ACTIVE_ENV=${UP_ENV}
   INACTIVE_ENV=$(other_env "${UP_ENV}")
@@ -488,36 +499,152 @@ resolve_serving() {
   fi
 }
 
-# Validate Docker network connectivity
-validate_networks() {
-  log "Validating Docker network connectivity..."
+# Stop and remove a container that must not be serving. The upstream is read
+# again right before; nothing is sent when the container is, or may be, the
+# target. Sets REMOVED.
+remove_container() {
+  local env=$1 id=$2 grace=$3
 
-  # Check network exists
-  if ! docker network inspect caddy_upstream > /dev/null 2>&1; then
-    error "caddy_upstream network does not exist"
-    error "Create: docker network create caddy_upstream"
-    return 1
+  REMOVED=false
+  query_upstream
+  if [[ ${UP_OK} == false || ${UP_ENV} == "${env}" ]]; then
+    warning "Not removing ${CONTAINER_PREFIX}-${env}: the upstream is ${UP_ENV:-unknown}"
+    return 0
   fi
-
-  local container_name="chatbot-gate-backend-${INACTIVE_ENV}"
-
-  # Verify container on network
-  local network_check
-  network_check=$(docker inspect "${container_name}" --format '{{json .NetworkSettings.Networks}}' | grep -c "caddy_upstream" || echo "0")
-
-  if [ "$network_check" -eq 0 ]; then
-    error "Container not on caddy_upstream network"
-    return 1
-  fi
-
-  # Test DNS resolution from Caddy
-  if docker exec caddy getent hosts "${container_name}" > /dev/null 2>&1; then
-    success "Caddy can resolve ${container_name}"
+  if docker stop -t "${grace}" "${id}" > /dev/null && docker rm "${id}" > /dev/null; then
+    REMOVED=true
   else
-    warning "Caddy cannot resolve ${container_name} (may be OK if caddy not running)"
+    warning "Could not remove ${CONTAINER_PREFIX}-${env} (${id}); the next run removes it"
+  fi
+}
+
+# Before the switch, Caddy must reach the new container and get the new build
+check_reachable_from_caddy() {
+  direct_health "${INACTIVE_ENV}"
+  if [[ ${CHECK} != ok || ${H_ENV} != "${INACTIVE_ENV}" || ${H_BUILD} != "${NEW_BUILD}" ]]; then
+    error "Caddy cannot reach ${CONTAINER_PREFIX}-${INACTIVE_ENV} as ${INACTIVE_ENV}/${NEW_BUILD} (status ${HTTP_STATUS}, env '${H_ENV}', build '${H_BUILD}')"
+    remove_container "${INACTIVE_ENV}" "${NEW_ID}" 10
+    finish 1 NEW_UNREACHABLE
+  fi
+  success "Caddy reaches ${CONTAINER_PREFIX}-${INACTIVE_ENV}"
+}
+
+# Ask Caddy to send backend traffic to an environment, then read the upstream
+# back. The response to the PATCH decides nothing. Sets UP_OK and UP_ENV.
+point_caddy_at() {
+  admin_request PATCH "${SWITCH_PATH}" "$(dial_body "$1")"
+  log "PATCH to ${CONTAINER_PREFIX}-$1 answered with status ${HTTP_STATUS}"
+  query_upstream
+}
+
+# Check that Caddy serves <env> with <build>. A connection error, timeout or
+# 5xx may happen once, but not on the last request; any other mismatch fails at
+# once. Sets VERIFIED.
+verify_serving() {
+  local want_env=$1 want_build=$2
+  local started now i transients=0
+
+  VERIFIED=false
+  started=$(date +%s)
+  for ((i = 1; i <= VERIFY_CHECKS; i++)); do
+    routed_health
+    now=$(date +%s)
+    if ((now - started > VERIFY_MAX)); then
+      error "Verification took longer than ${VERIFY_MAX}s"
+      return 0
+    fi
+    if [[ ${CHECK} == fatal ]]; then
+      error "Check ${i}/${VERIFY_CHECKS}: unusable response (status ${HTTP_STATUS})"
+      return 0
+    fi
+    if [[ ${CHECK} == transient ]]; then
+      transients=$((transients + 1))
+      warning "Check ${i}/${VERIFY_CHECKS}: no usable response (status ${HTTP_STATUS})"
+      if ((transients > 1 || i == VERIFY_CHECKS)); then
+        error "Too many failed checks, or the last one failed"
+        return 0
+      fi
+    elif [[ ${H_ENV} != "${want_env}" || ${H_BUILD} != "${want_build}" ]]; then
+      error "Check ${i}/${VERIFY_CHECKS}: got ${H_ENV:-?}/${H_BUILD:-?}, expected ${want_env}/${want_build}"
+      return 0
+    else
+      log "Check ${i}/${VERIFY_CHECKS}: ${H_ENV}/${H_BUILD}"
+    fi
+    if ((i < VERIFY_CHECKS)); then
+      sleep "${VERIFY_INTERVAL}"
+    fi
+  done
+  VERIFIED=true
+}
+
+# Neither container is removed; print how to switch by hand. The argument is
+# the environment that should serve if it turns out to be healthy.
+keep_both() {
+  local other
+  other=$(other_env "$1")
+  error "Both containers are kept. Check ${CONTAINER_PREFIX}-$1; to send traffic to it:"
+  manual "$(patch_command "$1")"
+  error "To send traffic to ${CONTAINER_PREFIX}-${other} instead:"
+  error "  $(patch_command "${other}")"
+  error "State file ${STATE_FILE} was not changed; the next run starts from the actual upstream"
+}
+
+# Send traffic back to the old environment. The failed new environment is
+# removed only after the return is confirmed.
+rollback() {
+  error "🔄 ROLLBACK: switching back to ${CONTAINER_PREFIX}-${ACTIVE_ENV}"
+  point_caddy_at "${ACTIVE_ENV}"
+  if [[ ${UP_OK} == true && ${UP_ENV} == "${ACTIVE_ENV}" ]]; then
+    verify_serving "${ACTIVE_ENV}" "${OLD_BUILD}"
+    if [[ ${VERIFIED} == true ]]; then
+      success "Traffic is back on ${CONTAINER_PREFIX}-${ACTIVE_ENV}"
+      remove_container "${INACTIVE_ENV}" "${NEW_ID}" 10
+      finish 1 ROLLED_BACK
+    fi
+  fi
+  error "⚠️  CRITICAL: the rollback could not be confirmed (upstream: ${UP_ENV:-unknown})"
+  keep_both "${ACTIVE_ENV}"
+  finish 2 ROLLBACK_UNCONFIRMED
+}
+
+# Switch Caddy to the new environment and verify it through Caddy.
+switch_traffic() {
+  log "Switching traffic from ${ACTIVE_ENV} to ${INACTIVE_ENV}"
+  point_caddy_at "${INACTIVE_ENV}"
+
+  if [[ ${UP_OK} == false ]]; then
+    error "The upstream cannot be read back after the PATCH: ${UP_DETAIL}"
+    keep_both "${ACTIVE_ENV}"
+    finish 2 SWITCH_UNKNOWN
   fi
 
-  return 0
+  if [[ ${UP_ENV} != "${INACTIVE_ENV}" ]]; then
+    error "The switch was not applied; the upstream is still ${UP_ENV}"
+    if [[ ${RECOVERY} == true ]]; then
+      keep_both "${INACTIVE_ENV}"
+      finish 2 RECOVERY_FAILED
+    fi
+    verify_serving "${ACTIVE_ENV}" "${OLD_BUILD}"
+    if [[ ${VERIFIED} == false ]]; then
+      keep_both "${ACTIVE_ENV}"
+      finish 2 SWITCH_UNKNOWN
+    fi
+    remove_container "${INACTIVE_ENV}" "${NEW_ID}" 10
+    finish 1 SWITCH_NOT_APPLIED
+  fi
+
+  verify_serving "${INACTIVE_ENV}" "${NEW_BUILD}"
+  if [[ ${VERIFIED} == true ]]; then
+    success "Caddy serves ${INACTIVE_ENV}/${NEW_BUILD}"
+    return 0
+  fi
+
+  if [[ ${RECOVERY} == true ]]; then
+    error "The old environment was not running, so there is nothing to roll back to"
+    keep_both "${INACTIVE_ENV}"
+    finish 2 RECOVERY_FAILED
+  fi
+  rollback
 }
 
 state_invalid() {
@@ -641,12 +768,13 @@ start_inactive_env() {
     finish 1 START_FAILED
   fi
 
-  success "${INACTIVE_ENV} environment started"
-}
-
-remove_inactive_env() {
-  docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} stop -t 10 "backend-${INACTIVE_ENV}" 2>/dev/null || true
-  docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} rm -f "backend-${INACTIVE_ENV}" 2>/dev/null || true
+  container_info "${CONTAINER_PREFIX}-${INACTIVE_ENV}"
+  NEW_ID=${C_ID}
+  if [[ -z ${NEW_ID} ]]; then
+    error "${CONTAINER_PREFIX}-${INACTIVE_ENV} does not exist after compose up"
+    finish 1 START_FAILED
+  fi
+  success "${INACTIVE_ENV} environment started (${NEW_ID})"
 }
 
 # The new container must run the image that was requested
@@ -654,7 +782,7 @@ verify_new_image() {
   container_info "${CONTAINER_PREFIX}-${INACTIVE_ENV}"
   if [[ ${C_IMAGE} != "${NEW_IMAGE_ID}" ]]; then
     error "New container runs ${C_IMAGE:-nothing}, expected ${NEW_IMAGE_ID}"
-    remove_inactive_env
+    remove_container "${INACTIVE_ENV}" "${NEW_ID}" 10
     finish 1 IMAGE_MISMATCH
   fi
   success "New container runs the requested image"
@@ -662,7 +790,6 @@ verify_new_image() {
 
 # Wait for the new container to report healthy. Sets NEW_HEALTHY.
 wait_for_healthy() {
-  local container_name="${CONTAINER_PREFIX}-${INACTIVE_ENV}"
   local started now
 
   NEW_HEALTHY=false
@@ -670,9 +797,9 @@ wait_for_healthy() {
   started=$(date +%s)
 
   while true; do
-    container_info "${container_name}"
+    container_info "${NEW_ID}"
     if [[ -z ${C_ID} ]]; then
-      error "Container ${container_name} not found"
+      error "Container ${NEW_ID} not found"
       return 0
     fi
     if [[ ${C_HEALTH} == healthy ]]; then
@@ -690,122 +817,6 @@ wait_for_healthy() {
     log "  Status: ${C_HEALTH:-none}"
     sleep "${HEALTH_CHECK_INTERVAL}"
   done
-}
-
-# Switch Caddy upstream
-switch_traffic() {
-  local container_name="chatbot-gate-backend-${INACTIVE_ENV}"
-  log "Switching traffic from ${ACTIVE_ENV} to ${container_name}"
-
-  # Verify Caddy container is running
-  if ! docker ps --format '{{.Names}}' | grep -q "^${CADDY_CONTAINER}$"; then
-    error "Caddy container ${CADDY_CONTAINER} is not running"
-    return 1
-  fi
-
-  # Verify Caddy Admin API accessible (via docker exec)
-  if ! docker exec "${CADDY_CONTAINER}" wget -qO- "http://${CADDY_ADMIN_HOST}:${CADDY_ADMIN_PORT}/config/" > /dev/null 2>&1; then
-    error "Caddy Admin API not accessible inside container"
-    error "Make sure Caddy is running properly"
-    return 1
-  fi
-
-  # Verify container exists and is on network
-  if ! docker inspect "${container_name}" > /dev/null 2>&1; then
-    error "Container ${container_name} does not exist"
-    return 1
-  fi
-
-  # Update Caddy upstream via Admin API (via docker exec using sh + nc)
-  local response
-  local json_data="[{\"dial\": \"${container_name}:4000\"}]"
-  local content_length=${#json_data}
-
-  response=$(docker exec "${CADDY_CONTAINER}" sh -c "
-    printf 'PATCH ${CADDY_UPSTREAM_PATH} HTTP/1.1\r\n'
-    printf 'Host: 127.0.0.1:2019\r\n'
-    printf 'Content-Type: application/json\r\n'
-    printf 'Content-Length: ${content_length}\r\n'
-    printf '\r\n'
-    printf '${json_data}'
-  " | docker exec -i "${CADDY_CONTAINER}" nc 127.0.0.1 2019 2>&1) || {
-      error "Failed to update Caddy upstream"
-      error "Response: ${response}"
-      error "Current path: ${CADDY_UPSTREAM_PATH}"
-      return 1
-    }
-
-  success "Traffic switched to ${container_name}:4000"
-  return 0
-}
-
-# Validate new environment
-validate_deployment() {
-  local container_name="chatbot-gate-backend-${INACTIVE_ENV}"
-  log "Validating ${container_name} for ${VALIDATION_PERIOD}s..."
-
-  local checks=0
-  local failures=0
-  local max_checks=$((VALIDATION_PERIOD / 2))
-
-  while [ $checks -lt $max_checks ]; do
-    # Health check via docker exec (no port binding needed)
-    if ! docker exec "${container_name}" wget -qO- http://localhost:4000/health > /dev/null 2>&1; then
-      failures=$((failures + 1))
-      warning "Health check failed (${failures} failures)"
-    else
-      echo -ne "\r  Validation: ${checks}/${max_checks} checks, ${failures} failures"
-    fi
-
-    sleep 2
-    checks=$((checks + 1))
-  done
-
-  echo "" # New line after progress
-
-  # Allow up to 1 transient failure
-  if [ $failures -gt 1 ]; then
-    error "Too many health check failures: ${failures}"
-    return 1
-  fi
-
-  success "Validation passed (${checks} checks, ${failures} failures)"
-  return 0
-}
-
-# Rollback function
-rollback() {
-  local active_container="chatbot-gate-backend-${ACTIVE_ENV}"
-  error "🔄 ROLLBACK: Switching back to ${active_container}"
-
-  # Switch traffic back to active environment (via docker exec using sh + nc)
-  log "Reverting Caddy upstream to ${active_container}..."
-  local response
-  local json_data="[{\"dial\": \"${active_container}:4000\"}]"
-  local content_length=${#json_data}
-
-  response=$(docker exec "${CADDY_CONTAINER}" sh -c "
-    printf 'PATCH ${CADDY_UPSTREAM_PATH} HTTP/1.1\r\n'
-    printf 'Host: 127.0.0.1:2019\r\n'
-    printf 'Content-Type: application/json\r\n'
-    printf 'Content-Length: ${content_length}\r\n'
-    printf '\r\n'
-    printf '${json_data}'
-  " | docker exec -i "${CADDY_CONTAINER}" nc 127.0.0.1 2019 2>&1) || {
-      error "⚠️  CRITICAL: Rollback failed - manual intervention required!"
-      error "Manual command:"
-      error "docker exec ${CADDY_CONTAINER} sh -c \"printf 'PATCH ${CADDY_UPSTREAM_PATH} HTTP/1.1\\r\\n'; printf 'Host: 127.0.0.1:2019\\r\\n'; printf 'Content-Type: application/json\\r\\n'; printf 'Content-Length: ${content_length}\\r\\n'; printf '\\r\\n'; printf '${json_data}'\" | docker exec -i ${CADDY_CONTAINER} nc 127.0.0.1 2019"
-      finish 2 ROLLBACK_UNCONFIRMED
-    }
-
-  success "Traffic reverted to ${active_container}:4000"
-
-  # Stop failed inactive environment
-  log "Stopping failed ${INACTIVE_ENV} environment..."
-  remove_inactive_env
-
-  error "Rollback complete - ${ACTIVE_ENV} is serving traffic"
-  finish 1 ROLLED_BACK
 }
 
 # Cleanup old environment
@@ -860,7 +871,6 @@ main() {
 
   log "🔍 Checking what Caddy serves..."
   resolve_serving
-  CADDY_UPSTREAM_PATH=${UP_PATH}
   echo ""
 
   show_banner
@@ -879,34 +889,18 @@ main() {
     error "Deployment failed: ${INACTIVE_ENV} is unhealthy"
     echo ""
     error "Logs from ${INACTIVE_ENV}:"
-    docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} logs --tail=50 "backend-${INACTIVE_ENV}" || true
+    docker logs --tail 50 "${NEW_ID}" || true
     echo ""
     log "Cleaning up failed deployment..."
-    remove_inactive_env
+    remove_container "${INACTIVE_ENV}" "${NEW_ID}" 10
     finish 1 NEW_UNHEALTHY
   fi
   verify_new_image
-  echo ""
-
-  log "🔌 Validating network connectivity..."
-  if ! validate_networks; then
-    error "Network validation failed"
-    rollback
-  fi
+  check_reachable_from_caddy
   echo ""
 
   log "🔀 Switching traffic to new environment..."
-  if ! switch_traffic; then
-    error "Failed to switch traffic"
-    rollback
-  fi
-  echo ""
-
-  log "✓ Validating deployment..."
-  if ! validate_deployment; then
-    error "Validation failed"
-    rollback
-  fi
+  switch_traffic
   echo ""
 
   log "🧹 Cleaning up old environment..."
@@ -915,6 +909,10 @@ main() {
 
   log "💾 Updating deployment state..."
   save_state "${INACTIVE_ENV}" "${IMAGE_REF}"
+  if [[ ${STATE_SAVED} == false ]]; then
+    error "Cannot write ${STATE_FILE}"
+    finish 2 STATE_SAVE_FAILED
+  fi
   echo ""
 
   show_summary

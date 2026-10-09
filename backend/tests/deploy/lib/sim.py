@@ -243,6 +243,9 @@ def hook(op, argv=None):
                 continue
             if f.get('after') and sum(1 for o in w['ops'] if re.search(f['after'], o)) < f['after_n']:
                 continue
+            if f['skip'] > 0:   # 앞의 몇 번은 그냥 지나간다
+                f['skip'] -= 1
+                continue
             if f['times'] > 0:
                 f['times'] -= 1
             f['hits'] += 1
@@ -801,7 +804,7 @@ def control(cmd, args):
             w['faults'].append({'match': args[0], 'action': args[1], 'hits': 0,
                                 'times': int(opts.get('times', -1)), 'after': opts.get('after'),
                                 'after_n': int(opts.get('after_n', 1)),
-                                'optional': 'optional' in opts})
+                                'optional': 'optional' in opts, 'skip': int(opts.get('skip', 0))})
         elif cmd == 'unfired':
             for f in w['faults']:
                 if not f['hits'] and not f['optional']:
