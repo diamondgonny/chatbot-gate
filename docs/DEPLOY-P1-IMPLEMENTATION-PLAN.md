@@ -6,7 +6,7 @@
 
 | 단계 | 내용 | 끝나는 조건 |
 |---|---|---|
-| 1 | 브랜치에서 하네스·스크립트·compose·워크플로를 구현 | L 사례 전부 자동화, 가짜 Docker 층에서 통과 |
+| 1 | 브랜치에서 하네스·스크립트·compose·워크플로를 구현 (완료, 아래 1단계 결과) | L 사례 전부 자동화, 가짜 Docker 층에서 통과 |
 | 2 | 테스트 호스트에서 L을 실제 Docker로 다시 실행하고, 이어서 WT 실행 | L·WT 사례 전부 통과 |
 | 3 | 출시 1단계: 식별자만 넣은 백엔드를 현행 파이프라인으로 배포 | 운영 `/health`에 `env`·`build` 표시 |
 | 4 | 출시 2단계: 서버 파일 교체 후 워크플로 병합(WP) | B1 관찰과 증거 기록 |
@@ -21,13 +21,15 @@
 |---|---|
 | 배포 입력 | 환경 변수 `IMAGE_REF`. 형식은 `ghcr.io/<GITHUB_REPO>/chatbot-gate-backend@sha256:<64자리 hex>` 하나뿐이다. `VERSION`은 더 받지 않으며, `IMAGE_REF` 없이 `VERSION`만 오면 형식 오류로 거부한다 |
 | compose 이미지 | `image: ${IMAGE_REF:?}`, `pull_policy: missing`. pull은 스크립트가 먼저 명시적으로 한다. `docker-compose.ci.yml`도 같은 변수를 쓴다. 이후로는 사람이 직접 치는 `docker compose` 명령도 `IMAGE_REF`가 있어야 동작한다 |
-| 상태 파일 | `ACTIVE_ENV`, `INACTIVE_ENV`, `ACTIVE_IMAGE`(서빙 중인 digest 참조), `UPDATED_AT`. 따옴표 없는 `키=값` 한 줄씩. 구 형식의 `ACTIVE_PORT`·`INACTIVE_PORT`·`LAST_DEPLOYMENT`·`VERSION`은 알려진 구 키로 읽고 버린다. 그 밖의 키와 형식은 손상으로 본다. `ACTIVE_IMAGE`가 빈 값인 것은 서빙 컨테이너가 없는 신규 호스트에서만 허용한다 |
+| 상태 파일 | `ACTIVE_ENV`, `INACTIVE_ENV`, `ACTIVE_IMAGE`(서빙 중인 digest 참조), `UPDATED_AT`. 따옴표 없는 `키=값` 한 줄씩. 구 형식의 `ACTIVE_PORT`·`INACTIVE_PORT`·`LAST_DEPLOYMENT`·`VERSION`은 알려진 구 키로 읽고 버린다. 그 밖의 키와 형식은 손상으로 본다. `ACTIVE_IMAGE`가 비었거나 없으면 digest를 모르는 것으로 보고, 서빙 컨테이너가 있으면 그 이미지로 교정한다 |
 | 상태 저장 | 같은 디렉터리의 임시 파일에 쓰고 `mv`로 교체. 읽기는 줄 단위 파싱이며 `source`하지 않는다 |
 | `/health` | 기존 `status`·`message`에 `env`(`DEPLOYMENT_ENV`)와 `build`(이미지의 `BUILD_SHA`)를 추가. 값이 없으면 `unknown`이고 스크립트는 이를 식별자 없음으로 본다 |
 | `BUILD_SHA` | `Dockerfile.prod`의 `ARG`→`ENV`. 워크플로 빌드 단계가 `github.sha`를 build-arg로 넘긴다. 스크립트는 기대하는 `build`를 받은 이미지의 설정에서 읽는다 |
 | 잠금 | `.deploy.lock`에 `flock -n`. 잠금 fd를 자식이 물려받게 해 자식이 살아 있는 동안 유지한다 |
-| 종료 보고 | 마지막 줄에 `DEPLOY_RESULT code=<0\|1\|2> reason=<SLUG>` 한 줄. 하네스는 이 줄로 사유를 판정한다. SLUG 목록은 구현하면서 스크립트 머리에 모아 둔다 |
-| Caddy 경유 요청 | `docker exec caddy`에서 Host 헤더 `api.chatbotgate.click`으로 Caddy의 HTTP 포트에 보낸다. 포트는 기본 80이고 환경 변수로 바꿀 수 있게 하며, 운영 값은 2단계 전에 확인한다 |
+| 종료 보고 | 마지막 줄에 `DEPLOY_RESULT code=<0\|1\|2> reason=<SLUG>` 한 줄. 하네스는 이 줄로 사유를 판정한다. SLUG 목록은 스크립트 머리에 있다 |
+| 수동 조치 안내 | 사람이 실행할 명령은 `MANUAL> ` 뒤에 한 줄로 출력한다. 하네스는 이 줄을 그대로 실행해 복구를 확인한다 |
+| HTTP 수단 | admin API·Caddy 경유·새 컨테이너 직접 조회 모두 `docker exec -i caddy nc`로 HTTP/1.0 요청을 보낸다. 서버가 응답 뒤 연결을 닫고 본문을 나누지 않게 하려는 것이다. 제한은 요청당 전체 3초 하나이며, 연결 1초 제한은 따로 두지 못했다 |
+| Caddy 경유 요청 | `docker exec caddy`에서 Host 헤더 `api.chatbotgate.click`으로 Caddy의 HTTP 포트에 보낸다. 포트는 기본 80이고 `CADDY_HTTP_PORT`로 바꾸며, 운영 값은 2단계 전에 확인한다 |
 | 내용 비교 코드 | `backend/scripts/ci-compare-content.sh`. 종료 코드 0은 같음, 10은 다름(건너뜀), 그 밖은 오류. 워크플로와 L이 같은 파일을 실행한다 |
 | CI 직렬화 | 워크플로 단위 `concurrency`. `main` 푸시와 수동 실행은 한 그룹(`cancel-in-progress: false`), 그 밖의 ref는 ref별 그룹. 실행이 푸시 순서로 줄 서므로 오래된 실행이 최신 배포를 밀어내지 않는다 |
 | 수동 실행의 job | 빌드·테스트·스캔은 건너뛰고 배포 job만 돈다. 이미 검사를 거친 digest를 다시 배포하는 용도다 |
@@ -81,12 +83,28 @@
 - `init-setup-deployment.sh`가 만드는 초기 상태 파일은 3번에서 새 형식으로 바꾼다.
 - 8번의 워크플로는 L에서 실행할 수 없다. 내용 비교 스크립트만 L에서 검증하고(임시 Git 저장소만 쓰므로 가짜 층으로 충분하다) 나머지는 2단계로 넘긴다.
 
+## 1단계 결과
+
+`backend/tests/deploy/run.sh`가 96개 입력 사례를 가짜 층에서 통과한다. `run.sh --baseline`은 기준 커밋의 스크립트가 재현 기록 6건에서 기록대로 불합격하는지 확인한다. 사례 ID는 테스트 계획과 같고, 중단 후 재실행은 `KILL/`, SIGTERM은 `TERM/`으로 시작한다.
+
+가짜 층에서 판정하지 않은 입력은 다음과 같다. 사례가 없거나, 있어도 가짜 모델의 동작을 확인한 데 그친다.
+
+| 사례 | 남은 것 |
+|---|---|
+| A1 | 지속 요청의 오류 0건. Caddy 재생성 뒤의 서빙은 모델로만 확인 |
+| B3 | compose의 추가 pull이 없다는 것은 모델로만 확인 |
+| B6 | `docker image prune`을 부르지 않는 것과 남는 이미지는 확인. 실제 저장소 동작은 미확인 |
+| C4 | 용량 부족. 권한 오류는 실제 파일 권한으로, 교체 실패는 `mv` 래퍼로 확인 |
+| C10 | 정지가 진행 중인 컨테이너, 이전 정지 제한시간 이후의 재실행 |
+| C6, C9, B1, B4, B8, B9, D1, R3 | WT. 워크플로는 YAML 구문만 확인했고 실행한 적이 없다 |
+
 ## 실제 층에서 처음 확인되는 가정
 
 가짜 층은 아래를 가정으로 두고 구현한다. 틀리면 해당 부분을 고치고 두 층을 다시 돌린다.
 
 - **digest 종류**: 빌드가 출력하는 digest와 서버의 `RepoDigests`가 같은 종류다. 다르면 이미지 대조 방식이 바뀐다.
-- **PATCH 수단**: Caddy 이미지 안의 도구로 PATCH를 보내고 응답을 받을 수 있다. 어느 쪽이든 적용 여부는 재조회로 판정한다.
+- **PATCH 수단**: Caddy 이미지의 `nc`가 입력이 끝난 뒤에도 서버가 연결을 닫을 때까지 응답을 읽는다. 스크립트의 모든 HTTP 조회가 여기에 기대므로, 틀리면 upstream 조회부터 실패해 배포가 변경 전에 멈춘다.
+- **백엔드 이미지의 `wget`**: 서빙 컨테이너 안에서 `wget -qO- -T 3 http://localhost:4000/health`가 동작한다.
 - **Caddy 리로드 뒤의 dial**: 자리표시자로 돌아가고 Caddy 컨테이너의 `ACTIVE_ENV`로 풀린다(C1, A7).
 - **이미지 저장소**: 테스트 호스트의 Docker를 운영과 같은 `overlay2` 방식으로 맞출 수 있다.
 
