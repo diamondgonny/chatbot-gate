@@ -181,11 +181,9 @@ main() {
     # Create initial state file with blue as active
     cat > "$STATE_FILE" << EOF
 ACTIVE_ENV=blue
-ACTIVE_PORT=4000
 INACTIVE_ENV=green
-INACTIVE_PORT=4001
-LAST_DEPLOYMENT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-VERSION=main
+ACTIVE_IMAGE=
+UPDATED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF
 
     # Set proper permissions

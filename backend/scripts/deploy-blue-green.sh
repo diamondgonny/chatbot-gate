@@ -3,11 +3,23 @@ set -euo pipefail
 
 #############################################
 # Blue-Green Deployment Script
-# Zero-downtime deployment with automatic rollback
 #
 # Usage:
-#   ./deploy-blue-green.sh                # Normal deployment
-#   ./deploy-blue-green.sh --find-upstream # Find Caddy upstream path only
+#   IMAGE_REF=ghcr.io/<repo>/chatbot-gate-backend@sha256:<digest> ./deploy-blue-green.sh
+#   ./deploy-blue-green.sh --find-upstream   # Find Caddy upstream path only
+#
+# The image is given as a full digest reference. Tags are not accepted.
+#
+# The last line of output is "DEPLOY_RESULT code=<code> reason=<REASON>".
+#   0  deployed
+#   1  failed; serving is confirmed to be the same as before the run
+#   2  serving changed or could not be confirmed; someone has to look
+#
+# Reasons:
+#   0  OK
+#   1  INPUT_INVALID STATE_MISSING STATE_INVALID PULL_FAILED IMAGE_NO_IDENTIFIER
+#      UPSTREAM_UNKNOWN START_FAILED NEW_UNHEALTHY IMAGE_MISMATCH ROLLED_BACK
+#   2  ROLLBACK_UNCONFIRMED
 #############################################
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,12 +32,10 @@ for arg in "$@"; do
   case $arg in
     --find-upstream|--validate-caddy)
       FIND_UPSTREAM_ONLY=true
-      shift
       ;;
   esac
 done
 
-# Colors for output (define early for use in validation)
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -34,23 +44,10 @@ NC='\033[0m' # No Color
 
 STATE_FILE="${REPO_ROOT}/.deployment-state"
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.yml"
-IMAGE_NAME="chatbot-gate-backend"
 GITHUB_REPO="${GITHUB_REPO:-diamondgonny/chatbot-gate}"
-IMAGE_FULL_NAME="ghcr.io/${GITHUB_REPO}/chatbot-gate-backend"
+IMAGE_REPO="ghcr.io/${GITHUB_REPO}/chatbot-gate-backend"
+CONTAINER_PREFIX="chatbot-gate-backend"
 DB_PROFILE="--profile db"
-
-# VERSION validation (skip for --find-upstream mode)
-if [[ "${FIND_UPSTREAM_ONLY}" == "false" ]]; then
-  VERSION="${VERSION:?VERSION environment variable is required}"
-
-  # Validate VERSION is set and not empty
-  if [[ -z "${VERSION}" ]]; then
-    echo -e "${RED}ERROR: VERSION environment variable is not set${NC}"
-    echo -e "${RED}This must be set by the CI/CD pipeline${NC}"
-    exit 1
-  fi
-  echo -e "${BLUE}Deploying version: ${VERSION}${NC}"
-fi
 
 # Configuration
 HEALTH_CHECK_MAX_WAIT=90
@@ -61,20 +58,117 @@ CADDY_ADMIN_API="http://127.0.0.1:2019"  # Internal to Caddy container (IPv4 onl
 CADDY_UPSTREAM_PATH="${CADDY_UPSTREAM_PATH:-}"  # Auto-detect or set via env var
 
 # Logging functions
+timestamp() {
+  printf '%(%Y-%m-%d %H:%M:%S)T' -1
+}
+
 log() {
-  echo -e "${BLUE}$(date '+%Y-%m-%d %H:%M:%S')${NC} - $*"
+  echo -e "${BLUE}$(timestamp)${NC} - $*"
 }
 
 error() {
-  echo -e "${RED}$(date '+%Y-%m-%d %H:%M:%S') - ERROR:${NC} $*" >&2
+  echo -e "${RED}$(timestamp) - ERROR:${NC} $*" >&2
 }
 
 success() {
-  echo -e "${GREEN}$(date '+%Y-%m-%d %H:%M:%S') - ✅${NC} $*"
+  echo -e "${GREEN}$(timestamp) - ✅${NC} $*"
 }
 
 warning() {
-  echo -e "${YELLOW}$(date '+%Y-%m-%d %H:%M:%S') - ⚠️${NC} $*"
+  echo -e "${YELLOW}$(timestamp) - ⚠️${NC} $*"
+}
+
+# End the run. Every exit of a deployment goes through here.
+finish() {
+  local code=$1 reason=$2
+  echo "DEPLOY_RESULT code=${code} reason=${reason}"
+  exit "${code}"
+}
+
+other_env() {
+  if [[ $1 == blue ]]; then echo green; else echo blue; fi
+}
+
+# Read fields out of docker's JSON output. Prints one line of space-separated
+# fields, "-" for a field that is missing.
+json_tool() {
+  python3 -c '
+import json, re, sys
+
+def field(value):
+    value = str(value or "")
+    return value if re.fullmatch(r"[A-Za-z0-9._:/@-]+", value) else "-"
+
+def env_of(data):
+    entries = (data.get("Config") or {}).get("Env") or []
+    return dict(e.split("=", 1) for e in entries if "=" in e)
+
+cmd = sys.argv[1]
+try:
+    data = json.load(sys.stdin)[0]
+except Exception:
+    data = None
+
+if cmd == "image":
+    # <image id> <build> <digest reference in our repository>
+    if data is None:
+        print("- - -")
+    else:
+        build = env_of(data).get("BUILD_SHA", "")
+        digests = sorted(d for d in data.get("RepoDigests") or [] if d.startswith(sys.argv[2] + "@"))
+        print(field(data.get("Id")), field("" if build == "unknown" else build),
+              field(digests[0] if digests else ""))
+elif cmd == "container":
+    # <container id> <image id> <running> <health>
+    if data is None:
+        print("- - - -")
+    else:
+        state = data.get("State") or {}
+        print(field(data.get("Id")), field(data.get("Image")),
+              "true" if state.get("Running") else "false",
+              field((state.get("Health") or {}).get("Status")))
+' "$@"
+}
+
+undash() {
+  local name
+  for name in "$@"; do
+    if [[ ${!name} == - ]]; then
+      printf -v "${name}" '%s' ''
+    fi
+  done
+}
+
+# Sets IMG_ID, IMG_BUILD and IMG_REF for a local image. Empty when unknown.
+image_info() {
+  local json
+  json=$(docker image inspect "$1" 2>/dev/null) || json=""
+  read -r IMG_ID IMG_BUILD IMG_REF < <(json_tool image "${IMAGE_REPO}" <<< "${json}")
+  undash IMG_ID IMG_BUILD IMG_REF
+}
+
+# Sets C_ID, C_IMAGE, C_RUNNING and C_HEALTH for a container. C_ID is empty when it does not exist.
+container_info() {
+  local json
+  json=$(docker inspect "$1" 2>/dev/null) || json=""
+  read -r C_ID C_IMAGE C_RUNNING C_HEALTH < <(json_tool container <<< "${json}")
+  undash C_ID C_IMAGE C_HEALTH
+}
+
+# The image to deploy must be a digest reference in our repository.
+validate_input() {
+  local prefix="${IMAGE_REPO}@sha256:"
+  local ref="${IMAGE_REF:-}"
+
+  if [[ ${ref} != "${prefix}"* || ! ${ref#"${prefix}"} =~ ^[0-9a-f]{64}$ ]]; then
+    error "IMAGE_REF must be ${prefix}<64 hex digits>, got '${ref}'"
+    if [[ -n ${VERSION:-} ]]; then
+      error "VERSION is no longer accepted; pass the image digest as IMAGE_REF"
+    fi
+    finish 1 INPUT_INVALID
+  fi
+  export IMAGE_REF GITHUB_REPO
+  log "Deploying image: ${IMAGE_REF}"
 }
 
 # Auto-detect Caddy upstream path for api.chatbotgate.click
@@ -235,95 +329,115 @@ validate_networks() {
   return 0
 }
 
-# Load deployment state
-load_state() {
+state_invalid() {
+  error "State file is not valid: $*"
+  error "Fix or recreate ${STATE_FILE} from the actual upstream (see --find-upstream)"
+  finish 1 STATE_INVALID
+}
+
+# Load deployment state. The file is parsed line by line and never executed.
+# Sets STATE_ACTIVE, STATE_INACTIVE and STATE_IMAGE.
+read_state() {
   if [[ ! -f "$STATE_FILE" ]]; then
     error "State file not found: $STATE_FILE"
     error "Run './scripts/init-setup-deployment.sh' first"
-    exit 1
+    finish 1 STATE_MISSING
   fi
 
-  # shellcheck source=/dev/null
-  source "$STATE_FILE"
+  STATE_ACTIVE=""
+  STATE_INACTIVE=""
+  STATE_IMAGE=""
+  local line key value seen=" "
+
+  while IFS= read -r line || [[ -n ${line} ]]; do
+    if [[ ! ${line} =~ ^([A-Z_]+)=([A-Za-z0-9._:/@-]*)$ ]]; then
+      state_invalid "unexpected line"
+    fi
+    key=${BASH_REMATCH[1]}
+    value=${BASH_REMATCH[2]}
+    if [[ ${seen} == *" ${key} "* ]]; then
+      state_invalid "duplicate key ${key}"
+    fi
+    seen+="${key} "
+    case ${key} in
+      ACTIVE_ENV) STATE_ACTIVE=${value} ;;
+      INACTIVE_ENV) STATE_INACTIVE=${value} ;;
+      ACTIVE_IMAGE) STATE_IMAGE=${value} ;;
+      UPDATED_AT) ;;
+      # Keys of the previous format are read and dropped
+      ACTIVE_PORT|INACTIVE_PORT|LAST_DEPLOYMENT|VERSION) ;;
+      *) state_invalid "unexpected key ${key}" ;;
+    esac
+  done < "$STATE_FILE"
+
+  if [[ ${STATE_ACTIVE} != blue && ${STATE_ACTIVE} != green ]]; then
+    state_invalid "ACTIVE_ENV must be blue or green"
+  fi
+  if [[ ${STATE_INACTIVE} != "$(other_env "${STATE_ACTIVE}")" ]]; then
+    state_invalid "INACTIVE_ENV must be the other environment"
+  fi
+  if [[ -n ${STATE_IMAGE} && ! ${STATE_IMAGE} =~ @sha256:[0-9a-f]{64}$ ]]; then
+    state_invalid "ACTIVE_IMAGE must be a digest reference"
+  fi
 
   log "Current state loaded:"
-  log "  ACTIVE: ${ACTIVE_ENV} on port ${ACTIVE_PORT}"
-  log "  INACTIVE: ${INACTIVE_ENV} on port ${INACTIVE_PORT}"
-  log "  LAST DEPLOYMENT: ${LAST_DEPLOYMENT}"
-  log "  VERSION: ${VERSION}"
+  log "  ACTIVE: ${STATE_ACTIVE}"
+  log "  IMAGE: ${STATE_IMAGE:-unknown}"
 }
 
-# Save deployment state
+# Save deployment state by replacing the file in one step. Caddy's compose
+# reads this file as env_file, so the format stays unquoted KEY=VALUE.
+# Sets STATE_SAVED to true or false.
 save_state() {
-  local new_active=$1
-  local new_active_port=$2
-  local new_inactive=$3
-  local new_inactive_port=$4
+  local active=$1 image=$2
+  local tmp="${STATE_FILE}.tmp.$$"
+  local stamp
+  stamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-  cat > "$STATE_FILE" << EOF
-ACTIVE_ENV=${new_active}
-ACTIVE_PORT=${new_active_port}
-INACTIVE_ENV=${new_inactive}
-INACTIVE_PORT=${new_inactive_port}
-LAST_DEPLOYMENT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-VERSION=${VERSION}
-EOF
-
-  success "State updated: ${new_active} is now active on port ${new_active_port}"
+  STATE_SAVED=false
+  if printf 'ACTIVE_ENV=%s\nINACTIVE_ENV=%s\nACTIVE_IMAGE=%s\nUPDATED_AT=%s\n' \
+       "${active}" "$(other_env "${active}")" "${image}" "${stamp}" > "${tmp}" \
+     && mv "${tmp}" "$STATE_FILE"; then
+    STATE_SAVED=true
+    success "State updated: ${active} is now active with ${image}"
+  fi
 }
 
-# Pull image from GHCR
+# Pull the requested image and read its identity
 pull_image() {
-  # Determine if VERSION is a full GHCR tag or just a tag name
-  local PULL_TARGET
-  local TAG_ONLY
-
-  if [[ "$VERSION" == ghcr.io/* ]]; then
-    # VERSION is a full GHCR tag
-    # (e.g., ghcr.io/diamondgonny/chatbot-gate/chatbot-gate-backend:main-abc123)
-    PULL_TARGET="$VERSION"
-    TAG_ONLY=$(echo "$VERSION" | awk -F: '{print $NF}')
-    log "Pulling image from GHCR (full tag): ${PULL_TARGET}"
-  else
-    # VERSION is just a tag name (e.g., abc123 or main-abc123)
-    PULL_TARGET="${IMAGE_FULL_NAME}:${VERSION}"
-    TAG_ONLY="$VERSION"
-    log "Pulling image from GHCR: ${PULL_TARGET}"
-  fi
-
-  # Public repository - no authentication required
-  log "Pulling from public GHCR repository..."
-
-  # Pull with retry logic
-  local retries=3
-  local attempt=1
-
-  while [ $attempt -le $retries ]; do
-    log "Pull attempt ${attempt}/${retries}..."
-
-    if docker pull "${PULL_TARGET}"; then
+  local attempt
+  for attempt in 1 2 3; do
+    log "Pull attempt ${attempt}/3..."
+    if docker pull "${IMAGE_REF}"; then
       success "Image pulled successfully"
-
-      # Tag for docker-compose compatibility
-      docker tag "${PULL_TARGET}" "${IMAGE_NAME}:${TAG_ONLY}" || true
-      docker tag "${PULL_TARGET}" "${IMAGE_NAME}:latest" || true
-      docker tag "${PULL_TARGET}" "${IMAGE_NAME}:${INACTIVE_ENV}-${TAG_ONLY}" || true
-
-      return 0
+      break
     fi
-
-    warning "Pull failed (attempt ${attempt}/${retries})"
-    attempt=$((attempt + 1))
+    warning "Pull failed (attempt ${attempt}/3)"
+    if [[ ${attempt} == 3 ]]; then
+      error "Failed to pull ${IMAGE_REF}"
+      finish 1 PULL_FAILED
+    fi
     sleep 5
   done
 
-  error "Failed to pull image after ${retries} attempts"
-  exit 1
+  image_info "${IMAGE_REF}"
+  NEW_IMAGE_ID=${IMG_ID}
+  NEW_BUILD=${IMG_BUILD}
+  if [[ -z ${NEW_IMAGE_ID} ]]; then
+    error "Pulled image cannot be inspected: ${IMAGE_REF}"
+    finish 1 PULL_FAILED
+  fi
+  if [[ -z ${NEW_BUILD} ]]; then
+    error "Image has no build identifier (BUILD_SHA): ${IMAGE_REF}"
+    error "Images built before /health reported env and build cannot be deployed"
+    finish 1 IMAGE_NO_IDENTIFIER
+  fi
+  log "Image ${NEW_IMAGE_ID} was built from ${NEW_BUILD}"
 }
 
 # Start inactive environment
 start_inactive_env() {
-  log "Starting ${INACTIVE_ENV} environment on port ${INACTIVE_PORT}"
+  log "Starting ${INACTIVE_ENV} environment"
 
   # Stop and remove if exists
   log "Cleaning up any existing ${INACTIVE_ENV} containers..."
@@ -333,10 +447,26 @@ start_inactive_env() {
   log "Starting backend-${INACTIVE_ENV}..."
   if ! docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} up -d --no-deps --force-recreate "backend-${INACTIVE_ENV}"; then
     error "Failed to start ${INACTIVE_ENV} environment"
-    exit 1
+    finish 1 START_FAILED
   fi
 
   success "${INACTIVE_ENV} environment started"
+}
+
+remove_inactive_env() {
+  docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} stop -t 10 "backend-${INACTIVE_ENV}" 2>/dev/null || true
+  docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} rm -f "backend-${INACTIVE_ENV}" 2>/dev/null || true
+}
+
+# The new container must run the image that was requested
+verify_new_image() {
+  container_info "${CONTAINER_PREFIX}-${INACTIVE_ENV}"
+  if [[ ${C_IMAGE} != "${NEW_IMAGE_ID}" ]]; then
+    error "New container runs ${C_IMAGE:-nothing}, expected ${NEW_IMAGE_ID}"
+    remove_inactive_env
+    finish 1 IMAGE_MISMATCH
+  fi
+  success "New container runs the requested image"
 }
 
 # Health check function
@@ -478,21 +608,17 @@ rollback() {
       error "⚠️  CRITICAL: Rollback failed - manual intervention required!"
       error "Manual command:"
       error "docker exec ${CADDY_CONTAINER} sh -c \"printf 'PATCH ${CADDY_UPSTREAM_PATH} HTTP/1.1\\r\\n'; printf 'Host: 127.0.0.1:2019\\r\\n'; printf 'Content-Type: application/json\\r\\n'; printf 'Content-Length: ${content_length}\\r\\n'; printf '\\r\\n'; printf '${json_data}'\" | docker exec -i ${CADDY_CONTAINER} nc 127.0.0.1 2019"
-      exit 2
+      finish 2 ROLLBACK_UNCONFIRMED
     }
 
   success "Traffic reverted to ${active_container}:4000"
 
   # Stop failed inactive environment
   log "Stopping failed ${INACTIVE_ENV} environment..."
-  docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} stop -t 10 "backend-${INACTIVE_ENV}" 2>/dev/null || true
-  docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} rm -f "backend-${INACTIVE_ENV}" 2>/dev/null || true
-
-  # Log rollback event
-  echo "ROLLBACK - $(date -u +"%Y-%m-%dT%H:%M:%SZ") - Attempted: ${INACTIVE_ENV} → Reverted to: ${ACTIVE_ENV} - Version: ${VERSION}" >> deployment-rollback.log
+  remove_inactive_env
 
   error "Rollback complete - ${ACTIVE_ENV} is serving traffic"
-  exit 1
+  finish 1 ROLLED_BACK
 }
 
 # Cleanup old environment
@@ -510,29 +636,6 @@ cleanup_old_env() {
   success "Old ${ACTIVE_ENV} environment cleaned up"
 }
 
-# Cleanup old images
-cleanup_old_images() {
-  log "Cleaning up old images..."
-
-  # Remove dangling images
-  docker image prune -f
-
-  # Keep last 3 tagged versions of our image
-  local old_images=$(docker images "${IMAGE_FULL_NAME}" --format "{{.ID}} {{.Tag}}" | \
-    grep -v "${VERSION}" | \
-    grep -v "latest" | \
-    sort -r | \
-    tail -n +4 | \
-    awk '{print $1}')
-
-  if [[ -n "$old_images" ]]; then
-    log "Removing old image versions..."
-    echo "$old_images" | xargs -r docker rmi -f || true
-  fi
-
-  success "Image cleanup complete"
-}
-
 # Show deployment banner
 show_banner() {
   echo ""
@@ -540,8 +643,8 @@ show_banner() {
   echo "║           BLUE-GREEN DEPLOYMENT STARTED                    ║"
   echo "╚════════════════════════════════════════════════════════════╝"
   echo ""
-  echo "  Version: ${VERSION}"
-  echo "  Active → Inactive: ${ACTIVE_ENV}:${ACTIVE_PORT} → ${INACTIVE_ENV}:${INACTIVE_PORT}"
+  echo "  Image: ${IMAGE_REF}"
+  echo "  Active → Inactive: ${ACTIVE_ENV} → ${INACTIVE_ENV}"
   echo ""
 }
 
@@ -553,100 +656,85 @@ show_summary() {
   echo "╚════════════════════════════════════════════════════════════╝"
   echo ""
   echo "  Active Environment: ${INACTIVE_ENV}"
-  echo "  Active Port: ${INACTIVE_PORT}"
-  echo "  Version: ${VERSION}"
-  echo "  Deployment Time: $(date '+%Y-%m-%d %H:%M:%S')"
-  echo ""
-  echo "Container Status:"
-  docker compose -f "${COMPOSE_FILE}" ps
+  echo "  Image: ${IMAGE_REF}"
+  echo "  Build: ${NEW_BUILD}"
   echo ""
 }
 
 # Main deployment flow
 main() {
-  # Step 1: Load state
-  log "📋 Step 1/11: Loading deployment state..."
-  load_state
+  validate_input
+
+  log "📋 Loading deployment state..."
+  read_state
+  ACTIVE_ENV=${STATE_ACTIVE}
+  INACTIVE_ENV=${STATE_INACTIVE}
   echo ""
 
   show_banner
 
-  # Step 2: Validate Caddy upstream path
-  log "🔍 Step 2/11: Validating Caddy upstream path..."
+  log "🔍 Validating Caddy upstream path..."
   if ! validate_caddy_upstream_path; then
     error "Caddy upstream path validation failed"
-    exit 1
+    finish 1 UPSTREAM_UNKNOWN
   fi
   echo ""
 
-  # Step 3: Pull image from GHCR
-  log "📦 Step 3/11: Pulling Docker image from GHCR..."
+  log "📦 Pulling Docker image from GHCR..."
   pull_image
   echo ""
 
-  # Step 4: Start inactive environment
-  log "🚀 Step 4/11: Starting inactive environment..."
+  log "🚀 Starting inactive environment..."
   start_inactive_env
   echo ""
 
-  # Step 5: Health check
-  log "🏥 Step 5/11: Performing health checks..."
+  log "🏥 Performing health checks..."
   if ! wait_for_healthy; then
     error "Deployment failed: ${INACTIVE_ENV} is unhealthy"
     echo ""
     error "Logs from ${INACTIVE_ENV}:"
-    docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} logs --tail=50 "backend-${INACTIVE_ENV}"
+    docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} logs --tail=50 "backend-${INACTIVE_ENV}" || true
     echo ""
     log "Cleaning up failed deployment..."
-    docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} stop -t 10 "backend-${INACTIVE_ENV}" 2>/dev/null || true
-    docker compose -f "${COMPOSE_FILE}" --profile "${INACTIVE_ENV}" ${DB_PROFILE} rm -f "backend-${INACTIVE_ENV}" 2>/dev/null || true
-    exit 1
+    remove_inactive_env
+    finish 1 NEW_UNHEALTHY
   fi
+  verify_new_image
   echo ""
 
-  # Step 6: Network validation
-  log "🔌 Step 6/11: Validating network connectivity..."
+  log "🔌 Validating network connectivity..."
   if ! validate_networks; then
     error "Network validation failed"
     rollback
   fi
   echo ""
 
-  # Step 7: Switch traffic
-  log "🔀 Step 7/11: Switching traffic to new environment..."
+  log "🔀 Switching traffic to new environment..."
   if ! switch_traffic; then
     error "Failed to switch traffic"
     rollback
   fi
   echo ""
 
-  # Step 8: Validate deployment
-  log "✓ Step 8/11: Validating deployment..."
+  log "✓ Validating deployment..."
   if ! validate_deployment; then
     error "Validation failed"
     rollback
   fi
   echo ""
 
-  # Step 9: Cleanup old environment
-  log "🧹 Step 9/11: Cleaning up old environment..."
+  log "🧹 Cleaning up old environment..."
   cleanup_old_env
   echo ""
 
-  # Step 10: Update state (flip active/inactive)
-  log "💾 Step 10/11: Updating deployment state..."
-  save_state "${INACTIVE_ENV}" "${INACTIVE_PORT}" "${ACTIVE_ENV}" "${ACTIVE_PORT}"
+  log "💾 Updating deployment state..."
+  save_state "${INACTIVE_ENV}" "${IMAGE_REF}"
   echo ""
 
-  # Step 11: Cleanup old images
-  log "🗑️  Step 11/11: Cleaning up old images..."
-  cleanup_old_images
-  echo ""
-
-  # Show summary
   show_summary
 
   success "🎉 Deployment complete!"
+  finish 0 OK
 }
 
 # Trap errors and handle cleanup

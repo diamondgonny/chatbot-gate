@@ -39,10 +39,11 @@ services:
     networks:
       - internal
 
-  # Blue Environment (Port 4000)
+  # Blue Environment
   backend-blue:
-    image: ghcr.io/${GITHUB_REPO:-diamondgonny/chatbot-gate}/chatbot-gate-backend:${VERSION:-latest}
-    pull_policy: always
+    # Full digest reference; the deploy script pulls it before starting the container
+    image: ${IMAGE_REF:?}
+    pull_policy: missing
     container_name: chatbot-gate-backend-blue
     restart: unless-stopped
 
@@ -99,10 +100,11 @@ services:
     profiles:
       - blue
 
-  # Green Environment (Port 4001)
+  # Green Environment
   backend-green:
-    image: ghcr.io/${GITHUB_REPO:-diamondgonny/chatbot-gate}/chatbot-gate-backend:${VERSION:-latest}
-    pull_policy: always
+    # Full digest reference; the deploy script pulls it before starting the container
+    image: ${IMAGE_REF:?}
+    pull_policy: missing
     container_name: chatbot-gate-backend-green
     restart: unless-stopped
 
