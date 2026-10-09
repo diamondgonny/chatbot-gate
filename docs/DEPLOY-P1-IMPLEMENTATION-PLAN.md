@@ -12,7 +12,7 @@
 | 4 | 출시 2단계: 서버 파일 교체 후 워크플로 병합(WP) | B1 관찰과 증거 기록 |
 
 - 작업 브랜치는 `fix/deploy-p1`이다. `main`·`develop`이 아니면 푸시해도 CI가 돌지 않는다. `main` 대상 PR은 워크플로를 실행하므로 2단계 전에는 열지 않는다.
-- 식별자 커밋(아래 2번)은 3단계에서 따로 `main`에 들어가야 하므로 `feat/health-identifier` 브랜치에 두고, 작업 브랜치는 그 위에 쌓는다.
+- 식별자 커밋(아래 1번)은 3단계에서 따로 `main`에 들어가야 하므로 `origin/main`에서 딴 `feat/health-identifier` 브랜치에 두고, 작업 브랜치를 그 위로 옮겨 쌓는다.
 - `backend/**`나 워크플로가 바뀐 `main` 푸시는 곧바로 운영 배포다. 3·4단계는 사람이 지켜보는 상태에서만 한다.
 
 ## 고정하는 인터페이스
@@ -20,23 +20,26 @@
 | 항목 | 결정 |
 |---|---|
 | 배포 입력 | 환경 변수 `IMAGE_REF`. 형식은 `ghcr.io/<GITHUB_REPO>/chatbot-gate-backend@sha256:<64자리 hex>` 하나뿐이다. `VERSION`은 더 받지 않으며, `IMAGE_REF` 없이 `VERSION`만 오면 형식 오류로 거부한다 |
-| compose 이미지 | `image: ${IMAGE_REF:?}`, `pull_policy: missing`. pull은 스크립트가 먼저 명시적으로 한다. `docker-compose.ci.yml`도 같은 변수를 쓴다 |
-| 상태 파일 | `ACTIVE_ENV`, `INACTIVE_ENV`, `ACTIVE_IMAGE`(서빙 중인 digest 참조), `UPDATED_AT`. 따옴표 없는 `키=값` 한 줄씩. 구 형식의 `ACTIVE_PORT`·`INACTIVE_PORT`·`LAST_DEPLOYMENT`·`VERSION`은 알려진 구 키로 읽고 버린다. 그 밖의 키와 형식은 손상으로 본다 |
+| compose 이미지 | `image: ${IMAGE_REF:?}`, `pull_policy: missing`. pull은 스크립트가 먼저 명시적으로 한다. `docker-compose.ci.yml`도 같은 변수를 쓴다. 이후로는 사람이 직접 치는 `docker compose` 명령도 `IMAGE_REF`가 있어야 동작한다 |
+| 상태 파일 | `ACTIVE_ENV`, `INACTIVE_ENV`, `ACTIVE_IMAGE`(서빙 중인 digest 참조), `UPDATED_AT`. 따옴표 없는 `키=값` 한 줄씩. 구 형식의 `ACTIVE_PORT`·`INACTIVE_PORT`·`LAST_DEPLOYMENT`·`VERSION`은 알려진 구 키로 읽고 버린다. 그 밖의 키와 형식은 손상으로 본다. `ACTIVE_IMAGE`가 빈 값인 것은 서빙 컨테이너가 없는 신규 호스트에서만 허용한다 |
 | 상태 저장 | 같은 디렉터리의 임시 파일에 쓰고 `mv`로 교체. 읽기는 줄 단위 파싱이며 `source`하지 않는다 |
 | `/health` | 기존 `status`·`message`에 `env`(`DEPLOYMENT_ENV`)와 `build`(이미지의 `BUILD_SHA`)를 추가. 값이 없으면 `unknown`이고 스크립트는 이를 식별자 없음으로 본다 |
 | `BUILD_SHA` | `Dockerfile.prod`의 `ARG`→`ENV`. 워크플로 빌드 단계가 `github.sha`를 build-arg로 넘긴다. 스크립트는 기대하는 `build`를 받은 이미지의 설정에서 읽는다 |
 | 잠금 | `.deploy.lock`에 `flock -n`. 잠금 fd를 자식이 물려받게 해 자식이 살아 있는 동안 유지한다 |
 | 종료 보고 | 마지막 줄에 `DEPLOY_RESULT code=<0\|1\|2> reason=<SLUG>` 한 줄. 하네스는 이 줄로 사유를 판정한다. SLUG 목록은 구현하면서 스크립트 머리에 모아 둔다 |
-| Caddy 경유 요청 | `docker exec caddy`에서 Host 헤더 `api.chatbotgate.click`으로 Caddy의 HTTP 포트에 보낸다. 포트는 80으로 가정하며 운영에서 확인한다 |
+| Caddy 경유 요청 | `docker exec caddy`에서 Host 헤더 `api.chatbotgate.click`으로 Caddy의 HTTP 포트에 보낸다. 포트는 기본 80이고 환경 변수로 바꿀 수 있게 하며, 운영 값은 2단계 전에 확인한다 |
 | 내용 비교 코드 | `backend/scripts/ci-compare-content.sh`. 종료 코드 0은 같음, 10은 다름(건너뜀), 그 밖은 오류. 워크플로와 L이 같은 파일을 실행한다 |
 | CI 직렬화 | 워크플로 단위 `concurrency`. `main` 푸시와 수동 실행은 한 그룹(`cancel-in-progress: false`), 그 밖의 ref는 ref별 그룹. 실행이 푸시 순서로 줄 서므로 오래된 실행이 최신 배포를 밀어내지 않는다 |
+| 수동 실행의 job | 빌드·테스트·스캔은 건너뛰고 배포 job만 돈다. 이미 검사를 거친 digest를 다시 배포하는 용도다 |
 | 수동 배포 | `workflow_dispatch`의 `image_ref` 입력. 배포 job은 `main` ref에서만 돌고, 입력은 원격 셸 본문에 끼워 넣지 않고 환경 변수로 넘긴다 |
 
 워크플로 단위 직렬화에서는 대기 중인 실행을 새 실행이 대체한다. 대기 중이던 수동 롤백이 뒤이은 푸시에 밀려 취소될 수 있으며, 취소는 실행 목록에 보이므로 다시 실행한다.
 
+이 방식에서는 C6의 "늦은 커밋의 검사가 먼저 끝나는 순서"가 만들어지지 않는다. 그 입력은 미실행으로 기록하고 이유를 적는다. 실행이 푸시 순서대로 만들어진다는 것은 GitHub가 보장한 동작이 아니라 가정이며, 연속 푸시 사례에서 실행 순서를 함께 기록해 확인한다.
+
 ## 하네스
 
-위치는 `backend/tests/deploy/`이고 의존성 없는 bash 러너다. `run.sh`가 `cases/`의 사례 스크립트를 돌리고, `lib/`에 공용 래퍼와 판정 함수를 둔다. 같은 사례를 두 층에서 돌린다.
+위치는 `backend/tests/deploy/`이고 러너와 사례는 bash, 가짜 `docker`는 `python3`로 쓴다. 둘 다 운영 서버에 있는 도구다. `run.sh`가 `cases/`의 사례 스크립트를 돌리고, `lib/`에 공용 래퍼와 판정 함수를 둔다. 같은 사례를 두 층에서 돌린다.
 
 | 층 | 무엇으로 | 언제 | 판정 |
 |---|---|---|---|
@@ -45,9 +48,9 @@
 
 - 가짜 층의 통과는 L 인수가 아니다. 인수 판정은 실제 층에서만 낸다.
 - 두 층은 같은 사례 스크립트와 같은 래퍼 인터페이스를 쓴다. 실제 층의 `docker` 래퍼는 호출을 기록·정지·실패 주입한 뒤 진짜 `docker`로 넘긴다.
-- 래퍼는 지정한 단계에서 FIFO로 멈췄다가 신호를 받아 재개하거나 실패를 주입한다. `mv`·`date`도 같은 방식이다.
+- 래퍼는 지정한 단계에서 멈췄다가 사례의 신호를 받아 재개하거나 실패를 주입한다. `mv`·`date`도 같은 방식이다.
 - 공통 불변식은 `docker` 래퍼가 맡는다. 컨테이너를 끝낼 수 있는 호출을 넘기기 전에 실제 upstream을 직접 조회해, 대상이 서빙 중이면 그 사례를 불합격으로 기록한다.
-- 가짜 층은 macOS에서도 돌아야 한다. 스크립트는 bash 3.2에서도 동작하는 문법만 쓰고, `flock`이 없는 곳에서는 같은 fd 잠금을 거는 하네스의 대체 명령을 쓴다.
+- 가짜 층은 macOS에서도 돌아야 한다. 스크립트는 bash 3.2에서도 동작하는 문법만 쓰고, `flock`이 없는 곳에서는 같은 fd 잠금을 거는 하네스의 대체 명령을 쓴다. bash 3.2와 운영의 5.3은 오류 처리 동작이 다를 수 있으므로, 이 차이는 실제 층에서 걸러진다고 본다.
 - 가짜 Caddy는 admin API의 dial 조회·PATCH, 자리표시자와 `ACTIVE_ENV`, 리로드 뒤의 복귀, Host별 `/health` 응답을 흉내 낸다. 이 모델이 실제와 같은지는 실제 층에서 확인한다.
 - 실제 층의 Caddyfile은 테스트 계획의 준비 절대로 만든다. 운영 Caddyfile의 백엔드 블록을 받기 전까지는 채취값으로 추정한 구조다.
 
@@ -64,8 +67,8 @@
 
 | 순서 | 커밋 | 사례 |
 |---|---|---|
-| 1 | `test(infra)`: 하네스와 기준 스크립트 불합격 확인 | 하네스 자체 검증 |
-| 2 | `feat(backend)`: `/health`에 `env`·`build` 추가, `BUILD_SHA` 전달 | 식별자 (별도 브랜치) |
+| 1 | `feat(backend)`: `/health`에 `env`·`build` 추가, `BUILD_SHA` 전달 | 식별자 (별도 브랜치) |
+| 2 | `test(infra)`: 하네스와 기준 스크립트 불합격 확인 | 하네스 자체 검증 |
 | 3 | `fix(infra)`: `IMAGE_REF` 입력, 상태 파일 파싱 | B2, B3, B5, C2, R2 |
 | 4 | `fix(infra)`: 잠금과 신호·미분류 실패 처리 | C5, D2, SIGTERM 두 지점 |
 | 5 | `fix(infra)`: upstream 확정과 상태 교정 | C1, C3, C7, C8 |
@@ -90,7 +93,7 @@
 ## WT 제안
 
 - **저장소**: 이 저장소를 그대로 미러한 비공개 테스트 저장소를 만든다. 이미지 이름이 `github.repository`에서 나오므로 레지스트리는 자동으로 분리된다.
-- **호스트**: Tailscale에 붙인 임시 Linux VM 한 대다. L의 실제 층도 여기서 먼저 돌린다. 운영과 같은 디렉터리 경로·컨테이너 이름·Caddy 구성을 올리고, Tailscale 태그와 SSH 키는 운영과 다른 것을 쓴다.
+- **호스트**: Tailscale에 붙인 임시 Linux VM 한 대다. L의 실제 층도 여기서 먼저 돌린다. 운영과 같은 디렉터리 경로·컨테이너 이름·Caddy 구성을 올리고, Tailscale 태그와 SSH 키는 운영과 다른 것을 쓰고, 같은 tailnet이라면 ACL에서 테스트 태그가 운영 호스트에 닿지 못하게 막는다.
 - **비밀값**: 워크플로가 읽는 이름은 같게, 값은 테스트 호스트 것만 넣는다. 운영 비밀값이 없으므로 워크플로를 고치지 않고도 운영으로 갈 경로가 없다.
 - **순서 고정**: 테스트 호스트의 `PATH`에 L과 같은 `docker` 래퍼를 두어 배포를 원하는 단계에서 멈춘다. CI 쪽 순서는 푸시 시점으로 만든다.
 - **실행**: 사례별로 푸시·재실행·취소를 `gh`로 수행하는 스크립트를 두고, run ID와 서버 쪽 기록을 함께 모은다. 끝나면 VM을 지운다.
