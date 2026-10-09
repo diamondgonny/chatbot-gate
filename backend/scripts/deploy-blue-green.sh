@@ -17,8 +17,11 @@ set -Eeuo pipefail
 #
 # Reasons:
 #   0  OK
-#   1  INPUT_INVALID LOCK_HELD STATE_MISSING STATE_INVALID PULL_FAILED IMAGE_NO_IDENTIFIER
-#      UPSTREAM_UNKNOWN START_FAILED NEW_UNHEALTHY IMAGE_MISMATCH ROLLED_BACK
+#   1  INPUT_INVALID LOCK_HELD STATE_MISSING STATE_INVALID
+#      UPSTREAM_QUERY_FAILED UPSTREAM_TARGET_UNKNOWN UPSTREAM_ENV_UNRESOLVED
+#      UPSTREAM_AMBIGUOUS UPSTREAM_PATH_MISMATCH UPSTREAM_DEAD
+#      SERVING_UNVERIFIED SERVING_IMAGE_UNKNOWN SERVING_NO_IDENTIFIER STATE_SAVE_FAILED
+#      PULL_FAILED IMAGE_NO_IDENTIFIER START_FAILED NEW_UNHEALTHY IMAGE_MISMATCH ROLLED_BACK
 #   2  ROLLBACK_UNCONFIRMED INTERRUPTED UNCLASSIFIED
 #
 # A failure the script does not classify, and any signal, ends the run with
@@ -59,8 +62,12 @@ HEALTH_CHECK_MAX_WAIT=90
 HEALTH_CHECK_INTERVAL=3
 VALIDATION_PERIOD=10
 CADDY_CONTAINER="caddy"  # Caddy container name
-CADDY_ADMIN_API="http://127.0.0.1:2019"  # Internal to Caddy container (IPv4 only)
-CADDY_UPSTREAM_PATH="${CADDY_UPSTREAM_PATH:-}"  # Auto-detect or set via env var
+CADDY_ADMIN_HOST="127.0.0.1"  # Internal to Caddy container (IPv4 only)
+CADDY_ADMIN_PORT=2019
+CADDY_HTTP_PORT="${CADDY_HTTP_PORT:-80}"  # Port Caddy serves the API site on, inside its container
+CADDY_UPSTREAM_PATH="${CADDY_UPSTREAM_PATH:-}"  # Optional: the detected path must equal this
+API_HOST="api.chatbotgate.click"
+HTTP_TIMEOUT=3  # Seconds for one HTTP request
 
 # Logging functions
 timestamp() {
@@ -141,8 +148,8 @@ other_env() {
   if [[ $1 == blue ]]; then echo green; else echo blue; fi
 }
 
-# Read fields out of docker's JSON output. Prints one line of space-separated
-# fields, "-" for a field that is missing.
+# Read fields out of JSON and HTTP output. Unless noted, prints one line of
+# space-separated fields, "-" for a field that is missing.
 json_tool() {
   python3 -c '
 import json, re, sys
@@ -155,30 +162,86 @@ def env_of(data):
     entries = (data.get("Config") or {}).get("Env") or []
     return dict(e.split("=", 1) for e in entries if "=" in e)
 
+def first(raw):
+    try:
+        return json.loads(raw)[0]
+    except Exception:
+        return None
+
+def backend_upstreams(routes, base, in_host, host, prefix, found):
+    # Walk routes and nested subroutes; collect every upstreams list that dials a backend
+    for r, route in enumerate(routes or []):
+        matched = in_host or any(host in (m.get("host") or []) for m in route.get("match") or [])
+        for h, handler in enumerate(route.get("handle") or []):
+            path = f"{base}/routes/{r}/handle/{h}"
+            dials = [u.get("dial", "") for u in handler.get("upstreams") or []]
+            if any(prefix in d for d in dials):
+                found.append((path + "/upstreams", matched, dials))
+            backend_upstreams(handler.get("routes"), path, matched, host, prefix, found)
+
 cmd = sys.argv[1]
-try:
-    data = json.load(sys.stdin)[0]
-except Exception:
-    data = None
+raw = sys.stdin.read()
 
 if cmd == "image":
     # <image id> <build> <digest reference in our repository>
+    data = first(raw)
     if data is None:
         print("- - -")
     else:
         build = env_of(data).get("BUILD_SHA", "")
         digests = sorted(d for d in data.get("RepoDigests") or [] if d.startswith(sys.argv[2] + "@"))
-        print(field(data.get("Id")), field("" if build == "unknown" else build),
-              field(digests[0] if digests else ""))
+        chosen = sys.argv[3] if sys.argv[3] in digests else (digests[0] if digests else "")
+        print(field(data.get("Id")), field("" if build == "unknown" else build), field(chosen))
 elif cmd == "container":
-    # <container id> <image id> <running> <health>
+    # <container id> <image id> <running> <health> <ACTIVE_ENV of the container>
+    data = first(raw)
     if data is None:
-        print("- - - -")
+        print("- - - - -")
     else:
         state = data.get("State") or {}
         print(field(data.get("Id")), field(data.get("Image")),
               "true" if state.get("Running") else "false",
-              field((state.get("Health") or {}).get("Status")))
+              field((state.get("Health") or {}).get("Status")),
+              field(env_of(data).get("ACTIVE_ENV")))
+elif cmd == "upstreams":
+    # Caddy servers config -> "ok <path> <dial>" or "error <REASON> <detail>"
+    host, prefix = sys.argv[2], sys.argv[3]
+    found = []
+    try:
+        for name, server in json.loads(raw).items():
+            backend_upstreams(server.get("routes"), f"/config/apps/http/servers/{name}", False, host, prefix, found)
+    except Exception:
+        print("error UPSTREAM_QUERY_FAILED the Caddy configuration could not be parsed")
+        sys.exit(0)
+    if not found:
+        print(f"error UPSTREAM_TARGET_UNKNOWN no upstream dials {prefix}")
+    elif len(found) > 1:
+        print("error UPSTREAM_AMBIGUOUS several upstream lists dial the backend: " + " ".join(f[0] for f in found))
+    elif not found[0][1]:
+        print(f"error UPSTREAM_TARGET_UNKNOWN the backend upstream is not under {host}")
+    elif len(found[0][2]) != 1:
+        print("error UPSTREAM_AMBIGUOUS the upstream list has several dials: " + " ".join(found[0][2]))
+    elif re.search(r"\s", found[0][2][0]):
+        print("error UPSTREAM_TARGET_UNKNOWN the dial is malformed")
+    else:
+        print("ok", found[0][0], found[0][2][0])
+elif cmd == "http":
+    # Raw HTTP response -> status on the first line (000 without a response), then the body
+    head, sep, body = raw.partition("\r\n\r\n")
+    status = re.match(r"HTTP/\d\.\d (\d{3})", head)
+    print(status.group(1) if status and sep else "000")
+    sys.stdout.write(body)
+elif cmd == "health":
+    # /health body -> "<env> <build>", or "invalid" when it is not a JSON object
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            raise ValueError
+    except Exception:
+        print("invalid")
+        sys.exit(0)
+    env, build = data.get("env"), data.get("build")
+    print(field("" if env == "unknown" else env), field("" if build == "unknown" else build))
 ' "$@"
 }
 
@@ -192,19 +255,84 @@ undash() {
 }
 
 # Sets IMG_ID, IMG_BUILD and IMG_REF for a local image. Empty when unknown.
+# IMG_REF is the digest reference; a second argument is kept when the image has it.
 image_info() {
   local json
   json=$(docker image inspect "$1" 2>/dev/null) || json=""
-  read -r IMG_ID IMG_BUILD IMG_REF < <(json_tool image "${IMAGE_REPO}" <<< "${json}")
+  read -r IMG_ID IMG_BUILD IMG_REF < <(json_tool image "${IMAGE_REPO}" "${2:-}" <<< "${json}")
   undash IMG_ID IMG_BUILD IMG_REF
 }
 
-# Sets C_ID, C_IMAGE, C_RUNNING and C_HEALTH for a container. C_ID is empty when it does not exist.
+# Sets C_ID, C_IMAGE, C_RUNNING, C_HEALTH and C_ACTIVE_ENV for a container.
+# C_ID is empty when it does not exist.
 container_info() {
   local json
   json=$(docker inspect "$1" 2>/dev/null) || json=""
-  read -r C_ID C_IMAGE C_RUNNING C_HEALTH < <(json_tool container <<< "${json}")
-  undash C_ID C_IMAGE C_HEALTH
+  read -r C_ID C_IMAGE C_RUNNING C_HEALTH C_ACTIVE_ENV < <(json_tool container <<< "${json}")
+  undash C_ID C_IMAGE C_HEALTH C_ACTIVE_ENV
+}
+
+# Send one HTTP request from inside the Caddy container.
+# Usage: caddy_request <method> <host> <port> <path> [Host header] [body]
+# Sets HTTP_STATUS (000 when no response arrived in time) and HTTP_BODY.
+caddy_request() {
+  local method=$1 host=$2 port=$3 path=$4 header=${5:-$2:$3} body=${6:-}
+  local raw
+
+  # HTTP/1.0 makes the server close the connection and send the body unchunked
+  raw=$(printf '%s %s HTTP/1.0\r\nHost: %s\r\nContent-Type: application/json\r\nContent-Length: %s\r\n\r\n%s' \
+          "${method}" "${path}" "${header}" "${#body}" "${body}" \
+        | timeout "${HTTP_TIMEOUT}" docker exec -i "${CADDY_CONTAINER}" nc -w "${HTTP_TIMEOUT}" "${host}" "${port}" 2>/dev/null) || true
+  {
+    read -r HTTP_STATUS
+    HTTP_BODY=$(cat)
+  } < <(json_tool http <<< "${raw}")
+}
+
+admin_request() {
+  caddy_request "$1" "${CADDY_ADMIN_HOST}" "${CADDY_ADMIN_PORT}" "$2" "${CADDY_ADMIN_HOST}:${CADDY_ADMIN_PORT}" "${3:-}"
+}
+
+# Classify the /health response in HTTP_STATUS and HTTP_BODY.
+# Sets CHECK to ok, transient or fatal, and H_ENV and H_BUILD.
+classify_health() {
+  local parsed
+  H_ENV=""
+  H_BUILD=""
+  case ${HTTP_STATUS} in
+    200) ;;
+    000|5??) CHECK=transient; return 0 ;;
+    *) CHECK=fatal; return 0 ;;
+  esac
+  parsed=$(json_tool health <<< "${HTTP_BODY}")
+  if [[ ${parsed} == invalid ]]; then
+    CHECK=fatal
+    return 0
+  fi
+  read -r H_ENV H_BUILD <<< "${parsed}"
+  undash H_ENV H_BUILD
+  CHECK=ok
+}
+
+# /health as a client sees it: through Caddy, with the API host
+routed_health() {
+  caddy_request GET 127.0.0.1 "${CADDY_HTTP_PORT}" /health "${API_HOST}"
+  classify_health
+}
+
+dial_body() {
+  echo "[{\"dial\":\"${CONTAINER_PREFIX}-$1:4000\"}]"
+}
+
+# The request that points Caddy at an environment, as a command a person can run
+patch_command() {
+  local body
+  body=$(dial_body "$1")
+  echo "printf 'PATCH ${UP_PATH} HTTP/1.0\r\nHost: ${CADDY_ADMIN_HOST}:${CADDY_ADMIN_PORT}\r\nContent-Type: application/json\r\nContent-Length: ${#body}\r\n\r\n${body}' | docker exec -i ${CADDY_CONTAINER} nc -w ${HTTP_TIMEOUT} ${CADDY_ADMIN_HOST} ${CADDY_ADMIN_PORT}"
+}
+
+manual() {
+  echo "MANUAL> $*"
 }
 
 # The image to deploy must be a digest reference in our repository.
@@ -223,130 +351,141 @@ validate_input() {
   log "Deploying image: ${IMAGE_REF}"
 }
 
-# Auto-detect Caddy upstream path for api.chatbotgate.click
-# Handles nested subroute structures automatically
-validate_caddy_upstream_path() {
-  log "Detecting Caddy upstream path for api.chatbotgate.click..."
+# Find where Caddy sends backend traffic. The dial reported by the admin API is
+# the truth; a PATCH response or the state file is not.
+# Sets UP_OK. On success UP_PATH and UP_ENV, otherwise UP_REASON and UP_DETAIL.
+query_upstream() {
+  local verdict rest dial caddy_env
 
-  # Verify Caddy container is running
-  if ! docker ps --format '{{.Names}}' | grep -q "^${CADDY_CONTAINER}$"; then
-    error "Caddy container ${CADDY_CONTAINER} is not running"
-    return 1
+  UP_OK=false
+  UP_PATH=""
+  UP_ENV=""
+  UP_REASON=UPSTREAM_QUERY_FAILED
+
+  container_info "${CADDY_CONTAINER}"
+  if [[ -z ${C_ID} || ${C_RUNNING} != true ]]; then
+    UP_DETAIL="Caddy container ${CADDY_CONTAINER} is not running"
+    return 0
+  fi
+  caddy_env=${C_ACTIVE_ENV}
+
+  admin_request GET /config/apps/http/servers
+  if [[ ${HTTP_STATUS} != 200 ]]; then
+    UP_DETAIL="Caddy admin API did not answer (status ${HTTP_STATUS})"
+    return 0
   fi
 
-  # If path already set via env var, validate it
-  if [[ -n "${CADDY_UPSTREAM_PATH}" ]]; then
-    log "Using provided path: ${CADDY_UPSTREAM_PATH}"
-    if docker exec "${CADDY_CONTAINER}" wget -qO- "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" > /dev/null 2>&1; then
-      success "Caddy upstream path validated: ${CADDY_UPSTREAM_PATH}"
+  read -r verdict rest < <(json_tool upstreams "${API_HOST}" "${CONTAINER_PREFIX}" <<< "${HTTP_BODY}")
+  if [[ ${verdict} != ok ]]; then
+    UP_REASON=${rest%% *}
+    UP_DETAIL=${rest#* }
+    return 0
+  fi
+  UP_PATH=${rest%% *}
+  dial=${rest#* }
+
+  if [[ -n ${CADDY_UPSTREAM_PATH} && ${CADDY_UPSTREAM_PATH} != "${UP_PATH}" ]]; then
+    UP_REASON=UPSTREAM_PATH_MISMATCH
+    UP_DETAIL="CADDY_UPSTREAM_PATH is ${CADDY_UPSTREAM_PATH} but the backend upstream is at ${UP_PATH}"
+    return 0
+  fi
+
+  case ${dial} in
+    "${CONTAINER_PREFIX}-blue:4000") UP_ENV=blue ;;
+    "${CONTAINER_PREFIX}-green:4000") UP_ENV=green ;;
+    "${CONTAINER_PREFIX}-{env.ACTIVE_ENV}:4000")
+      # Caddy re-read its Caddyfile; the placeholder resolves from its own environment
+      if [[ ${caddy_env} != blue && ${caddy_env} != green ]]; then
+        UP_REASON=UPSTREAM_ENV_UNRESOLVED
+        UP_DETAIL="the dial is ${dial} but ACTIVE_ENV of the Caddy container is '${caddy_env}'"
+        return 0
+      fi
+      UP_ENV=${caddy_env}
+      ;;
+    *)
+      UP_REASON=UPSTREAM_TARGET_UNKNOWN
+      UP_DETAIL="the dial ${dial} is not a known backend"
       return 0
-    else
-      warning "Provided path is invalid, attempting auto-detection..."
+      ;;
+  esac
+  UP_OK=true
+}
+
+# Decide which environment serves, and make the state file agree with it.
+# Sets ACTIVE_ENV, INACTIVE_ENV, RECOVERY, OLD_ID, OLD_IMAGE_ID, OLD_BUILD and OLD_REF.
+resolve_serving() {
+  local name body parsed internal_env internal_build
+
+  query_upstream
+  if [[ ${UP_OK} == false ]]; then
+    error "Cannot determine the upstream: ${UP_DETAIL}"
+    finish 1 "${UP_REASON}"
+  fi
+  log "Upstream ${UP_PATH} points at ${UP_ENV}"
+
+  ACTIVE_ENV=${UP_ENV}
+  INACTIVE_ENV=$(other_env "${UP_ENV}")
+  RECOVERY=false
+  OLD_IMAGE_ID=""
+  OLD_BUILD=""
+  OLD_REF=""
+  name="${CONTAINER_PREFIX}-${ACTIVE_ENV}"
+  container_info "${name}"
+  OLD_ID=${C_ID}
+
+  if [[ -z ${C_ID} || ${C_RUNNING} != true ]]; then
+    if [[ ${STATE_ACTIVE} != "${ACTIVE_ENV}" ]]; then
+      error "Caddy points at ${ACTIVE_ENV}, which is not running, while the state file names ${STATE_ACTIVE}"
+      error "Nothing was changed. Check ${CONTAINER_PREFIX}-${STATE_ACTIVE}; if it is healthy, point Caddy at it:"
+      container_info "${CONTAINER_PREFIX}-${STATE_ACTIVE}"
+      if [[ ${C_RUNNING} == true ]]; then
+        manual "$(patch_command "${STATE_ACTIVE}")"
+      fi
+      finish 1 UPSTREAM_DEAD
+    fi
+    warning "${name} is not running: nothing is serving, continuing as a recovery deployment"
+    RECOVERY=true
+    return 0
+  fi
+
+  image_info "${C_IMAGE}" "${STATE_IMAGE}"
+  OLD_IMAGE_ID=${IMG_ID}
+  OLD_BUILD=${IMG_BUILD}
+  OLD_REF=${IMG_REF}
+  if [[ -z ${OLD_REF} ]]; then
+    error "The image of ${name} cannot be resolved to a digest in ${IMAGE_REPO}"
+    finish 1 SERVING_IMAGE_UNKNOWN
+  fi
+  if [[ -z ${OLD_BUILD} ]]; then
+    error "${name} runs an image without a build identifier, so its responses cannot be told apart"
+    error "Deploy a backend whose /health reports env and build with the previous script first"
+    finish 1 SERVING_NO_IDENTIFIER
+  fi
+
+  body=$(docker exec "${OLD_ID}" wget -qO- -T "${HTTP_TIMEOUT}" http://localhost:4000/health 2>/dev/null) || body=""
+  parsed=$(json_tool health <<< "${body}")
+  read -r internal_env internal_build _ <<< "${parsed} - -"
+  if [[ ${internal_env} != "${ACTIVE_ENV}" || ${internal_build} != "${OLD_BUILD}" ]]; then
+    error "${name} does not answer /health as ${ACTIVE_ENV}/${OLD_BUILD} (got '${parsed}')"
+    error "Nothing was changed. If it is broken beyond repair, remove it and run again for a recovery deployment"
+    finish 1 SERVING_UNVERIFIED
+  fi
+
+  routed_health
+  if [[ ${CHECK} != ok || ${H_ENV} != "${ACTIVE_ENV}" || ${H_BUILD} != "${OLD_BUILD}" ]]; then
+    error "Caddy does not serve ${ACTIVE_ENV}/${OLD_BUILD} for ${API_HOST} (status ${HTTP_STATUS}, env '${H_ENV}', build '${H_BUILD}')"
+    finish 1 SERVING_UNVERIFIED
+  fi
+  success "${name} serves ${OLD_REF}"
+
+  if [[ ${STATE_ACTIVE} != "${ACTIVE_ENV}" || ${STATE_IMAGE} != "${OLD_REF}" ]]; then
+    warning "State file says ${STATE_ACTIVE}/${STATE_IMAGE:-unknown}; correcting it to the verified upstream"
+    save_state "${ACTIVE_ENV}" "${OLD_REF}"
+    if [[ ${STATE_SAVED} == false ]]; then
+      error "Cannot write ${STATE_FILE}"
+      finish 1 STATE_SAVE_FAILED
     fi
   fi
-
-  # Fetch Caddy configuration
-  local config
-  config=$(docker exec "${CADDY_CONTAINER}" wget -qO- "${CADDY_ADMIN_API}/config/apps/http/servers" 2>/dev/null)
-
-  if [ -z "$config" ]; then
-    error "Failed to fetch Caddy configuration"
-    return 1
-  fi
-
-  # Python-based recursive detection (handles nested subroutes)
-  if ! command -v python3 &> /dev/null; then
-    error "Python3 is required for auto-detection but not found"
-    error "Install: apt-get install python3 or yum install python3"
-    return 1
-  fi
-
-  local result
-  result=$(echo "$config" | python3 -c '
-import json, sys
-
-def find_upstreams_path(routes, base_path, target_host="api.chatbotgate.click"):
-    """Recursively search for upstreams in route handlers (including subroutes)"""
-    for idx, route in enumerate(routes):
-        # If target_host is set, check if this route matches
-        if target_host:
-            matches = route.get("match", [])
-            host_found = False
-            for match in matches:
-                if target_host in match.get("host", []):
-                    host_found = True
-                    break
-
-            if not host_found:
-                continue
-
-        # Found matching route (or no target_host filter), search handlers
-        handlers = route.get("handle", [])
-        path = search_handlers(handlers, f"{base_path}/routes/{idx}/handle")
-        if path:
-            return path
-
-    return None
-
-def search_handlers(handlers, base_path):
-    """Search for upstreams in handler array (supports nested subroutes)"""
-    for idx, handler in enumerate(handlers):
-        handler_path = f"{base_path}/{idx}"
-
-        # Direct upstreams found
-        if "upstreams" in handler:
-            for upstream in handler["upstreams"]:
-                if "chatbot-gate-backend" in upstream.get("dial", ""):
-                    return f"{handler_path}/upstreams"
-
-        # Nested subroute handler
-        if handler.get("handler") == "subroute":
-            nested_routes = handler.get("routes", [])
-            path = find_upstreams_path(nested_routes, handler_path, target_host=None)
-            if path:
-                return path
-
-    return None
-
-try:
-    data = json.load(sys.stdin)
-    for server_name, server_config in data.items():
-        routes = server_config.get("routes", [])
-        base_path = f"/config/apps/http/servers/{server_name}"
-        result = find_upstreams_path(routes, base_path)
-        if result:
-            print(result)
-            sys.exit(0)
-except Exception:
-    pass
-' 2>/dev/null)
-
-  if [[ -z "$result" ]]; then
-    error "Could not find upstream path for api.chatbotgate.click"
-    error "Set manually: export CADDY_UPSTREAM_PATH='/config/apps/http/servers/...'"
-    return 1
-  fi
-
-  CADDY_UPSTREAM_PATH="$result"
-  success "Auto-detected upstream path: ${CADDY_UPSTREAM_PATH}"
-
-  # Show current upstream
-  local current_upstream
-  current_upstream=$(docker exec "${CADDY_CONTAINER}" wget -qO- "${CADDY_ADMIN_API}${CADDY_UPSTREAM_PATH}" 2>/dev/null | python3 -c '
-import json, sys
-try:
-    data = json.load(sys.stdin)
-    if data and len(data) > 0:
-        print(data[0].get("dial", ""))
-except:
-    pass
-' 2>/dev/null)
-
-  if [[ -n "$current_upstream" ]]; then
-    log "Current upstream: ${current_upstream}"
-  fi
-
-  return 0
 }
 
 # Validate Docker network connectivity
@@ -565,7 +704,7 @@ switch_traffic() {
   fi
 
   # Verify Caddy Admin API accessible (via docker exec)
-  if ! docker exec "${CADDY_CONTAINER}" wget -qO- "${CADDY_ADMIN_API}/config/" > /dev/null 2>&1; then
+  if ! docker exec "${CADDY_CONTAINER}" wget -qO- "http://${CADDY_ADMIN_HOST}:${CADDY_ADMIN_PORT}/config/" > /dev/null 2>&1; then
     error "Caddy Admin API not accessible inside container"
     error "Make sure Caddy is running properly"
     return 1
@@ -593,7 +732,6 @@ switch_traffic() {
       error "Failed to update Caddy upstream"
       error "Response: ${response}"
       error "Current path: ${CADDY_UPSTREAM_PATH}"
-      error "Verify Caddy API path with: docker exec ${CADDY_CONTAINER} wget -qO- ${CADDY_ADMIN_API}/config/"
       return 1
     }
 
@@ -718,18 +856,14 @@ main() {
 
   log "📋 Loading deployment state..."
   read_state
-  ACTIVE_ENV=${STATE_ACTIVE}
-  INACTIVE_ENV=${STATE_INACTIVE}
+  echo ""
+
+  log "🔍 Checking what Caddy serves..."
+  resolve_serving
+  CADDY_UPSTREAM_PATH=${UP_PATH}
   echo ""
 
   show_banner
-
-  log "🔍 Validating Caddy upstream path..."
-  if ! validate_caddy_upstream_path; then
-    error "Caddy upstream path validation failed"
-    finish 1 UPSTREAM_UNKNOWN
-  fi
-  echo ""
 
   log "📦 Pulling Docker image from GHCR..."
   pull_image
@@ -791,30 +925,15 @@ main() {
 
 # Execute based on mode
 if [[ "${FIND_UPSTREAM_ONLY}" == "true" ]]; then
-  # Find upstream mode - only detect and display path
-  echo ""
-  echo "╔════════════════════════════════════════════════════════════╗"
-  echo "║        CADDY UPSTREAM PATH DETECTION                      ║"
-  echo "╚════════════════════════════════════════════════════════════╝"
-  echo ""
-
-  if validate_caddy_upstream_path; then
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "✅ Success! Use this environment variable for deployment:"
-    echo ""
-    echo "  export CADDY_UPSTREAM_PATH='${CADDY_UPSTREAM_PATH}'"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
+  # Read-only: detect and display the path, without the lock
+  query_upstream
+  if [[ ${UP_OK} == true ]]; then
+    success "Upstream path: ${UP_PATH}"
+    success "Current upstream: ${CONTAINER_PREFIX}-${UP_ENV}:4000"
     exit 0
-  else
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "❌ Failed to detect upstream path"
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo ""
-    exit 1
   fi
+  error "Failed to detect the upstream (${UP_REASON}): ${UP_DETAIL}"
+  exit 1
 else
   # Normal deployment mode
   main "$@"

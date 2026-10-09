@@ -154,3 +154,176 @@ term_in_verification() {
   expect_state_unchanged
 }
 run_case "TERM/during-verification" term_in_verification
+
+# ---------------------------------------------------------------- C1 상태와 upstream 불일치
+
+c1_stale_state() {
+  state_new green B   # 실제 서빙은 blue A
+  deploy C
+  expect_code 0
+  expect_cid blue absent
+  expect_serving "green C"
+  expect_state green C
+}
+run_case "C1/stale-state" c1_stale_state
+
+# 배포가 전환 전에 실패해도 교정한 상태는 남는다.
+c1_stale_state_corrected() {
+  state_new green B
+  fault '^pull' fail
+  deploy C
+  expect_code 1
+  expect_reason PULL_FAILED
+  expect_upstream blue
+  expect_serving "blue A"
+  expect_cid blue same
+  expect_state blue A
+}
+run_case "C1/stale-state-corrected" c1_stale_state_corrected
+
+# Caddy가 Caddyfile을 다시 읽어 dial이 예전 환경으로 돌아간 경우
+c1_dial_reverted() {
+  sim backend green B
+  state_new green B
+  deploy C
+  expect_code 0
+  expect_cid green new
+  expect_serving "green C"
+  expect_state green C
+}
+run_case "C1/dial-reverted-to-placeholder" c1_dial_reverted
+
+c1_unverified() {  # <사유>
+  state_new green B
+  deploy C
+  expect_code 1
+  expect_reason "$1"
+  expect_upstream blue
+  expect_cid blue same
+  expect_state_unchanged
+  expect_not_called '^(pull|compose\.|container\.|caddy\.admin\.patch|mv )'
+}
+c1_only_internal_ok() {
+  fault '^caddy\.http' status:502
+  c1_unverified SERVING_UNVERIFIED
+}
+c1_image_unknown() {
+  sim set local '{}'
+  c1_unverified SERVING_IMAGE_UNKNOWN
+}
+run_case "C1/only-internal-health-ok" c1_only_internal_ok
+run_case "C1/image-check-fails" c1_image_unknown
+
+c1_upstream_dead_state_healthy() {
+  sim backend green B
+  sim set c.blue.running false
+  state_new green B
+  deploy C
+  expect_code 1
+  expect_reason UPSTREAM_DEAD
+  expect_cid green same
+  expect_cid blue same
+  expect_state_unchanged
+  expect_not_called '^(pull|compose\.|container\.|caddy\.admin\.patch|mv )'
+  run_manual
+  expect_serving "green B"
+}
+run_case "C1/upstream-dead-state-healthy" c1_upstream_dead_state_healthy
+
+# ---------------------------------------------------------------- C3 upstream을 확정할 수 없음
+
+c3_rejected() {  # <사유> [VAR=VAL...]
+  local reason="$1"; shift
+  sim mark start
+  deploy B "$@"
+  expect_code 1
+  expect_reason "$reason"
+  expect_quiet_after start
+  expect_cid blue same
+  expect_state_unchanged
+}
+c3_query_failed() { fault '^caddy\.admin\.get' refuse; c3_rejected UPSTREAM_QUERY_FAILED; }
+c3_unknown_target() { sim dial chatbot-gate-backend-purple:4000; c3_rejected UPSTREAM_TARGET_UNKNOWN; }
+c3_not_backend() { sim dial other-app:3000; c3_rejected UPSTREAM_TARGET_UNKNOWN; }
+c3_env_missing() { sim set containers.caddy.env '{}'; c3_rejected UPSTREAM_ENV_UNRESOLVED; }
+c3_env_invalid() { sim set containers.caddy.env '{"ACTIVE_ENV":"purple"}'; c3_rejected UPSTREAM_ENV_UNRESOLVED; }
+c3_two_dials() {
+  sim set caddy.servers.srv0.routes.1.handle.0.routes.0.handle.0.upstreams \
+    '[{"dial":"chatbot-gate-backend-blue:4000"},{"dial":"chatbot-gate-backend-green:4000"}]'
+  c3_rejected UPSTREAM_AMBIGUOUS
+}
+c3_two_paths() {
+  sim set caddy.servers.srv0.routes.0.handle.0.routes.0.handle.0.upstreams '[{"dial":"chatbot-gate-backend-green:4000"}]'
+  c3_rejected UPSTREAM_AMBIGUOUS
+}
+c3_path_of_other_site() {
+  c3_rejected UPSTREAM_PATH_MISMATCH CADDY_UPSTREAM_PATH=/config/apps/http/servers/srv0/routes/0/handle/0/routes/0/handle/0/upstreams
+}
+run_case "C3/query-failed" c3_query_failed
+run_case "C3/unknown-target" c3_unknown_target
+run_case "C3/not-a-backend-target" c3_not_backend
+run_case "C3/caddy-env-missing" c3_env_missing
+run_case "C3/caddy-env-invalid" c3_env_invalid
+run_case "C3/two-dials" c3_two_dials
+run_case "C3/two-upstream-paths" c3_two_paths
+run_case "C3/path-of-another-site" c3_path_of_other_site
+
+# ---------------------------------------------------------------- C7 구 상태 형식에서의 첫 실행
+
+c7_legacy_tagged() {
+  sim drop blue
+  sim backend blue A main   # 태그로 받은 컨테이너
+  state_legacy blue main
+}
+c7_first_run() {
+  c7_legacy_tagged
+  deploy B
+  expect_code 0
+  expect_serving "green B"
+  expect_state green B
+}
+c7_state_converted() {
+  c7_legacy_tagged
+  fault '^pull' fail
+  deploy B
+  expect_code 1
+  expect_reason PULL_FAILED
+  expect_cid blue same
+  expect_state blue A
+}
+c7_no_identifier() {
+  sim drop blue
+  sim backend blue N main
+  state_legacy blue main
+  deploy B
+  expect_code 1
+  expect_reason SERVING_NO_IDENTIFIER
+  expect_out 'identifier'
+  expect_upstream blue
+  expect_cid blue same
+  expect_state_unchanged
+  expect_not_called '^(pull|compose\.|container\.|caddy\.admin\.patch|mv )'
+}
+run_case "C7/legacy-state-first-run" c7_first_run
+run_case "C7/legacy-state-converted" c7_state_converted
+run_case "C7/serving-has-no-identifier" c7_no_identifier
+
+# ---------------------------------------------------------------- C8 서빙이 없는 상태의 복구 배포
+
+c8_active_dead() {
+  sim set c.blue.running false
+  deploy B
+  expect_code 0
+  expect_serving "green B"
+  expect_state green B
+}
+c8_new_host() {
+  sim drop blue
+  printf 'ACTIVE_ENV=blue\nINACTIVE_ENV=green\nACTIVE_IMAGE=\nUPDATED_AT=2026-10-09T00:00:00Z\n' > "$APP/.deployment-state"
+  deploy B
+  expect_code 0
+  expect_serving "green B"
+  expect_state green B
+}
+run_case "C8/active-dead-recovery" c8_active_dead
+run_case "C8/new-host-first-deploy" c8_new_host
