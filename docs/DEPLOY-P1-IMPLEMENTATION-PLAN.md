@@ -50,7 +50,7 @@
 - 두 층은 같은 사례 스크립트와 같은 래퍼 인터페이스를 쓴다. 실제 층의 `docker` 래퍼는 호출을 기록·정지·실패 주입한 뒤 진짜 `docker`로 넘긴다.
 - 래퍼는 지정한 단계에서 멈췄다가 사례의 신호를 받아 재개하거나 실패를 주입한다. `mv`·`date`도 같은 방식이다.
 - 공통 불변식은 `docker` 래퍼가 맡는다. 컨테이너를 끝낼 수 있는 호출을 넘기기 전에 실제 upstream을 직접 조회해, 대상이 서빙 중이면 그 사례를 불합격으로 기록한다.
-- 가짜 층은 macOS에서도 돌아야 한다. 스크립트의 셔뱅(`/bin/bash`)은 macOS에서 3.2이므로, 러너가 운영과 같은 5.3 계열 bash(macOS에서는 Homebrew의 `/opt/homebrew/bin/bash`)로 스크립트를 직접 실행하고 5 미만이면 실행을 거부한다. `flock`이 없는 곳에서는 같은 fd 잠금을 거는 하네스의 대체 명령을 쓴다.
+- 가짜 층은 macOS에서도 돌아야 한다. 스크립트의 셔뱅(`/bin/bash`)은 macOS에서 3.2이므로, 러너가 운영과 같은 5.3 계열 bash(macOS에서는 Homebrew의 `/opt/homebrew/bin/bash`)로 스크립트를 직접 실행하고 5 미만이면 실행을 거부한다. `flock`도 Homebrew 것을 쓴다. util-linux판이 아니므로 스크립트는 두 구현이 함께 지원하는 `flock -n <fd>` 형태만 쓴다.
 - 가짜 Caddy는 admin API의 dial 조회·PATCH, 자리표시자와 `ACTIVE_ENV`, 리로드 뒤의 복귀, Host별 `/health` 응답을 흉내 낸다. 이 모델이 실제와 같은지는 실제 층에서 확인한다.
 - 실제 층의 Caddyfile은 테스트 계획의 준비 절대로 만든다. 운영 Caddyfile의 백엔드 블록을 받기 전까지는 채취값으로 추정한 구조다.
 
