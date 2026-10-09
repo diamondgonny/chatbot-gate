@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -Eeuo pipefail
 
 #############################################
 # Blue-Green Deployment Script
@@ -17,9 +17,13 @@ set -euo pipefail
 #
 # Reasons:
 #   0  OK
-#   1  INPUT_INVALID STATE_MISSING STATE_INVALID PULL_FAILED IMAGE_NO_IDENTIFIER
+#   1  INPUT_INVALID LOCK_HELD STATE_MISSING STATE_INVALID PULL_FAILED IMAGE_NO_IDENTIFIER
 #      UPSTREAM_UNKNOWN START_FAILED NEW_UNHEALTHY IMAGE_MISMATCH ROLLED_BACK
-#   2  ROLLBACK_UNCONFIRMED
+#   2  ROLLBACK_UNCONFIRMED INTERRUPTED UNCLASSIFIED
+#
+# A failure the script does not classify, and any signal, ends the run with
+# code 2 without sending another PATCH, stop, rm or state write. The next run
+# starts from the actual upstream.
 #############################################
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -43,6 +47,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 STATE_FILE="${REPO_ROOT}/.deployment-state"
+LOCK_FILE="${REPO_ROOT}/.deploy.lock"
 COMPOSE_FILE="${REPO_ROOT}/docker-compose.yml"
 GITHUB_REPO="${GITHUB_REPO:-diamondgonny/chatbot-gate}"
 IMAGE_REPO="ghcr.io/${GITHUB_REPO}/chatbot-gate-backend"
@@ -79,10 +84,57 @@ warning() {
 }
 
 # End the run. Every exit of a deployment goes through here.
+RESULT_REPORTED=false
 finish() {
   local code=$1 reason=$2
+  RESULT_REPORTED=true
   echo "DEPLOY_RESULT code=${code} reason=${reason}"
   exit "${code}"
+}
+
+# A command failed that no step handles. Subshells only pass the failure up.
+on_error() {
+  local code=$1 line=$2
+  if ((BASH_SUBSHELL > 0)); then
+    exit "${code}"
+  fi
+  error "Unclassified failure at line ${line} (exit ${code}); stopping without further changes"
+  finish 2 UNCLASSIFIED
+}
+
+on_signal() {
+  trap '' TERM INT HUP
+  error "Received SIG$1; stopping without further changes"
+  finish 2 INTERRUPTED
+}
+
+# Covers exits that bypass finish, such as an unbound variable.
+on_exit() {
+  if [[ ${RESULT_REPORTED} == false ]]; then
+    error "The script ended without a result; stopping without further changes"
+    echo "DEPLOY_RESULT code=2 reason=UNCLASSIFIED"
+    exit 2
+  fi
+}
+
+install_traps() {
+  trap 'on_error $? $LINENO' ERR
+  trap 'on_signal TERM' TERM
+  trap 'on_signal INT' INT
+  trap 'on_signal HUP' HUP
+  trap on_exit EXIT
+}
+
+# One deployment at a time. A conflict fails at once instead of waiting.
+# Child processes inherit the descriptor, so the lock stays held while any of
+# them is alive.
+acquire_lock() {
+  exec 9>> "${LOCK_FILE}"
+  if ! flock -n 9; then
+    error "Another deployment holds ${LOCK_FILE}"
+    finish 1 LOCK_HELD
+  fi
+  rm -f "${STATE_FILE}".tmp.*
 }
 
 other_env() {
@@ -469,39 +521,36 @@ verify_new_image() {
   success "New container runs the requested image"
 }
 
-# Health check function
+# Wait for the new container to report healthy. Sets NEW_HEALTHY.
 wait_for_healthy() {
-  local container_name="chatbot-gate-backend-${INACTIVE_ENV}"
-  local waited=0
+  local container_name="${CONTAINER_PREFIX}-${INACTIVE_ENV}"
+  local started now
 
+  NEW_HEALTHY=false
   log "Waiting for ${INACTIVE_ENV} to become healthy (max ${HEALTH_CHECK_MAX_WAIT}s)..."
+  started=$(date +%s)
 
-  while [ $waited -lt $HEALTH_CHECK_MAX_WAIT ]; do
-    # Check if container exists
-    if ! docker ps --format '{{.Names}}' | grep -q "^${container_name}$"; then
+  while true; do
+    container_info "${container_name}"
+    if [[ -z ${C_ID} ]]; then
       error "Container ${container_name} not found"
-      return 1
+      return 0
     fi
-
-    # Get health status
-    HEALTH_STATUS=$(docker inspect --format='{{.State.Health.Status}}' "$container_name" 2>/dev/null || echo "none")
-
-    if [ "$HEALTH_STATUS" = "healthy" ]; then
+    if [[ ${C_HEALTH} == healthy ]]; then
+      NEW_HEALTHY=true
       success "${INACTIVE_ENV} is healthy!"
       return 0
     fi
 
-    # Show progress
-    echo -ne "\r  Status: ${HEALTH_STATUS} (${waited}s/${HEALTH_CHECK_MAX_WAIT}s)..."
-
-    sleep $HEALTH_CHECK_INTERVAL
-    waited=$((waited + HEALTH_CHECK_INTERVAL))
+    now=$(date +%s)
+    if ((now - started >= HEALTH_CHECK_MAX_WAIT)); then
+      error "${INACTIVE_ENV} failed to become healthy within ${HEALTH_CHECK_MAX_WAIT}s"
+      error "Last health status: ${C_HEALTH:-none}"
+      return 0
+    fi
+    log "  Status: ${C_HEALTH:-none}"
+    sleep "${HEALTH_CHECK_INTERVAL}"
   done
-
-  echo "" # New line after progress
-  error "${INACTIVE_ENV} failed to become healthy within ${HEALTH_CHECK_MAX_WAIT}s"
-  error "Last health status: ${HEALTH_STATUS}"
-  return 1
 }
 
 # Switch Caddy upstream
@@ -663,7 +712,9 @@ show_summary() {
 
 # Main deployment flow
 main() {
+  install_traps
   validate_input
+  acquire_lock
 
   log "📋 Loading deployment state..."
   read_state
@@ -689,7 +740,8 @@ main() {
   echo ""
 
   log "🏥 Performing health checks..."
-  if ! wait_for_healthy; then
+  wait_for_healthy
+  if [[ ${NEW_HEALTHY} == false ]]; then
     error "Deployment failed: ${INACTIVE_ENV} is unhealthy"
     echo ""
     error "Logs from ${INACTIVE_ENV}:"
@@ -736,9 +788,6 @@ main() {
   success "🎉 Deployment complete!"
   finish 0 OK
 }
-
-# Trap errors and handle cleanup
-trap 'error "Deployment failed at line $LINENO"' ERR
 
 # Execute based on mode
 if [[ "${FIND_UPSTREAM_ONLY}" == "true" ]]; then

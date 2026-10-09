@@ -257,6 +257,11 @@ def hook(op, argv=None):
         elif t == 'reload':
             with world() as w:
                 w['caddy']['servers'] = copy.deepcopy(w['caddy']['boot'])
+        elif t == 'datefail':   # 이후의 date 호출이 실패한다(미분류 실패)
+            open(path('date-fail'), 'w').close()
+            with world() as w:
+                w['seq'] += 1
+                append('calls.log', f'{w["seq"]}\tMARK injected\t[]')
         elif t.startswith('appdown:'):   # 그 환경의 앱이 응답을 멈춘다
             with world() as w:
                 w['containers'][BACKEND + t[8:]]['app'] = False
