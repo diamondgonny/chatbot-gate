@@ -24,3 +24,27 @@ d2_after_switch() {
   expect_state_unchanged
 }
 run_case "D2/unclassified-after-switch" d2_after_switch
+
+# docker 조회가 "없음"이 아닌 이유로 실패하면 없는 것으로 치지 않는다.
+d2_inspect_fails() {
+  fault '^inspect chatbot-gate-backend-blue' fail times=1
+  deploy B
+  expect_code 2
+  expect_reason UNCLASSIFIED
+  expect_untouched blue A
+  expect_not_called '^(pull|compose\.|container\.|caddy\.admin\.patch|mv )'
+}
+run_case "D2/inspect-fails" d2_inspect_fails
+
+# 실패한 새 컨테이너를 치우려는데 upstream을 읽을 수 없으면 서빙을 확인하지 못한 것이다.
+d2_upstream_unknown_at_cleanup() {
+  sim set new_container.health '"unhealthy"'
+  fault '^caddy\.admin\.get' refuse after='compose\.up'
+  deploy B
+  expect_code 2
+  expect_reason UPSTREAM_CHANGED
+  expect_cid blue same
+  expect_cid green new
+  expect_state_unchanged
+}
+run_case "D2/upstream-unknown-at-cleanup" d2_upstream_unknown_at_cleanup

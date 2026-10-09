@@ -28,7 +28,7 @@
 | 잠금 | `.deploy.lock`에 `flock -n`. 잠금 fd를 자식이 물려받게 해 자식이 살아 있는 동안 유지한다 |
 | 종료 보고 | 마지막 줄에 `DEPLOY_RESULT code=<0\|1\|2> reason=<SLUG>` 한 줄. 하네스는 이 줄로 사유를 판정한다. SLUG 목록은 스크립트 머리에 있다 |
 | 수동 조치 안내 | 사람이 실행할 명령은 `MANUAL> ` 뒤에 한 줄로 출력한다. 하네스는 이 줄을 그대로 실행해 복구를 확인한다 |
-| HTTP 수단 | admin API·Caddy 경유·새 컨테이너 직접 조회 모두 `docker exec -i caddy nc`로 HTTP/1.0 요청을 보낸다. 서버가 응답 뒤 연결을 닫고 본문을 나누지 않게 하려는 것이다. 제한은 요청당 전체 3초 하나이며, 연결 1초 제한은 따로 두지 못했다 |
+| HTTP 수단 | 조회(admin API, Caddy 경유, 새 컨테이너 직접)는 `docker exec caddy wget`으로 한다. 기준 스크립트가 운영에서 쓰던 수단이다. PATCH만 `docker exec -i caddy nc`에 HTTP/1.0 요청을 써서 보내며, 그 응답은 기록만 하고 판정에 쓰지 않는다. 제한은 요청당 전체 3초 하나이며, 연결 1초 제한은 따로 두지 못했다 |
 | Caddy 경유 요청 | `docker exec caddy`에서 Host 헤더 `api.chatbotgate.click`으로 Caddy의 HTTP 포트에 보낸다. 포트는 기본 80이고 `CADDY_HTTP_PORT`로 바꾸며, 운영 값은 2단계 전에 확인한다 |
 | 내용 비교 코드 | `backend/scripts/ci-compare-content.sh`. 종료 코드 0은 같음, 10은 다름(건너뜀), 그 밖은 오류. 워크플로와 L이 같은 파일을 실행한다 |
 | CI 직렬화 | 워크플로 단위 `concurrency`. `main` 푸시와 수동 실행은 한 그룹(`cancel-in-progress: false`), 그 밖의 ref는 ref별 그룹. 실행이 푸시 순서로 줄 서므로 오래된 실행이 최신 배포를 밀어내지 않는다 |
@@ -85,7 +85,7 @@
 
 ## 1단계 결과
 
-`backend/tests/deploy/run.sh`가 96개 입력 사례를 가짜 층에서 통과한다. `run.sh --baseline`은 기준 커밋의 스크립트가 재현 기록 6건에서 기록대로 불합격하는지 확인한다. 사례 ID는 테스트 계획과 같고, 중단 후 재실행은 `KILL/`, SIGTERM은 `TERM/`으로 시작한다.
+`backend/tests/deploy/run.sh`가 98개 입력 사례를 가짜 층에서 통과한다. `run.sh --baseline`은 기준 커밋의 스크립트가 재현 기록 6건에서 기록대로 불합격하는지 확인한다. 사례 ID는 테스트 계획과 같고, 중단 후 재실행은 `KILL/`, SIGTERM은 `TERM/`으로 시작한다.
 
 가짜 층에서 판정하지 않은 입력은 다음과 같다. 사례가 없거나, 있어도 가짜 모델의 동작을 확인한 데 그친다.
 
@@ -103,7 +103,8 @@
 가짜 층은 아래를 가정으로 두고 구현한다. 틀리면 해당 부분을 고치고 두 층을 다시 돌린다.
 
 - **digest 종류**: 빌드가 출력하는 digest와 서버의 `RepoDigests`가 같은 종류다. 다르면 이미지 대조 방식이 바뀐다.
-- **PATCH 수단**: Caddy 이미지의 `nc`가 입력이 끝난 뒤에도 서버가 연결을 닫을 때까지 응답을 읽는다. 스크립트의 모든 HTTP 조회가 여기에 기대므로, 틀리면 upstream 조회부터 실패해 배포가 변경 전에 멈춘다.
+- **PATCH 수단**: Caddy 이미지의 `nc`로 보낸 PATCH가 적용된다(기준 스크립트와 같은 방식). 응답을 못 받아도 적용 여부는 재조회로 판정한다.
+- **조회 수단**: Caddy 이미지의 `wget`이 `--header`와 `-T`를 받고, 200이 아니면 상태 줄을 stderr에 남긴다. 상태 줄을 못 읽으면 일시적 실패로 분류된다.
 - **백엔드 이미지의 `wget`**: 서빙 컨테이너 안에서 `wget -qO- -T 3 http://localhost:4000/health`가 동작한다.
 - **Caddy 리로드 뒤의 dial**: 자리표시자로 돌아가고 Caddy 컨테이너의 `ACTIVE_ENV`로 풀린다(C1, A7).
 - **이미지 저장소**: 테스트 호스트의 Docker를 운영과 같은 `overlay2` 방식으로 맞출 수 있다.

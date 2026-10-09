@@ -234,11 +234,9 @@ elif cmd == "upstreams":
     else:
         print("ok", found[0][0], found[0][2][0])
 elif cmd == "http":
-    # Raw HTTP response -> status on the first line (000 without a response), then the body
-    head, sep, body = raw.partition("\r\n\r\n")
-    status = re.match(r"HTTP/\d\.\d (\d{3})", head)
-    print(status.group(1) if status and sep else "000")
-    sys.stdout.write(body)
+    # Raw HTTP response -> its status, 000 without a response
+    status = re.match(r"HTTP/\d\.\d (\d{3})", raw)
+    print(status.group(1) if status else "000")
 elif cmd == "health":
     # /health body -> "<env> <build>", or "invalid" when it is not a JSON object
     try:
@@ -273,32 +271,56 @@ image_info() {
 
 # Sets C_ID, C_IMAGE, C_RUNNING, C_HEALTH and C_ACTIVE_ENV for a container.
 # C_ID is empty when it does not exist.
+# Only "no such container" counts as absent; any other inspect failure ends
+# the run as an unclassified failure instead of being read as "not there".
 container_info() {
   local json
-  json=$(docker inspect "$1" 2>/dev/null) || json=""
+  if ! json=$(docker inspect "$1" 2>&1); then
+    if [[ ${json} != *"No such"* ]]; then
+      error "docker inspect $1 failed: ${json}"
+      return 1
+    fi
+    json=""
+  fi
   read -r C_ID C_IMAGE C_RUNNING C_HEALTH C_ACTIVE_ENV < <(json_tool container <<< "${json}")
   undash C_ID C_IMAGE C_HEALTH C_ACTIVE_ENV
 }
 
-# Send one HTTP request from inside the Caddy container.
-# Usage: caddy_request <method> <host> <port> <path> [Host header] [body]
+# GET a URL from inside the Caddy container with its wget.
+# Usage: caddy_get <url> [Host header]
 # Sets HTTP_STATUS (000 when no response arrived in time) and HTTP_BODY.
-caddy_request() {
-  local method=$1 host=$2 port=$3 path=$4 header=${5:-$2:$3} body=${6:-}
-  local raw
+caddy_get() {
+  local url=$1 header=${2:-}
+  local out
+  local -a options=(-q -O- -T "${HTTP_TIMEOUT}")
 
-  # HTTP/1.0 makes the server close the connection and send the body unchunked
-  raw=$(printf '%s %s HTTP/1.0\r\nHost: %s\r\nContent-Type: application/json\r\nContent-Length: %s\r\n\r\n%s' \
-          "${method}" "${path}" "${header}" "${#body}" "${body}" \
-        | timeout "${HTTP_TIMEOUT}" docker exec -i "${CADDY_CONTAINER}" nc -w "${HTTP_TIMEOUT}" "${host}" "${port}" 2>/dev/null) || true
-  {
-    read -r HTTP_STATUS
-    HTTP_BODY=$(cat)
-  } < <(json_tool http <<< "${raw}")
+  if [[ -n ${header} ]]; then
+    options+=(--header "Host: ${header}")
+  fi
+  HTTP_BODY=""
+  if out=$(timeout "${HTTP_TIMEOUT}" docker exec "${CADDY_CONTAINER}" wget "${options[@]}" "${url}" 2>&1); then
+    HTTP_STATUS=200
+    HTTP_BODY=${out}
+  elif [[ ${out} =~ HTTP/[0-9.]+\ ([0-9]{3}) ]]; then
+    # busybox wget: "server returned error: HTTP/1.1 502 Bad Gateway"
+    HTTP_STATUS=${BASH_REMATCH[1]}
+  else
+    HTTP_STATUS=000
+  fi
 }
 
-admin_request() {
-  caddy_request "$1" "${CADDY_ADMIN_HOST}" "${CADDY_ADMIN_PORT}" "$2" "${CADDY_ADMIN_HOST}:${CADDY_ADMIN_PORT}" "${3:-}"
+# PATCH the Caddy admin API. wget cannot send a PATCH, so the request is
+# written to nc; HTTP/1.0 makes the server close the connection after the
+# response. The status is only logged: whether the change was applied is
+# decided by reading the upstream back.
+admin_patch() {
+  local path=$1 body=$2
+  local raw
+
+  raw=$(printf 'PATCH %s HTTP/1.0\r\nHost: %s:%s\r\nContent-Type: application/json\r\nContent-Length: %s\r\n\r\n%s' \
+          "${path}" "${CADDY_ADMIN_HOST}" "${CADDY_ADMIN_PORT}" "${#body}" "${body}" \
+        | timeout "${HTTP_TIMEOUT}" docker exec -i "${CADDY_CONTAINER}" nc -w "${HTTP_TIMEOUT}" "${CADDY_ADMIN_HOST}" "${CADDY_ADMIN_PORT}" 2>/dev/null) || true
+  read -r HTTP_STATUS < <(json_tool http <<< "${raw}")
 }
 
 # Classify the /health response in HTTP_STATUS and HTTP_BODY.
@@ -324,13 +346,13 @@ classify_health() {
 
 # /health as a client sees it: through Caddy, with the API host
 routed_health() {
-  caddy_request GET 127.0.0.1 "${CADDY_HTTP_PORT}" /health "${API_HOST}"
+  caddy_get "http://127.0.0.1:${CADDY_HTTP_PORT}/health" "${API_HOST}"
   classify_health
 }
 
 # /health of an environment's container, asked from the Caddy container
 direct_health() {
-  caddy_request GET "${CONTAINER_PREFIX}-$1" 4000 /health
+  caddy_get "http://${CONTAINER_PREFIX}-$1:4000/health"
   classify_health
 }
 
@@ -383,7 +405,7 @@ query_upstream() {
   fi
   caddy_env=${C_ACTIVE_ENV}
 
-  admin_request GET /config/apps/http/servers
+  caddy_get "http://${CADDY_ADMIN_HOST}:${CADDY_ADMIN_PORT}/config/apps/http/servers"
   if [[ ${HTTP_STATUS} != 200 ]]; then
     UP_DETAIL="Caddy admin API did not answer (status ${HTTP_STATUS})"
     return 0
@@ -524,12 +546,22 @@ remove_container() {
   fi
 }
 
+# Remove the new container after a failed deployment. If the upstream cannot
+# be read, or points at it, serving is not confirmed and the run ends with 2.
+discard_new_container() {
+  remove_container "${INACTIVE_ENV}" "${NEW_ID}" 10
+  if [[ ${REMOVE_REFUSED} == true ]]; then
+    error "The upstream is ${UP_ENV:-unknown}; ${CONTAINER_PREFIX}-${INACTIVE_ENV} is kept"
+    finish 2 UPSTREAM_CHANGED
+  fi
+}
+
 # Before the switch, Caddy must reach the new container and get the new build
 check_reachable_from_caddy() {
   direct_health "${INACTIVE_ENV}"
   if [[ ${CHECK} != ok || ${H_ENV} != "${INACTIVE_ENV}" || ${H_BUILD} != "${NEW_BUILD}" ]]; then
     error "Caddy cannot reach ${CONTAINER_PREFIX}-${INACTIVE_ENV} as ${INACTIVE_ENV}/${NEW_BUILD} (status ${HTTP_STATUS}, env '${H_ENV}', build '${H_BUILD}')"
-    remove_container "${INACTIVE_ENV}" "${NEW_ID}" 10
+    discard_new_container
     finish 1 NEW_UNREACHABLE
   fi
   success "Caddy reaches ${CONTAINER_PREFIX}-${INACTIVE_ENV}"
@@ -538,7 +570,7 @@ check_reachable_from_caddy() {
 # Ask Caddy to send backend traffic to an environment, then read the upstream
 # back. The response to the PATCH decides nothing. Sets UP_OK and UP_ENV.
 point_caddy_at() {
-  admin_request PATCH "${SWITCH_PATH}" "$(dial_body "$1")"
+  admin_patch "${SWITCH_PATH}" "$(dial_body "$1")"
   log "PATCH to ${CONTAINER_PREFIX}-$1 answered with status ${HTTP_STATUS}"
   query_upstream
 }
@@ -591,7 +623,7 @@ keep_both() {
   error "Both containers are kept. Check ${CONTAINER_PREFIX}-$1; to send traffic to it:"
   manual "$(patch_command "$1")"
   error "To send traffic to ${CONTAINER_PREFIX}-${other} instead:"
-  error "  $(patch_command "${other}")"
+  printf '  %s\n' "$(patch_command "${other}")" >&2
   error "State file ${STATE_FILE} was not changed; the next run starts from the actual upstream"
 }
 
@@ -604,7 +636,7 @@ rollback() {
     verify_serving "${ACTIVE_ENV}" "${OLD_BUILD}"
     if [[ ${VERIFIED} == true ]]; then
       success "Traffic is back on ${CONTAINER_PREFIX}-${ACTIVE_ENV}"
-      remove_container "${INACTIVE_ENV}" "${NEW_ID}" 10
+      discard_new_container
       finish 1 ROLLED_BACK
     fi
   fi
@@ -635,7 +667,7 @@ switch_traffic() {
       keep_both "${ACTIVE_ENV}"
       finish 2 SWITCH_UNKNOWN
     fi
-    remove_container "${INACTIVE_ENV}" "${NEW_ID}" 10
+    discard_new_container
     finish 1 SWITCH_NOT_APPLIED
   fi
 
@@ -772,7 +804,7 @@ start_inactive_env() {
     query_upstream
     if [[ ${UP_OK} == false || ${UP_ENV} != "${ACTIVE_ENV}" ]]; then
       error "The upstream changed during the run (now ${UP_ENV:-unknown}); nothing was removed"
-      finish 1 STALE_REMOVE_FAILED
+      finish 2 UPSTREAM_CHANGED
     fi
     docker rm -f "${stale}" > /dev/null || true
     container_info "${stale}"
@@ -803,7 +835,7 @@ verify_new_image() {
   container_info "${CONTAINER_PREFIX}-${INACTIVE_ENV}"
   if [[ ${C_IMAGE} != "${NEW_IMAGE_ID}" ]]; then
     error "New container runs ${C_IMAGE:-nothing}, expected ${NEW_IMAGE_ID}"
-    remove_container "${INACTIVE_ENV}" "${NEW_ID}" 10
+    discard_new_container
     finish 1 IMAGE_MISMATCH
   fi
   success "New container runs the requested image"
@@ -934,7 +966,7 @@ main() {
     docker logs --tail 50 "${NEW_ID}" || true
     echo ""
     log "Cleaning up failed deployment..."
-    remove_container "${INACTIVE_ENV}" "${NEW_ID}" 10
+    discard_new_container
     finish 1 NEW_UNHEALTHY
   fi
   verify_new_image

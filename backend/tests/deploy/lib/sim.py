@@ -383,6 +383,27 @@ def health_request(op, tokens, wait, truth):
     return status, body
 
 
+def http_dispatch(method, host, port, url_path, host_header, body, wait, args):
+    """Caddy 컨테이너에서 보낸 요청 하나. (op, 상태, 본문)을 돌려주거나 연결 실패로 끝낸다."""
+    if host in ('127.0.0.1', 'localhost') and port == '2019':
+        op = f'caddy.admin.{method.lower()} {url_path}'
+        status, reply = admin_request(method, url_path, body, hook(op, args), wait)
+    elif host in ('127.0.0.1', 'localhost'):
+        op = f'caddy.http {host_header}:{port} {url_path}'
+        tokens = hook(op, args)
+        with world() as w:
+            truth = route(w, host_header, port) if w['containers']['caddy']['running'] else (None, '')
+        status, reply = health_request(op, tokens, wait, truth)
+    else:
+        op = f'caddy.direct {host}:{port} {url_path}'
+        tokens = hook(op, args)
+        with world() as w:
+            c = w['containers'].get(host)
+            found = health_body(w, host) if c and 'caddy_upstream' in c['networks'] and port == '4000' else None
+        status, reply = health_request(op, tokens, wait, (200, json.dumps(found)) if found else (None, ''))
+    return op, status, reply
+
+
 def do_nc(args):
     wait, rest = 3, []
     it = iter(args)
@@ -391,30 +412,33 @@ def do_nc(args):
             wait = int(next(it))
         else:
             rest.append(a)
-    host, port = rest[0], rest[1]
     raw = sys.stdin.read()
     head, _, body = raw.partition('\r\n\r\n')
     lines = head.split('\r\n')
     method, url_path = lines[0].split(' ')[:2]
     headers = {k.strip().lower(): v.strip() for k, v in (l.split(':', 1) for l in lines[1:] if ':' in l)}
-    if host in ('127.0.0.1', 'localhost') and port == '2019':
-        op = f'caddy.admin.{method.lower()} {url_path}'
-        status, reply = admin_request(method, url_path, body, hook(op, args), wait)
-    elif host in ('127.0.0.1', 'localhost'):
-        op = f'caddy.http {headers.get("host", "")}:{port} {url_path}'
-        tokens = hook(op, args)
-        with world() as w:
-            truth = route(w, headers.get('host', ''), port) if w['containers']['caddy']['running'] else (None, '')
-        status, reply = health_request(op, tokens, wait, truth)
-    else:
-        op = f'caddy.direct {host}:{port} {url_path}'
-        tokens = hook(op, args)
-        with world() as w:
-            c = w['containers'].get(host)
-            body = health_body(w, host) if c and 'caddy_upstream' in c['networks'] and port == '4000' else None
-        status, reply = health_request(op, tokens, wait, (200, json.dumps(body)) if body else (None, ''))
+    op, status, reply = http_dispatch(method, rest[0], rest[1], url_path, headers.get('host', ''), body, wait, args)
     http_reply(status, reply)
     hook('done:' + op)
+
+
+def do_caddy_wget(args):
+    """busybox wget: 200이면 본문만, 아니면 stderr에 상태 줄을 남기고 1로 끝난다."""
+    wait, header, url = 3, '', args[-1]
+    it = iter(args[:-1])
+    for a in it:
+        if a == '-T':
+            wait = int(next(it))
+        elif a == '--header':
+            header = next(it).split(':', 1)[1].strip()
+    hostport, _, rest = url.split('//', 1)[1].partition('/')
+    host, _, port = hostport.partition(':')
+    op, status, reply = http_dispatch('GET', host, port or '80', '/' + rest, header or hostport, '', wait, args)
+    hook('done:' + op)
+    if status != 200:
+        sys.stderr.write(f'wget: server returned error: HTTP/1.1 {status} Error\n')
+        sys.exit(1)
+    sys.stdout.write(reply)
 
 
 def do_exec(args):
@@ -436,20 +460,16 @@ def do_exec(args):
         with world() as w:
             c = w['containers'].get(cmd[-1])
             sys.exit(0 if c and 'caddy_upstream' in c['networks'] else 2)
+    if cmd[0] == 'wget' and kind == 'caddy':
+        return do_caddy_wget(cmd[1:])
     if cmd[0] == 'wget':
-        url = cmd[-1]
-        if kind == 'caddy':
-            url_path = '/' + url.split('/', 3)[3]
-            status, reply = admin_request('GET', url_path, '', hook(f'caddy.admin.get {url_path}', args), 3)
-        else:
-            tokens = hook(f'backend.health {name}', args)
-            maybe_fail(tokens, 'wget')
-            with world() as w:
-                body = health_body(w, name)
-            status, reply = (200, json.dumps(body)) if body else (None, '')
-        if status != 200:
+        tokens = hook(f'backend.health {name}', args)
+        maybe_fail(tokens, 'wget')
+        with world() as w:
+            body = health_body(w, name)
+        if not body:
             sys.exit(1)
-        sys.stdout.write(reply)
+        sys.stdout.write(json.dumps(body))
         return
     unsupported(['exec'] + args)
 
@@ -475,7 +495,7 @@ def do_inspect(args):
             fmt = a.split('=', 1)[1]
         else:
             targets.append(a)
-    hook('inspect ' + ' '.join(targets), args)
+    maybe_fail(hook('inspect ' + ' '.join(targets), args), 'docker inspect')
     out = []
     with world() as w:
         for t in targets:
