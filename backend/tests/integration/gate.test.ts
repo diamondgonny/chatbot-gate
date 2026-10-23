@@ -3,6 +3,7 @@
  * Tests for POST /api/gate/validate endpoint
  */
 
+import { brotliCompressSync, gzipSync } from 'node:zlib';
 import request from 'supertest';
 import app from '../helpers/testApp';
 import { withCsrf, getCsrfToken } from '../helpers/authHelper';
@@ -213,6 +214,27 @@ describe('Gate API - POST /api/gate/validate', () => {
 
       expect(response.status).toBe(403);
       expect(response.body.error).toContain('CSRF');
+    });
+  });
+
+  describe('Compressed Request Bodies', () => {
+    it.each(['br', 'gzip'])('should reject a %s-encoded body before decompressing it', async (encoding) => {
+      const body = JSON.stringify({ code: 'testcode' });
+      const compressed = encoding === 'br' ? brotliCompressSync(body) : gzipSync(body);
+
+      const response = await request(app)
+        .post('/api/gate/validate')
+        .set(withCsrf())
+        .set('X-Forwarded-For', `6.6.6.${encoding === 'br' ? 1 : 2}`)
+        .set('Content-Type', 'application/json')
+        .set('Content-Encoding', encoding)
+        // Send the compressed bytes as-is instead of JSON-serializing the Buffer
+        .serialize((data) => data)
+        .send(compressed);
+
+      expect(response.status).not.toBe(200);
+      const cookies = response.headers['set-cookie'] as unknown as string[] | undefined;
+      expect(cookies?.find((c: string) => c.startsWith('jwt='))).toBeUndefined();
     });
   });
 });
