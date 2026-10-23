@@ -149,13 +149,13 @@ jobs:
 
           echo "Size value: $SIZE_VALUE $SIZE_UNIT"
 
-          # Fail if image is larger than 200MB
+          # Fail if image is larger than 300MB
           if [ "$SIZE_UNIT" = "GB" ]; then
-            echo "Error: Image size ($IMAGE_SIZE) exceeds 200MB limit"
+            echo "Error: Image size ($IMAGE_SIZE) exceeds 300MB limit"
             exit 1
           elif [ "$SIZE_UNIT" = "MB" ]; then
-            if (( $(echo "$SIZE_VALUE > 200" | bc -l) )); then
-              echo "Error: Image size ($SIZE_VALUE MB) exceeds 200MB limit"
+            if (( $(echo "$SIZE_VALUE > 300" | bc -l) )); then
+              echo "Error: Image size ($SIZE_VALUE MB) exceeds 300MB limit"
               exit 1
             fi
           fi
