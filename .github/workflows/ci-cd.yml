@@ -266,28 +266,14 @@ jobs:
           tags: tag:ci
           version: latest
 
-      - name: Tailscale network info
-        run: |
-          echo "=== Runner netcheck ==="
-          tailscale netcheck
-
-          echo "=== Runner IPs ==="
-          tailscale ip -4
-          tailscale ip -6
-
-          echo "=== Ping verbose ==="
-          tailscale ping --verbose --c 1 ${{ secrets.PRODUCTION_TAILSCALE_HOST }} || true
-
       - name: Wait for Tailscale & SSH port
         run: |
           HOST=${{ secrets.PRODUCTION_TAILSCALE_HOST }}
           for i in {1..18}; do
             echo "=== Attempt $i/18 ==="
-            tailscale status --peers
 
             # Check Tailscale ping (allow DERP relay)
             PING_OUTPUT=$(tailscale ping --timeout=5s --c=1 "$HOST" 2>&1) || true
-            echo "$PING_OUTPUT"
 
             if echo "$PING_OUTPUT" | grep -q "pong"; then
               # Log connection type
@@ -298,7 +284,7 @@ jobs:
               fi
 
               # Check SSH port
-              if nc -z "$HOST" 22; then
+              if nc -z "$HOST" 22 > /dev/null 2>&1; then
                 echo "✅ Tailscale and SSH port ready"
                 exit 0
               else
