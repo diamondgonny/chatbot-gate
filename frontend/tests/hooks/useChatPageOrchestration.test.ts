@@ -1,17 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { Mock } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useChatPageOrchestration } from "@/features/chat";
 import type { Session } from "@/features/chat";
 
 type SessionServices = {
-  getSessions: ReturnType<typeof vi.fn>;
-  createSession: ReturnType<typeof vi.fn>;
-  deleteSession: ReturnType<typeof vi.fn>;
+  getSessions: Mock;
+  createSession: Mock;
+  deleteSession: Mock;
 };
 
 type ChatServices = {
-  getChatHistory: ReturnType<typeof vi.fn>;
-  sendChatMessage: ReturnType<typeof vi.fn>;
+  getChatHistory: Mock;
+  sendChatMessage: Mock;
 };
 
 type MockBundle = {
